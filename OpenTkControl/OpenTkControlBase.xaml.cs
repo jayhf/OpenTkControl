@@ -117,6 +117,11 @@ namespace OpenTkControl
             public bool Screenshot { get; }
 
             /// <summary>
+            /// If set, the OpenGL context has been recreated and any existing OpenGL objects will be invalid.
+            /// </summary>
+            public bool NewContext { get; }
+
+            /// <summary>
             /// The width of the drawing area in pixels
             /// </summary>
             public int Width { get; }
@@ -138,13 +143,14 @@ namespace OpenTkControl
             /// <param name="height"><see cref="Height"/></param>
             /// <param name="resized"><see cref="Resized"/></param>
             /// <param name="screenshot"><see cref="Screenshot"/></param>
-            public GlRenderEventArgs(int width, int height, bool resized, bool screenshot)
+            public GlRenderEventArgs(int width, int height, bool resized, bool screenshot, bool newContext)
             {
                 Width = width;
                 Height = height;
                 RepaintRect = new Int32Rect(0, 0, Width, Height);
                 Resized = resized;
                 Screenshot = screenshot;
+                NewContext = newContext;
             }
         }
 
@@ -166,7 +172,7 @@ namespace OpenTkControl
         /// <summary>
         /// The source of the internal Image
         /// </summary>
-        private WriteableBitmap _bitmap;
+        private volatile WriteableBitmap _bitmap;
 
         /// <summary>
         /// The width of <see cref="_bitmap"/> in pixels/>
@@ -200,6 +206,11 @@ namespace OpenTkControl
             new ConcurrentQueue<Tuple<TaskCompletionSource<uint[,]>, int, int>>();
 
         /// <summary>
+        /// True if a new OpenGL context has been created since the last render call
+        /// </summary>
+        private bool _newContext;
+
+        /// <summary>
         /// Keeps track of any pending repaint requests that need to be notified upon completion
         /// </summary>
         private readonly ConcurrentQueue<TaskCompletionSource<object>> _repaintRequestQueue =
@@ -231,6 +242,11 @@ namespace OpenTkControl
         private int _depthBuffer;
 
         /// <summary>
+        /// True if OnLoaded has already been called
+        /// </summary>
+        private bool _alreadyLoaded;
+
+        /// <summary>
         /// Creates the <see cref="OpenTkControlBase"/>/>
         /// </summary>
         protected OpenTkControlBase()
@@ -257,8 +273,22 @@ namespace OpenTkControl
                         RequestRepaint();
                 });
 
-            Loaded += OnLoaded;
-            Unloaded += OnUnloaded;
+            Loaded += (sender, args) =>
+            {
+                if (_alreadyLoaded)
+                    return;
+
+                _alreadyLoaded = true;
+                OnLoaded(sender, args);
+            };
+            Unloaded += (sender, args) =>
+            {
+                if (!_alreadyLoaded)
+                    return;
+
+                _alreadyLoaded = false;
+                OnUnloaded(sender, args);
+            };
         }
         
         /// <summary>
@@ -313,11 +343,15 @@ namespace OpenTkControl
         /// </summary>
         /// <param name="sender">The object that sent the event</param>
         /// <param name="args">Information about the event</param>
-        protected virtual void OnUnloaded(object sender, RoutedEventArgs args)
+        protected virtual async void OnUnloaded(object sender, RoutedEventArgs args)
         {
             try
             {
-                _previousUpdateImageTask?.Wait();
+                Task previousUpdateImageTask = _previousUpdateImageTask;
+                if(previousUpdateImageTask != null)
+                {
+                    await previousUpdateImageTask;
+                }
             }
             catch (TaskCanceledException) { }
             catch (Exception e)
@@ -329,6 +363,7 @@ namespace OpenTkControl
 
             _windowInfo = null;
             _backBuffer = IntPtr.Zero;
+
             _bitmap = null;
 
             _lastFrameTime = DateTime.MinValue;
@@ -344,7 +379,9 @@ namespace OpenTkControl
                 Version version = Version.Parse(_openGlVersion);
                 GraphicsMode mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
                 _context = new GraphicsContext(mode, _windowInfo, version.Major, version.Minor, GraphicsContextFlags.Default);
+                _newContext = true;
                 _context.LoadAll();
+                _context.MakeCurrent(_windowInfo);
             }
             catch (Exception e)
             {
@@ -386,7 +423,7 @@ namespace OpenTkControl
 
                 CalculateBufferSize(out int width, out int height);
 
-                if (_continuous && !IsVisible)
+                if ((_continuous && !IsVisible) || width == 0 || height == 0)
                     return TimeSpan.FromMilliseconds(20);
 
 
@@ -409,7 +446,8 @@ namespace OpenTkControl
 
                 bool resized = false;
                 Task resizeBitmapTask = null;
-                if (_bitmap == null || _bitmapWidth != width || _bitmapHeight != height)
+                //Need Abs(...) > 1 to handle an edge case where the resizing the bitmap causes the height to increase in an infinite loop
+                if (_bitmap == null || Math.Abs(_bitmapWidth - width) > 1 || Math.Abs(_bitmapHeight - height) > 1)
                 {
                     resized = true;
                     _bitmapWidth = width;
@@ -423,7 +461,7 @@ namespace OpenTkControl
 
                 if (currentBufferWidth != _bitmapWidth || currentBufferHeight != _bitmapHeight)
                 {
-                    CreateOpenGlBuffers(width, height);
+                    CreateOpenGlBuffers(_bitmapWidth, _bitmapHeight);
                 }
 
                 List<TaskCompletionSource<object>> repaintRequests = null;
@@ -436,7 +474,7 @@ namespace OpenTkControl
                     repaintRequests.Add(tcs);
                 }
 
-                GlRenderEventArgs args = new GlRenderEventArgs(width, height, resized, false);
+                GlRenderEventArgs args = new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, resized, false, CheckNewContext());
                 try
                 {
                     OnGlRender(args);
@@ -474,7 +512,7 @@ namespace OpenTkControl
                     return TimeSpan.Zero;
                 }
 
-                GL.ReadPixels(0, 0, width, height, PixelFormat.Bgra, PixelType.UnsignedByte, _backBuffer);
+                GL.ReadPixels(0, 0, _bitmapWidth, _bitmapHeight, PixelFormat.Bgra, PixelType.UnsignedByte, _backBuffer);
 
                 _previousUpdateImageTask = RunOnUiThread(() => UpdateImage(dirtyArea));
             }
@@ -507,14 +545,22 @@ namespace OpenTkControl
 
                 try
                 {
+                    uint[,] screenshot = new uint[screenshotHeight, screenshotWidth];
+
+                    //Handle the case where the window has 0 width or height
+                    if (screenshotHeight == 0 || screenshotWidth == 0)
+                    {
+                        tcs.SetResult(screenshot);
+                        continue;
+                    }
+
                     if (screenshotWidth != currentWidth || screenshotHeight != currentHeight)
                     {
                         currentWidth = screenshotWidth;
                         currentHeight = screenshotHeight;
                         CreateOpenGlBuffers(screenshotWidth, screenshotHeight);
                     }
-                    OnGlRender(new GlRenderEventArgs(screenshotWidth, screenshotHeight, false, true));
-                    uint[,] screenshot = new uint[screenshotHeight, screenshotWidth];
+                    OnGlRender(new GlRenderEventArgs(screenshotWidth, screenshotHeight, false, true, CheckNewContext()));
                     GL.ReadPixels(0, 0, screenshotWidth, screenshotHeight,
                         PixelFormat.Bgra, PixelType.UnsignedByte,
                         screenshot);
@@ -525,6 +571,21 @@ namespace OpenTkControl
                     tcs.SetException(e);
                 }
             }
+        }
+
+        /// <summary>
+        /// Updates <see cref="_newContext"/>
+        /// </summary>
+        /// <returns>True if there is a new context</returns>
+        private bool CheckNewContext()
+        {
+            if (_newContext)
+            {
+                _newContext = false;
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -556,11 +617,18 @@ namespace OpenTkControl
         /// <param name="dirtyArea">The dirty dirtyArea of the screen that should be updated</param>
         private void UpdateImage(Int32Rect dirtyArea)
         {
-            _bitmap.Lock();
-            _bitmap.AddDirtyRect(dirtyArea);
-            _bitmap.Unlock();
+            WriteableBitmap bitmap = _bitmap;
+            if(bitmap == null)
+            {
+                Image.Source = null;
+                return;
+            }
 
-            Image.Source = _bitmap;
+            bitmap.Lock();
+            bitmap.AddDirtyRect(dirtyArea);
+            bitmap.Unlock();
+
+            Image.Source = bitmap;
         }
 
         /// <summary>

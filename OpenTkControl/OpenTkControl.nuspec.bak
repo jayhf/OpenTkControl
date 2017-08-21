@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>JayFleischer.OpenTkControl</id>
-    <version>1.0.1</version>
+    <version>$version$</version>
     <title>$title$</title>
     <authors>Jay Fleischer</authors>
     <owners>jayhf614</owners>

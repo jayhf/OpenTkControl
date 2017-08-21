@@ -27,11 +27,6 @@ namespace OpenTkControlExample
                 Title = (Interlocked.Exchange(ref _fps, 0)/seconds).ToString("F1") + " FPS";
             };
             _fpsTimer.Start();
-
-            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
-            {
-                OpenTkControl.ExceptionOccurred += (sender, args) => Debug.WriteLine(args.ExceptionObject);
-            }));
         }
         
         private void OpenTkControl_OnGlRender(object sender, OpenTkControlBase.GlRenderEventArgs e)
@@ -47,7 +42,7 @@ namespace OpenTkControlExample
 
             //Using the same example as used by https://github.com/freakinpenguin/OpenTK-WPF
             //to make it easier to compare different approaches
-            if (_displayList <= 0)
+            if (_displayList <= 0 || e.NewContext)
             {
                 _displayList = GL.GenLists(1);
                 GL.NewList(_displayList, ListMode.Compile);
@@ -108,6 +103,11 @@ namespace OpenTkControlExample
             GL.End();
 
             Interlocked.Increment(ref _fps);
+        }
+
+        private void OpenTkControl_OnExceptionOccurred(object sender, UnhandledExceptionEventArgs e)
+        {
+            Debug.WriteLine(e.ExceptionObject);
         }
     }
 }
