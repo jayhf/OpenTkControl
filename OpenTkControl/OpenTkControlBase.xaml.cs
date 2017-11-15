@@ -512,7 +512,8 @@ namespace OpenTkControl
                     return TimeSpan.Zero;
                 }
 
-                GL.ReadPixels(0, 0, _bitmapWidth, _bitmapHeight, PixelFormat.Bgra, PixelType.UnsignedByte, _backBuffer);
+                if(_backBuffer != IntPtr.Zero)
+                    GL.ReadPixels(0, 0, _bitmapWidth, _bitmapHeight, PixelFormat.Bgra, PixelType.UnsignedByte, _backBuffer);
 
                 _previousUpdateImageTask = RunOnUiThread(() => UpdateImage(dirtyArea));
             }
