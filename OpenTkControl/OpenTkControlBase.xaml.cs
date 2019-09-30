@@ -334,8 +334,15 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnLoaded(object sender, RoutedEventArgs args)
         {
-            _windowInfo = Utilities.CreateWindowsWindowInfo(
-                new WindowInteropHelper(Window.GetWindow(this)).Handle);
+            try
+            {
+                _windowInfo = Utilities.CreateWindowsWindowInfo(
+                    new WindowInteropHelper(Window.GetWindow(this)).Handle);
+            }
+            catch
+            {
+
+            }
         }
 
         /// <summary>
@@ -417,6 +424,11 @@ namespace OpenTkControl
         /// </summary>
         protected TimeSpan Render()
         {
+#if DEBUG
+            if (DesignerProperties.GetIsInDesignMode(this))
+                return TimeSpan.Zero;
+#endif
+
             try
             {
                 RenderScreenshots(out int currentBufferWidth, out int currentBufferHeight);
