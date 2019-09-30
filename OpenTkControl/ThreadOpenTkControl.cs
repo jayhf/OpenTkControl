@@ -53,6 +53,7 @@ namespace OpenTkControl
             base.OnLoaded(sender, args);
 
             _endThreadCts = new CancellationTokenSource();
+
             _renderThread = new Thread(RenderThread)
             {
                 IsBackground = true,
@@ -89,6 +90,12 @@ namespace OpenTkControl
         /// <param name="boxedToken"></param>
         private void RenderThread(object boxedToken)
         {
+#if DEBUG
+            //We needn't call render() for avoiding crash by calling OpenGL API methods.
+            if (Dispatcher.Invoke(() => IsDesignMode))
+                return;
+#endif
+
             CancellationToken token = (CancellationToken) boxedToken;
 
             InitOpenGl();

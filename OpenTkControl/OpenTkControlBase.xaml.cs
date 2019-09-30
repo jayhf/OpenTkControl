@@ -305,6 +305,8 @@ namespace OpenTkControl
             return tcs.Task;
         }
 
+        protected bool IsDesignMode => DesignerProperties.GetIsInDesignMode(this);
+
         /// <summary>
         /// Renders a screenshot of the frame with the specified dimensions. It will be in bgra format with
         /// [0,0] at the bottom left corner. Note that this is not meant for taking screenshots of what is
@@ -424,11 +426,6 @@ namespace OpenTkControl
         /// </summary>
         protected TimeSpan Render()
         {
-#if DEBUG
-            if (DesignerProperties.GetIsInDesignMode(this))
-                return TimeSpan.Zero;
-#endif
-
             try
             {
                 RenderScreenshots(out int currentBufferWidth, out int currentBufferHeight);
