@@ -91,7 +91,7 @@ namespace OpenTkControl
         private void RenderThread(object boxedToken)
         {
 #if DEBUG
-            //We needn't call render() for avoiding crash by calling OpenGL API methods.
+            // Don't render in design mode to prevent errors from calling OpenGL API methods.
             if (Dispatcher.Invoke(() => IsDesignMode()))
                 return;
 #endif
