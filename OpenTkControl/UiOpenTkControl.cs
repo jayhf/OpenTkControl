@@ -50,7 +50,7 @@ namespace OpenTkControl
         {
 #if DEBUG
             //We needn't call render() for avoiding crash by calling OpenGL API methods.
-            if (IsDesignMode)
+            if (IsDesignMode())
                 return;
 #endif
 

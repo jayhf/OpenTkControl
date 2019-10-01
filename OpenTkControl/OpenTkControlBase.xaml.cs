@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -305,7 +306,11 @@ namespace OpenTkControl
             return tcs.Task;
         }
 
-        protected bool IsDesignMode => DesignerProperties.GetIsInDesignMode(this);
+        /// <summary>
+        /// Check if it is run in designer mode.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected bool IsDesignMode() => DesignerProperties.GetIsInDesignMode(this);
 
         /// <summary>
         /// Renders a screenshot of the frame with the specified dimensions. It will be in bgra format with
@@ -336,15 +341,13 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnLoaded(object sender, RoutedEventArgs args)
         {
-            try
-            {
-                _windowInfo = Utilities.CreateWindowsWindowInfo(
-                    new WindowInteropHelper(Window.GetWindow(this)).Handle);
-            }
-            catch
-            {
+#if DEBUG
+            if (IsDesignMode())
+                return;
+#endif
 
-            }
+            _windowInfo = Utilities.CreateWindowsWindowInfo(
+                new WindowInteropHelper(Window.GetWindow(this)).Handle);
         }
 
         /// <summary>

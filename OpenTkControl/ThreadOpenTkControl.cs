@@ -92,7 +92,7 @@ namespace OpenTkControl
         {
 #if DEBUG
             //We needn't call render() for avoiding crash by calling OpenGL API methods.
-            if (Dispatcher.Invoke(() => IsDesignMode))
+            if (Dispatcher.Invoke(() => IsDesignMode()))
                 return;
 #endif
 
