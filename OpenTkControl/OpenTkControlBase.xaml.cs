@@ -160,6 +160,11 @@ namespace OpenTkControl
         public event EventHandler<GlRenderEventArgs> GlRender;
 
         /// <summary>
+        /// Called whenever the OpenGL context is being destroyed
+        /// </summary>
+        public event EventHandler<GlRenderEventArgs> GlCleanup;
+
+        /// <summary>
         /// Called whenever an exception occurs during initialization, rendering or deinitialization
         /// </summary>
         public event EventHandler<UnhandledExceptionEventArgs> ExceptionOccurred;
@@ -289,6 +294,21 @@ namespace OpenTkControl
                 _alreadyLoaded = false;
                 OnUnloaded(sender, args);
             };
+            
+            var currentApp = Application.Current;
+            if(currentApp != null)
+            {
+                // This handles the case of the application exiting when all the windows are closed, which
+                // wont raise the Unload event
+                currentApp.Dispatcher.ShutdownStarted += (sender, args) =>
+                {
+                    if (!_alreadyLoaded)
+                        return;
+
+                    _alreadyLoaded = false;
+                    OnUnloaded(sender, new RoutedEventArgs());
+                };
+            }
         }
         
         /// <summary>
@@ -396,6 +416,11 @@ namespace OpenTkControl
         {
             try
             {
+                // With this event we give the user the chance to release all the unmanaged resources that requires
+                // the opengl context being active to be released
+                GlRenderEventArgs args = new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, false, false, CheckNewContext());
+                OnGlCleanup(args);
+
                 DeInitOpenGlBuffers();
 
                 _context.Dispose();
@@ -694,6 +719,19 @@ namespace OpenTkControl
         private void OnGlRender(GlRenderEventArgs args)
         {
             GlRender?.Invoke(this, args);
+
+            ErrorCode error = GL.GetError();
+            if (error != ErrorCode.NoError)
+                throw new GraphicsException(error.ToString());
+        }
+
+        /// <summary>
+        /// A helper to actually invoke <see cref="GlCleanup"/>
+        /// </summary>
+        /// <param name="args">The render arguments</param>
+        private void OnGlCleanup(GlRenderEventArgs args)
+        {
+            GlCleanup?.Invoke(this, args);
 
             ErrorCode error = GL.GetError();
             if (error != ErrorCode.NoError)
