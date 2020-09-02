@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -306,6 +307,12 @@ namespace OpenTkControl
         }
 
         /// <summary>
+        /// Check if it is run in designer mode.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected bool IsDesignMode() => DesignerProperties.GetIsInDesignMode(this);
+
+        /// <summary>
         /// Renders a screenshot of the frame with the specified dimensions. It will be in bgra format with
         /// [0,0] at the bottom left corner. Note that this is not meant for taking screenshots of what is
         /// displayed on the screen each frame. To do that, just use GL.ReadPixels.
@@ -334,6 +341,11 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnLoaded(object sender, RoutedEventArgs args)
         {
+#if DEBUG
+            if (IsDesignMode())
+                return;
+#endif
+
             _windowInfo = Utilities.CreateWindowsWindowInfo(
                 new WindowInteropHelper(Window.GetWindow(this)).Handle);
         }

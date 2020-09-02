@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -47,6 +48,12 @@ namespace OpenTkControl
         /// <param name="args">The event arguments about this event</param>
         private void CompositionTargetOnRendering(object sender, EventArgs args)
         {
+#if DEBUG
+            //We needn't call render() for avoiding crash by calling OpenGL API methods.
+            if (IsDesignMode())
+                return;
+#endif
+
             DateTime now = DateTime.Now;
             if ((_continuous && now > _nextRenderTime) || ManualRepaintEvent.WaitOne(0))
             {
