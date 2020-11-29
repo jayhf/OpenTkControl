@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>JayFleischer.OpenTkControl</id>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <title>$title$</title>
     <authors>Jay Fleischer</authors>
     <owners>jayhf614</owners>
@@ -11,7 +11,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A faster way to use OpenTk in WPF without Forms dependencies</description>
     <releaseNotes>Initial OpenTkControl Release</releaseNotes>
-    <copyright>Copyright 2017</copyright>
+    <copyright>Copyright 2020</copyright>
     <tags>WPF OpenTK OpenGL Graphics C# .NET</tags>
   </metadata>
 </package>
