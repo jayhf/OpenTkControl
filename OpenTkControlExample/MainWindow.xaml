@@ -5,7 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:openTkControl="clr-namespace:OpenTkControl;assembly=OpenTkControl"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
+        Title="MainWindow" 
+        Height="1080" 
+        Width="1920">
     <Grid>
         <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" GlRender="OpenTkControl_OnGlRender" ExceptionOccurred="OpenTkControl_OnExceptionOccurred"/>
     </Grid>

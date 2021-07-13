@@ -1,8 +1,12 @@
-﻿using System;
+﻿#define withPBO
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -13,7 +17,18 @@ using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
+using Buffer = System.Buffer;
+using BufferTarget = OpenTK.Graphics.OpenGL4.BufferTarget;
+using BufferUsageHint = OpenTK.Graphics.OpenGL4.BufferUsageHint;
+using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
+using FramebufferAttachment = OpenTK.Graphics.OpenGL4.FramebufferAttachment;
+using FramebufferErrorCode = OpenTK.Graphics.OpenGL4.FramebufferErrorCode;
+using FramebufferTarget = OpenTK.Graphics.OpenGL4.FramebufferTarget;
+using GL = OpenTK.Graphics.OpenGL4.GL;
 using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
+using PixelType = OpenTK.Graphics.OpenGL4.PixelType;
+using ReadBufferMode = OpenTK.Graphics.OpenGL4.ReadBufferMode;
+using RenderbufferTarget = OpenTK.Graphics.OpenGL4.RenderbufferTarget;
 
 namespace OpenTkControl
 {
@@ -33,7 +48,8 @@ namespace OpenTkControl
             });
         }
 
-        private volatile string _openGlVersion = (string) OpenGlVersionProperty.DefaultMetadata.DefaultValue;
+        private volatile string _openGlVersion = (string)OpenGlVersionProperty.DefaultMetadata.DefaultValue;
+
         public static readonly DependencyProperty OpenGlVersionProperty = DependencyProperty.Register(
             nameof(OpenGlVersion), typeof(string), typeof(OpenTkControlBase), new PropertyMetadata("3.0"));
 
@@ -46,20 +62,23 @@ namespace OpenTkControl
             set => SetValue(OpenGlVersionProperty, value);
         }
 
-        private volatile float _frameRateLimit = (float) FrameRateLimitProperty.DefaultMetadata.DefaultValue;
+        private volatile float _frameRateLimit = (float)FrameRateLimitProperty.DefaultMetadata.DefaultValue;
+
         public static readonly DependencyProperty FrameRateLimitProperty = DependencyProperty.Register(
-            nameof(FrameRateLimit), typeof(float), typeof(OpenTkControlBase), new PropertyMetadata(float.PositiveInfinity));
+            nameof(FrameRateLimit), typeof(float), typeof(OpenTkControlBase),
+            new PropertyMetadata(float.PositiveInfinity));
 
         /// <summary>
         /// The maximum frame rate to render at. Anything over 1000 is treated as unlimited.
         /// </summary>
         public float FrameRateLimit
         {
-            get => (float) GetValue(FrameRateLimitProperty);
+            get => (float)GetValue(FrameRateLimitProperty);
             set => SetValue(FrameRateLimitProperty, value);
         }
 
-        private volatile float _pixelScale = (float) PixelScaleProperty.DefaultMetadata.DefaultValue;
+        private volatile float _pixelScale = (float)PixelScaleProperty.DefaultMetadata.DefaultValue;
+
         public static readonly DependencyProperty PixelScaleProperty = DependencyProperty.Register(
             nameof(PixelScale), typeof(float), typeof(OpenTkControlBase), new PropertyMetadata(1f));
 
@@ -69,11 +88,12 @@ namespace OpenTkControl
         /// </summary>
         public float PixelScale
         {
-            get => (float) GetValue(PixelScaleProperty);
+            get => (float)GetValue(PixelScaleProperty);
             set => SetValue(PixelScaleProperty, value);
         }
 
-        private volatile uint _maxPixels = (uint) MaxPixelsProperty.DefaultMetadata.DefaultValue;
+        private volatile uint _maxPixels = (uint)MaxPixelsProperty.DefaultMetadata.DefaultValue;
+
         public static readonly DependencyProperty MaxPixelsProperty = DependencyProperty.Register(
             nameof(MaxPixels), typeof(uint), typeof(OpenTkControlBase), new PropertyMetadata(uint.MaxValue));
 
@@ -83,13 +103,14 @@ namespace OpenTkControl
         /// </summary>
         public uint MaxPixels
         {
-            get => (uint) GetValue(MaxPixelsProperty);
+            get => (uint)GetValue(MaxPixelsProperty);
             set => SetValue(MaxPixelsProperty, value);
         }
 
-        protected volatile bool _continuous = (bool) ContinuousProperty.DefaultMetadata.DefaultValue;
+        protected volatile bool _continuous = (bool)ContinuousProperty.DefaultMetadata.DefaultValue;
+
         public static readonly DependencyProperty ContinuousProperty = DependencyProperty.Register(
-                nameof(Continuous), typeof(bool), typeof(UiOpenTkControl), new PropertyMetadata(true));
+            nameof(Continuous), typeof(bool), typeof(UiOpenTkControl), new PropertyMetadata(true));
 
         /// <summary>
         /// Determines whether this control is in continuous mode. If set to false, RequestRepaint must be called
@@ -190,6 +211,10 @@ namespace OpenTkControl
         /// </summary>
         private IntPtr _backBuffer = IntPtr.Zero;
 
+        private int currentPixelBufferSize;
+
+        private int doublePixelBuffer0, doublePixelBuffer1;
+
         /// <summary>
         /// Information about the current window
         /// </summary>
@@ -203,7 +228,7 @@ namespace OpenTkControl
         /// <summary>
         /// Stores any pending screenshots that need to be captured
         /// </summary>
-        private readonly ConcurrentQueue<Tuple<TaskCompletionSource<uint[,]>, int, int>> _screenshotQueue = 
+        private readonly ConcurrentQueue<Tuple<TaskCompletionSource<uint[,]>, int, int>> _screenshotQueue =
             new ConcurrentQueue<Tuple<TaskCompletionSource<uint[,]>, int, int>>();
 
         /// <summary>
@@ -291,7 +316,7 @@ namespace OpenTkControl
                 OnUnloaded(sender, args);
             };
         }
-        
+
         /// <summary>
         /// Requests that the next frame be drawn, which is the only way to get the control to render 
         /// when not in <see cref="Continuous"/> mode.
@@ -360,12 +385,14 @@ namespace OpenTkControl
             try
             {
                 Task previousUpdateImageTask = _previousUpdateImageTask;
-                if(previousUpdateImageTask != null)
+                if (previousUpdateImageTask != null)
                 {
                     await previousUpdateImageTask;
                 }
             }
-            catch (TaskCanceledException) { }
+            catch (TaskCanceledException)
+            {
+            }
             catch (Exception e)
             {
                 ExceptionOccurred?.Invoke(this, new UnhandledExceptionEventArgs(e, false));
@@ -390,7 +417,8 @@ namespace OpenTkControl
             {
                 Version version = Version.Parse(_openGlVersion);
                 GraphicsMode mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
-                _context = new GraphicsContext(mode, _windowInfo, version.Major, version.Minor, GraphicsContextFlags.Default);
+                _context = new GraphicsContext(mode, _windowInfo, version.Major, version.Minor,
+                    GraphicsContextFlags.Default);
                 _newContext = true;
                 _context.LoadAll();
                 _context.MakeCurrent(_windowInfo);
@@ -423,7 +451,9 @@ namespace OpenTkControl
                 ExceptionOccurred?.Invoke(this, new UnhandledExceptionEventArgs(e, false));
             }
         }
-        
+
+        private int doubleBufferIndex = 0;
+
         /// <summary>
         /// Handles generating screenshots and updating the display image
         /// </summary>
@@ -483,10 +513,12 @@ namespace OpenTkControl
                     {
                         repaintRequests = new List<TaskCompletionSource<object>>();
                     }
+
                     repaintRequests.Add(tcs);
                 }
 
-                GlRenderEventArgs args = new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, resized, false, CheckNewContext());
+                var args =
+                    new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, resized, false, CheckNewContext());
                 try
                 {
                     OnGlRender(args);
@@ -524,8 +556,46 @@ namespace OpenTkControl
                     return TimeSpan.Zero;
                 }
 
-                if(_backBuffer != IntPtr.Zero)
-                    GL.ReadPixels(0, 0, _bitmapWidth, _bitmapHeight, PixelFormat.Bgra, PixelType.UnsignedByte, _backBuffer);
+                if (_backBuffer != IntPtr.Zero)
+                {
+#if withPBO
+                    doubleBufferIndex = (doubleBufferIndex + 1) % 2;
+                    int readBuffer, copyBuffer;
+                    if (doubleBufferIndex == 0)
+                    {
+                        readBuffer = doublePixelBuffer0;
+                        copyBuffer = doublePixelBuffer1;
+                    }
+
+                    else
+                    {
+                        readBuffer = doublePixelBuffer1;
+                        copyBuffer = doublePixelBuffer0;
+                    }
+
+                    GL.ReadBuffer(ReadBufferMode.Front);
+                    GL.BindBuffer(BufferTarget.PixelPackBuffer, readBuffer);
+                    GL.ReadPixels(0, 0, _bitmapWidth, _bitmapHeight, PixelFormat.Bgra, PixelType.UnsignedByte,
+                        IntPtr.Zero);
+                    GL.BindBuffer(BufferTarget.PixelPackBuffer, copyBuffer);
+                    var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
+                    if (mapBuffer == IntPtr.Zero)
+                    {
+                        return TimeSpan.Zero;
+                    }
+
+                    unsafe
+                    {
+                        Buffer.MemoryCopy(mapBuffer.ToPointer(), _backBuffer.ToPointer(), (long)currentPixelBufferSize,
+                            (long)currentPixelBufferSize);
+                    }
+
+                    GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
+#else
+                    GL.ReadPixels(0, 0, _bitmapWidth, _bitmapHeight, PixelFormat.Bgra, PixelType.UnsignedByte,
+                        _backBuffer);
+#endif
+                }
 
                 _previousUpdateImageTask = RunOnUiThread(() => UpdateImage(dirtyArea));
             }
@@ -573,7 +643,9 @@ namespace OpenTkControl
                         currentHeight = screenshotHeight;
                         CreateOpenGlBuffers(screenshotWidth, screenshotHeight);
                     }
-                    OnGlRender(new GlRenderEventArgs(screenshotWidth, screenshotHeight, false, true, CheckNewContext()));
+
+                    OnGlRender(new GlRenderEventArgs(screenshotWidth, screenshotHeight, false, true,
+                        CheckNewContext()));
                     GL.ReadPixels(0, 0, screenshotWidth, screenshotHeight,
                         PixelFormat.Bgra, PixelType.UnsignedByte,
                         screenshot);
@@ -609,8 +681,8 @@ namespace OpenTkControl
         /// <param name="height">The new buffer height</param>
         private void CalculateBufferSize(out int width, out int height)
         {
-            width = (int) (ActualWidth / _pixelScale);
-            height = (int) (ActualHeight / _pixelScale);
+            width = (int)(ActualWidth / _pixelScale);
+            height = (int)(ActualHeight / _pixelScale);
 
             if (width <= 0 || height <= 0)
                 return;
@@ -631,7 +703,7 @@ namespace OpenTkControl
         private void UpdateImage(Int32Rect dirtyArea)
         {
             WriteableBitmap bitmap = _bitmap;
-            if(bitmap == null)
+            if (bitmap == null)
             {
                 Image.Source = null;
                 return;
@@ -640,9 +712,9 @@ namespace OpenTkControl
             bitmap.Lock();
             bitmap.AddDirtyRect(dirtyArea);
             bitmap.Unlock();
-
             Image.Source = bitmap;
         }
+
 
         /// <summary>
         /// Creates new OpenGl buffers of the specified size, including <see cref="_frameBuffer"/>, <see cref="_depthBuffer"/>,
@@ -654,13 +726,14 @@ namespace OpenTkControl
         protected virtual void CreateOpenGlBuffers(int width, int height)
         {
             DeInitOpenGlBuffers();
-
+            currentPixelBufferSize = width * height * 4;
             _frameBuffer = GL.GenFramebuffer();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, _frameBuffer);
 
             _depthBuffer = GL.GenRenderbuffer();
             GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _depthBuffer);
-            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24, width, height);
+            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24, width,
+                height);
             GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment,
                 RenderbufferTarget.Renderbuffer, _depthBuffer);
 
@@ -675,6 +748,16 @@ namespace OpenTkControl
             {
                 throw new GraphicsErrorException("Error creating frame buffer: " + error);
             }
+#if withPBO
+            doublePixelBuffer0 = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, doublePixelBuffer0);
+            GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
+                BufferUsageHint.StreamRead);
+            doublePixelBuffer1 = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, doublePixelBuffer1);
+            GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
+                BufferUsageHint.StreamRead);
+#endif
         }
 
         /// <summary>
@@ -687,16 +770,29 @@ namespace OpenTkControl
                 GL.DeleteFramebuffer(_frameBuffer);
                 _frameBuffer = 0;
             }
+
             if (_depthBuffer != 0)
             {
                 GL.DeleteRenderbuffer(_depthBuffer);
                 _depthBuffer = 0;
             }
+
             if (_renderBuffer != 0)
             {
                 GL.DeleteRenderbuffer(_renderBuffer);
                 _renderBuffer = 0;
             }
+#if withPBO
+            if (doublePixelBuffer0 != 0)
+            {
+                GL.DeleteBuffer(doublePixelBuffer0);
+            }
+
+            if (doublePixelBuffer1 != 0)
+            {
+                GL.DeleteBuffer(doublePixelBuffer1);
+            }
+#endif
         }
 
         /// <summary>

@@ -32,7 +32,7 @@ namespace OpenTkControlExample
         private void OpenTkControl_OnGlRender(object sender, OpenTkControlBase.GlRenderEventArgs e)
         {
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
+            
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadIdentity();
             float halfWidth = e.Width / 2f;
