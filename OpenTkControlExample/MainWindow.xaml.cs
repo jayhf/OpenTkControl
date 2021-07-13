@@ -20,19 +20,18 @@ namespace OpenTkControlExample
         public MainWindow()
         {
             _fpsTimer.Interval = TimeSpan.FromSeconds(1);
-            _fpsTimer.Tick += (sender, args) => 
+            _fpsTimer.Tick += (sender, args) =>
             {
                 double seconds = _sw.Elapsed.TotalSeconds;
                 _sw.Restart();
-                Title = (Interlocked.Exchange(ref _fps, 0)/seconds).ToString("F1") + " FPS";
+                Title = (Interlocked.Exchange(ref _fps, 0) / seconds).ToString("F1") + " FPS";
             };
             _fpsTimer.Start();
         }
-        
+
         private void OpenTkControl_OnGlRender(object sender, OpenTkControlBase.GlRenderEventArgs e)
         {
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadIdentity();
             float halfWidth = e.Width / 2f;
@@ -70,10 +69,10 @@ namespace OpenTkControlExample
                 GL.EndList();
             }
 
-            GL.Enable(EnableCap.Lighting);
+            // GL.Enable(EnableCap.Lighting);
             GL.Enable(EnableCap.Light0);
             GL.Enable(EnableCap.Blend);
-            GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
             GL.Enable(EnableCap.DepthTest);
 
             GL.ClearColor(Color.FromArgb(200, Color.LightBlue));
@@ -81,7 +80,7 @@ namespace OpenTkControlExample
 
             GL.MatrixMode(MatrixMode.Modelview);
             GL.LoadIdentity();
-            
+
             _angle += 1f;
             GL.Rotate(_angle, Vector3.UnitZ);
             GL.Rotate(_angle, Vector3.UnitY);
