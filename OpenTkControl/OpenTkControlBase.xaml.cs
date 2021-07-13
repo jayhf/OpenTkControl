@@ -592,10 +592,9 @@ namespace OpenTkControl
                 {
                     return TimeSpan.Zero;
                 }
-
+                doubleBuffer.SwapBuffer();
                 doubleBuffer.ReadCurrent();
                 var copyLatest = doubleBuffer.GetLatest();
-                doubleBuffer.SwapBuffer();
                 if (copyLatest.FrameBuffer == IntPtr.Zero)
                 {
                     return TimeSpan.Zero;
