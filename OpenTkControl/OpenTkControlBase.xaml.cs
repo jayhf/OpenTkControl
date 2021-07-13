@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -48,7 +49,7 @@ namespace OpenTkControl
             });
         }
 
-        private volatile string _openGlVersion = (string)OpenGlVersionProperty.DefaultMetadata.DefaultValue;
+        private volatile string _openGlVersion = (string) OpenGlVersionProperty.DefaultMetadata.DefaultValue;
 
         public static readonly DependencyProperty OpenGlVersionProperty = DependencyProperty.Register(
             nameof(OpenGlVersion), typeof(string), typeof(OpenTkControlBase), new PropertyMetadata("3.0"));
@@ -58,11 +59,11 @@ namespace OpenTkControl
         /// </summary>
         public string OpenGlVersion
         {
-            get => (string)GetValue(OpenGlVersionProperty);
+            get => (string) GetValue(OpenGlVersionProperty);
             set => SetValue(OpenGlVersionProperty, value);
         }
 
-        private volatile float _frameRateLimit = (float)FrameRateLimitProperty.DefaultMetadata.DefaultValue;
+        private volatile float _frameRateLimit = (float) FrameRateLimitProperty.DefaultMetadata.DefaultValue;
 
         public static readonly DependencyProperty FrameRateLimitProperty = DependencyProperty.Register(
             nameof(FrameRateLimit), typeof(float), typeof(OpenTkControlBase),
@@ -73,11 +74,11 @@ namespace OpenTkControl
         /// </summary>
         public float FrameRateLimit
         {
-            get => (float)GetValue(FrameRateLimitProperty);
+            get => (float) GetValue(FrameRateLimitProperty);
             set => SetValue(FrameRateLimitProperty, value);
         }
 
-        private volatile float _pixelScale = (float)PixelScaleProperty.DefaultMetadata.DefaultValue;
+        private volatile float _pixelScale = (float) PixelScaleProperty.DefaultMetadata.DefaultValue;
 
         public static readonly DependencyProperty PixelScaleProperty = DependencyProperty.Register(
             nameof(PixelScale), typeof(float), typeof(OpenTkControlBase), new PropertyMetadata(1f));
@@ -88,11 +89,11 @@ namespace OpenTkControl
         /// </summary>
         public float PixelScale
         {
-            get => (float)GetValue(PixelScaleProperty);
+            get => (float) GetValue(PixelScaleProperty);
             set => SetValue(PixelScaleProperty, value);
         }
 
-        private volatile uint _maxPixels = (uint)MaxPixelsProperty.DefaultMetadata.DefaultValue;
+        private volatile uint _maxPixels = (uint) MaxPixelsProperty.DefaultMetadata.DefaultValue;
 
         public static readonly DependencyProperty MaxPixelsProperty = DependencyProperty.Register(
             nameof(MaxPixels), typeof(uint), typeof(OpenTkControlBase), new PropertyMetadata(uint.MaxValue));
@@ -103,11 +104,11 @@ namespace OpenTkControl
         /// </summary>
         public uint MaxPixels
         {
-            get => (uint)GetValue(MaxPixelsProperty);
+            get => (uint) GetValue(MaxPixelsProperty);
             set => SetValue(MaxPixelsProperty, value);
         }
 
-        protected volatile bool _continuous = (bool)ContinuousProperty.DefaultMetadata.DefaultValue;
+        protected volatile bool _continuous = (bool) ContinuousProperty.DefaultMetadata.DefaultValue;
 
         public static readonly DependencyProperty ContinuousProperty = DependencyProperty.Register(
             nameof(Continuous), typeof(bool), typeof(UiOpenTkControl), new PropertyMetadata(true));
@@ -119,7 +120,7 @@ namespace OpenTkControl
         /// </summary>
         public bool Continuous
         {
-            get => (bool)GetValue(ContinuousProperty);
+            get => (bool) GetValue(ContinuousProperty);
             set => SetValue(ContinuousProperty, value);
         }
 
@@ -408,6 +409,8 @@ namespace OpenTkControl
             _lastFrameTime = DateTime.MinValue;
         }
 
+        private DebugProc debugProc;
+
         /// <summary>
         /// Initializes a variety of OpenGL resources
         /// </summary>
@@ -422,11 +425,65 @@ namespace OpenTkControl
                 _newContext = true;
                 _context.LoadAll();
                 _context.MakeCurrent(_windowInfo);
+                GL.Enable(EnableCap.DebugOutput);
+                debugProc = Callback;
+                GL.DebugMessageCallback(debugProc, IntPtr.Zero);
             }
             catch (Exception e)
             {
                 ExceptionOccurred?.Invoke(this, new UnhandledExceptionEventArgs(e, false));
             }
+        }
+
+        private void Callback(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
+            IntPtr message, IntPtr userparam)
+        {
+            Debugger.Break();
+            string msg = PtrToStringUTF8(message).Replace('\n', ' ');
+            var stringBuilder = new StringBuilder();
+            switch (type)
+            {
+                case DebugType.DebugTypeError:
+                    stringBuilder.Append($"{severity}: {msg}\nCallStack={Environment.StackTrace}");
+                    break;
+                case DebugType.DebugTypePerformance:
+                    stringBuilder.Append($"{severity}: {msg}");
+                    break;
+                case DebugType.DebugTypePushGroup:
+                    stringBuilder.Append($"{{ ({id}) {severity}: {msg}");
+                    break;
+                case DebugType.DebugTypePopGroup:
+                    stringBuilder.Append($"}} ({id}) {severity}: {msg}");
+                    break;
+                default:
+                    if (source == DebugSource.DebugSourceApplication)
+                    {
+                        stringBuilder.Append($"{type} {severity}: {msg}");
+                    }
+                    else
+                    {
+                        stringBuilder.Append($"{type} {severity}: {msg}");
+                    }
+
+                    break;
+            }
+
+            Debug.WriteLine(stringBuilder.ToString());
+        }
+
+        static string PtrToStringUTF8(IntPtr ptr)
+        {
+            var bytesCount = 0;
+            byte b;
+            do
+            {
+                b = Marshal.ReadByte(ptr, bytesCount);
+                bytesCount++;
+            } while (b != 0);
+
+            var bytes = new byte[bytesCount - 1];
+            Marshal.Copy(ptr, bytes, 0, bytesCount - 1);
+            return Encoding.UTF8.GetString(bytes);
         }
 
         /// <summary>
@@ -522,6 +579,7 @@ namespace OpenTkControl
                 try
                 {
                     OnGlRender(args);
+                    GL.Finish();
                 }
                 finally
                 {
@@ -573,7 +631,6 @@ namespace OpenTkControl
                         copyBuffer = doublePixelBuffer0;
                     }
 
-                    GL.ReadBuffer(ReadBufferMode.Front);
                     GL.BindBuffer(BufferTarget.PixelPackBuffer, readBuffer);
                     GL.ReadPixels(0, 0, _bitmapWidth, _bitmapHeight, PixelFormat.Bgra, PixelType.UnsignedByte,
                         IntPtr.Zero);
@@ -586,8 +643,8 @@ namespace OpenTkControl
 
                     unsafe
                     {
-                        Buffer.MemoryCopy(mapBuffer.ToPointer(), _backBuffer.ToPointer(), (long)currentPixelBufferSize,
-                            (long)currentPixelBufferSize);
+                        Buffer.MemoryCopy(mapBuffer.ToPointer(), _backBuffer.ToPointer(), (long) currentPixelBufferSize,
+                            (long) currentPixelBufferSize);
                     }
 
                     GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
@@ -681,17 +738,17 @@ namespace OpenTkControl
         /// <param name="height">The new buffer height</param>
         private void CalculateBufferSize(out int width, out int height)
         {
-            width = (int)(ActualWidth / _pixelScale);
-            height = (int)(ActualHeight / _pixelScale);
+            width = (int) (ActualWidth / _pixelScale);
+            height = (int) (ActualHeight / _pixelScale);
 
             if (width <= 0 || height <= 0)
                 return;
 
             if (width * height > _maxPixels)
             {
-                float scale = (float)Math.Sqrt((float)_maxPixels / width / height);
-                width = (int)(width * scale);
-                height = (int)(height * scale);
+                float scale = (float) Math.Sqrt((float) _maxPixels / width / height);
+                width = (int) (width * scale);
+                height = (int) (height * scale);
             }
         }
 
@@ -805,7 +862,9 @@ namespace OpenTkControl
 
             ErrorCode error = GL.GetError();
             if (error != ErrorCode.NoError)
+            {
                 throw new GraphicsException(error.ToString());
+            }
         }
     }
 }
