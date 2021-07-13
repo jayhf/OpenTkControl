@@ -10,6 +10,8 @@ namespace OpenTkControl
 
         public bool IsResized { get; set; }
 
+        public int BufferSize { get; set; }
+
         public IntPtr FrameBuffer { get; set; }
 
         public int Width => RepaintRect.Width;

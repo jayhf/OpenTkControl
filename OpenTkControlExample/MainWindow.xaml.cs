@@ -31,7 +31,7 @@ namespace OpenTkControlExample
         
         private void OpenTkControl_OnGlRender(object sender, OpenTkControlBase.GlRenderEventArgs e)
         {
-            /*GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadIdentity();
@@ -70,7 +70,7 @@ namespace OpenTkControlExample
                 GL.EndList();
             }
 
-            GL.Enable(EnableCap.Lighting);
+            // GL.Enable(EnableCap.Lighting);
             GL.Enable(EnableCap.Light0);
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
@@ -101,9 +101,8 @@ namespace OpenTkControlExample
             GL.Vertex3(300, 0, 0);
 
             GL.End();
-            */
 
-            // Interlocked.Increment(ref _fps);
+            Interlocked.Increment(ref _fps);
         }
 
         private void OpenTkControl_OnExceptionOccurred(object sender, UnhandledExceptionEventArgs e)

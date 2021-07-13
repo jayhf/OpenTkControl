@@ -21,14 +21,18 @@ namespace OpenTkControl
             if (_readBufferInfo.Width != width || _readBufferInfo.Height != height)
             {
                 _readBufferInfo.IsResized = true;
+                /*_readBufferInfo.FrameBuffer = IntPtr.Zero;
+                _copyBufferInfo.FrameBuffer = IntPtr.Zero;*/
                 _readBufferInfo.RepaintRect = new Int32Rect(0, 0, _width, _height);
             }
             else
             {
                 _readBufferInfo.IsResized = false;
+                return;
             }
 
             var currentPixelBufferSize = width * height * 4;
+            _readBufferInfo.BufferSize = currentPixelBufferSize;
             _doublePixelBuffer0 = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _doublePixelBuffer0);
             GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
@@ -61,11 +65,9 @@ namespace OpenTkControl
         /// </summary>
         public void ReadCurrent()
         {
-            GL.ReadBuffer(ReadBufferMode.Front);
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _readBuffer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
-            _copyBufferInfo = _readBufferInfo;
         }
 
         public void SwapBuffer()
@@ -73,10 +75,17 @@ namespace OpenTkControl
             var buffer = _copyBuffer;
             _copyBuffer = _readBuffer;
             _readBuffer = buffer;
+            _copyBufferInfo = _readBufferInfo;
+            _readBufferInfo.IsResized = false;
         }
 
-        public BufferInfo CopyLatest()
+        public BufferInfo GetLatest()
         {
+            if (_copyBufferInfo.Equals(default(BufferInfo)))
+            {
+                return default;
+            }
+
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _copyBuffer);
             var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
             _copyBufferInfo.FrameBuffer = mapBuffer;

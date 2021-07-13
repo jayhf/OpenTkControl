@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -204,11 +205,6 @@ namespace OpenTkControl
         /// </summary>
         private int _bitmapHeight;
 
-        /// <summary>
-        /// A pointer to <see cref="_bitmap"/>'s back buffer
-        /// </summary>
-        private IntPtr _backBuffer = IntPtr.Zero;
-
 
         /// <summary>
         /// Information about the current window
@@ -396,12 +392,12 @@ namespace OpenTkControl
             _previousUpdateImageTask = null;
 
             _windowInfo = null;
-            _backBuffer = IntPtr.Zero;
-
             _bitmap = null;
 
             _lastFrameTime = DateTime.MinValue;
         }
+
+        private DebugProc debugProc;
 
         /// <summary>
         /// Initializes a variety of OpenGL resources
@@ -417,11 +413,65 @@ namespace OpenTkControl
                 _newContext = true;
                 _context.LoadAll();
                 _context.MakeCurrent(_windowInfo);
+                GL.Enable(EnableCap.DebugOutput);
+                debugProc = Callback;
+                GL.DebugMessageCallback(debugProc, IntPtr.Zero);
             }
             catch (Exception e)
             {
                 ExceptionOccurred?.Invoke(this, new UnhandledExceptionEventArgs(e, false));
             }
+        }
+
+        private void Callback(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
+            IntPtr message, IntPtr userparam)
+        {
+            Debugger.Break();
+            string msg = PtrToStringUTF8(message).Replace('\n', ' ');
+            var stringBuilder = new StringBuilder();
+            switch (type)
+            {
+                case DebugType.DebugTypeError:
+                    stringBuilder.Append($"{severity}: {msg}\nCallStack={Environment.StackTrace}");
+                    break;
+                case DebugType.DebugTypePerformance:
+                    stringBuilder.Append($"{severity}: {msg}");
+                    break;
+                case DebugType.DebugTypePushGroup:
+                    stringBuilder.Append($"{{ ({id}) {severity}: {msg}");
+                    break;
+                case DebugType.DebugTypePopGroup:
+                    stringBuilder.Append($"}} ({id}) {severity}: {msg}");
+                    break;
+                default:
+                    if (source == DebugSource.DebugSourceApplication)
+                    {
+                        stringBuilder.Append($"{type} {severity}: {msg}");
+                    }
+                    else
+                    {
+                        stringBuilder.Append($"{type} {severity}: {msg}");
+                    }
+
+                    break;
+            }
+
+            Debug.WriteLine(stringBuilder.ToString());
+        }
+
+        static string PtrToStringUTF8(IntPtr ptr)
+        {
+            var bytesCount = 0;
+            byte b;
+            do
+            {
+                b = Marshal.ReadByte(ptr, bytesCount);
+                bytesCount++;
+            } while (b != 0);
+
+            var bytes = new byte[bytesCount - 1];
+            Marshal.Copy(ptr, bytes, 0, bytesCount - 1);
+            return Encoding.UTF8.GetString(bytes);
         }
 
         /// <summary>
@@ -544,13 +594,12 @@ namespace OpenTkControl
                 }
 
                 doubleBuffer.ReadCurrent();
-                var copyLatest = doubleBuffer.CopyLatest();
+                var copyLatest = doubleBuffer.GetLatest();
                 doubleBuffer.SwapBuffer();
                 if (copyLatest.FrameBuffer == IntPtr.Zero)
                 {
                     return TimeSpan.Zero;
                 }
-
 
                 _previousUpdateImageTask = RunOnUiThread(() => UpdateImage(copyLatest));
             }
@@ -561,9 +610,7 @@ namespace OpenTkControl
 
             return TimeSpan.Zero;
         }
-
-        private int _currentPixelBufferSize;
-
+        
         /// <summary>
         /// Updates what is currently being drawn on the screen from the back buffer.
         /// Must be called from the UI thread
@@ -575,12 +622,11 @@ namespace OpenTkControl
             if (info.IsResized)
             {
                 _bitmap = new WriteableBitmap(info.Width, info.Height, 96, 96, PixelFormats.Pbgra32, null);
-                _backBuffer = _bitmap.BackBuffer;
                 Image.Source = _bitmap;
             }
 
             _bitmap.Lock();
-            _bitmap.WritePixels(dirtyArea, info.FrameBuffer, _currentPixelBufferSize, _bitmap.BackBufferStride);
+            _bitmap.WritePixels(dirtyArea, info.FrameBuffer, info.BufferSize, _bitmap.BackBufferStride);
             _bitmap.AddDirtyRect(dirtyArea);
             _bitmap.Unlock();
         }
@@ -684,7 +730,6 @@ namespace OpenTkControl
         protected virtual void CreateOpenGlBuffers(int width, int height)
         {
             DeInitOpenGlBuffers();
-            _currentPixelBufferSize = width * height * 4;
             _frameBuffer = GL.GenFramebuffer();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, _frameBuffer);
 
@@ -700,12 +745,12 @@ namespace OpenTkControl
             GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, width, height);
             GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
                 RenderbufferTarget.Renderbuffer, _renderBuffer);
-            doubleBuffer.Allocate(width, height);
             FramebufferErrorCode error = GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
             if (error != FramebufferErrorCode.FramebufferComplete)
             {
                 throw new GraphicsErrorException("Error creating frame buffer: " + error);
             }
+            doubleBuffer.Allocate(width, height);
         }
 
         /// <summary>
@@ -740,7 +785,7 @@ namespace OpenTkControl
         /// <param name="args">The render arguments</param>
         private void OnGlRender(GlRenderEventArgs args)
         {
-            // GlRender?.Invoke(this, args);
+            GlRender?.Invoke(this, args);
 
             ErrorCode error = GL.GetError();
             if (error != ErrorCode.NoError)
