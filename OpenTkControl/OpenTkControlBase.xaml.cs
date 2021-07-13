@@ -11,9 +11,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using OpenTK;
 using OpenTK.Graphics;
-using OpenTK.Graphics.OpenGL;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
-using PixelFormat = OpenTK.Graphics.OpenGL.PixelFormat;
+using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 
 namespace OpenTkControl
 {
