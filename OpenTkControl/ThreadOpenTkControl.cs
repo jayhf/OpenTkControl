@@ -92,7 +92,7 @@ namespace OpenTkControl
         {
 #if DEBUG
             // Don't render in design mode to prevent errors from calling OpenGL API methods.
-            if (Dispatcher.Invoke(() => IsDesignMode()))
+            if (Dispatcher.Invoke(IsDesignMode))
                 return;
 #endif
 
@@ -122,7 +122,7 @@ namespace OpenTkControl
 
                 ManualRepaintEvent.Reset();
 
-                TimeSpan sleepTime = Render();
+                var sleepTime = Render();
                 if(sleepTime.CompareTo(TimeSpan.Zero) > 0)
                     Thread.Sleep(sleepTime);
             }

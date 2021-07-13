@@ -44,6 +44,8 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DoubleBuffer.cs" />
+    <Compile Include="BufferInfo.cs" />
     <Compile Include="ThreadOpenTkControl.cs" />
     <Compile Include="UiOpenTkControl.cs" />
     <Compile Include="OpenTkControlBase.xaml.cs">
