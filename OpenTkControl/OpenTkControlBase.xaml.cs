@@ -592,6 +592,7 @@ namespace OpenTkControl
                 {
                     return TimeSpan.Zero;
                 }
+
                 doubleBuffer.SwapBuffer();
                 doubleBuffer.ReadCurrent();
                 var copyLatest = doubleBuffer.GetLatest();
@@ -609,7 +610,7 @@ namespace OpenTkControl
 
             return TimeSpan.Zero;
         }
-        
+
         /// <summary>
         /// Updates what is currently being drawn on the screen from the back buffer.
         /// Must be called from the UI thread
@@ -749,6 +750,7 @@ namespace OpenTkControl
             {
                 throw new GraphicsErrorException("Error creating frame buffer: " + error);
             }
+
             doubleBuffer.Allocate(width, height);
         }
 

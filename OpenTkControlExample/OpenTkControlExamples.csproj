@@ -98,6 +98,10 @@
       <Project>{06f9fd53-c287-4275-8b98-4b891ea3abdd}</Project>
       <Name>OpenTkControl</Name>
     </ProjectReference>
+    <ProjectReference Include="..\TestRender\TestRenderer.csproj">
+      <Project>{6998b769-6839-49f1-80d3-b345d99cfc44}</Project>
+      <Name>TestRenderer</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

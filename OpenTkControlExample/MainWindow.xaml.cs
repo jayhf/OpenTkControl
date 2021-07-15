@@ -6,6 +6,9 @@ using OpenTkControl;
 using OpenTK;
 using OpenTK.Graphics.OpenGL;
 using System.Drawing;
+using System.Linq;
+using OpenTK.Graphics;
+using TestRenderer;
 
 namespace OpenTkControlExample
 {
@@ -16,6 +19,13 @@ namespace OpenTkControlExample
         private int _fps;
         private float _angle;
         private int _displayList;
+
+        private const int LineCount = 10;
+        public const int PointsCount = 10000;
+
+        public const int LineLength = PointsCount * 2;
+
+        private TendencyChartRenderer renderer = new TendencyChartRenderer();
 
         public MainWindow()
         {
@@ -28,10 +38,41 @@ namespace OpenTkControlExample
             };
             _fpsTimer.Start();
         }
+
+        private bool isInitialized;
         
         private void OpenTkControl_OnGlRender(object sender, OpenTkControlBase.GlRenderEventArgs e)
         {
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            if (!isInitialized)
+            {
+                var dateTime = DateTime.Now;
+                var start = dateTime.Ticks;
+                var random = new Random();
+                for (int i = 0; i < LineCount; i++)
+                {
+                    var lineChartRenderer = new LineRenderer(PointsCount) { LineColor = Color4.White };
+                    var ringBuffer = lineChartRenderer.RingBuffer;
+                    for (int j = 0; j < LineLength; j += 2)
+                    {
+                        var time = dateTime.AddSeconds(j);
+                        var ticks = (float)(time.Ticks - start);
+                        ringBuffer[j] = ticks;
+                        ringBuffer[j + 1] = random.Next(0, 10000) * 0.1f;
+                    }
+
+                    renderer.Add(lineChartRenderer);
+                }
+
+                var end = (long)renderer.LineRenderers.First().RingBuffer[LineLength - 2];
+                renderer.CurrentScrollRange = new ScrollRange(0, end);
+                renderer.CurrentYAxisValue = 1000;
+                renderer.BackgroundColor = Color4.Black;
+                renderer.Initialize();
+                isInitialized = true;
+            }
+            renderer.Render();
+            
+            /*GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadIdentity();
@@ -100,7 +141,7 @@ namespace OpenTkControlExample
             GL.Vertex3(0, 0, 0);
             GL.Vertex3(300, 0, 0);
 
-            GL.End();
+            GL.End();*/
 
             Interlocked.Increment(ref _fps);
         }
