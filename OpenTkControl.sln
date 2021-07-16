@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenTkControlExamples", "Op
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestRenderer", "TestRender\TestRenderer.csproj", "{6998B769-6839-49F1-80D3-B345D99CFC44}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfLibrary1", "WpfLibrary1\WpfLibrary1.csproj", "{C69AFE61-054C-45FA-B280-ACD392DB3565}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{6998B769-6839-49F1-80D3-B345D99CFC44}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6998B769-6839-49F1-80D3-B345D99CFC44}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6998B769-6839-49F1-80D3-B345D99CFC44}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C69AFE61-054C-45FA-B280-ACD392DB3565}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C69AFE61-054C-45FA-B280-ACD392DB3565}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C69AFE61-054C-45FA-B280-ACD392DB3565}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C69AFE61-054C-45FA-B280-ACD392DB3565}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -58,7 +58,7 @@ namespace OpenTkControl
             if ((_continuous && now > _nextRenderTime) || ManualRepaintEvent.WaitOne(0))
             {
                 ManualRepaintEvent.Reset();
-                _nextRenderTime = now + Render();
+                _nextRenderTime = now + Renderer();
             }
         }
 

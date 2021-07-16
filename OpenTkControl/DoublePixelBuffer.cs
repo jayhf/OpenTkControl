@@ -4,7 +4,7 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace OpenTkControl
 {
-    public class DoubleBuffer
+    public class DoublePixelBuffer
     {
         private int _doublePixelBuffer0, _doublePixelBuffer1;
 
