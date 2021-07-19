@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -9,7 +10,7 @@ namespace OpenTkControl
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance
     /// </summary>
-    public class ThreadOpenTkControl : OpenTkControlBase
+    public class ThreadOpenTkControl : OpenTkControlBase, IDisposable
     {
         public static readonly DependencyProperty ThreadNameProperty = DependencyProperty.Register(
             nameof(ThreadName), typeof(string), typeof(ThreadOpenTkControl),
@@ -25,14 +26,11 @@ namespace OpenTkControl
         }
 
         /// <summary>
-        /// This event is set to notify the thread to wake up when the control becomes visible
-        /// </summary>
-        private readonly ManualResetEvent _becameVisibleEvent = new ManualResetEvent(false);
-
-        /// <summary>
         /// The Thread object for the rendering thread
         /// </summary>
         private Thread _renderThread;
+
+        private Task _lastRenderTask;
 
         /// <summary>
         /// The CTS used to stop the thread when this control is unloaded
@@ -42,33 +40,96 @@ namespace OpenTkControl
 
         public ThreadOpenTkControl()
         {
-            IsVisibleChanged += OnIsVisibleChanged;
+            IsVisibleChanged += (_, args) =>
+            {
+                if ((bool) args.NewValue)
+                {
+                    CompositionTarget.Rendering += CompositionTarget_Rendering;
+                }
+                else
+                {
+                    CompositionTarget.Rendering -= CompositionTarget_Rendering;
+                }
+            };
+            this.SizeChanged += ThreadOpenTkControl_SizeChanged;
         }
+
+        private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (RenderProcedure != null)
+            {
+                CurrentCanvasInfo = RenderProcedure.Settings.CreateCanvasInfo(this);
+            }
+        }
+
+        private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
+
+        private void CompositionTarget_Rendering(object sender, EventArgs e)
+        {
+            var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
+            if (currentRenderTime == _lastRenderTime)
+            {
+                return;
+            }
+
+            _lastRenderTime = currentRenderTime.Value;
+            InvalidateVisual();
+        }
+
+
+        protected CanvasInfo CurrentCanvasInfo;
+
 
         protected override void OnRenderProcedureChanged()
         {
-            throw new NotImplementedException();
+            if (this.RenderProcedure != null)
+            {
+                CurrentCanvasInfo = this.RenderProcedure.Settings.CreateCanvasInfo(this);
+                StartThread();
+            }
         }
 
-        protected override void OnContinuousChanged()
+        protected override void OnRenderProcedureChanging()
         {
-            throw new NotImplementedException();
+            if (this.RenderProcedure != null)
+            {
+                CloseThread();
+            }
         }
 
-        protected override void OnRender(DrawingContext drawingContext)
-        {
-            base.OnRender(drawingContext);
-        }
+        private DrawingContext _currentDrawingContext;
 
-        public Task RunOnUiThread(Action action)
+        public Task OnRenderTask(Action action)
         {
             return Dispatcher.InvokeAsync(action).Task;
         }
 
-        protected override void OnLoaded(object sender, RoutedEventArgs args)
+        private readonly ManualResetEvent _renderResetEvent = new ManualResetEvent(false);
+
+        /*private TaskCompletionSource<Tuple<ImageSource, DrawingDirective>> renderCompletionSource =
+            new TaskCompletionSource<Tuple<ImageSource, DrawingDirective>>();*/
+
+        protected override void OnRender(DrawingContext drawingContext)
         {
-            base.OnLoaded(sender, args);
-            
+            base.OnRender(drawingContext);
+            _currentDrawingContext = drawingContext;
+            if (!_renderResetEvent.WaitOne(0))
+            {
+                _renderResetEvent.Set();
+            }
+        }
+
+
+        private volatile bool renderThreadStart = false;
+
+        public void StartThread()
+        {
+            if (renderThreadStart)
+            {
+                return;
+            }
+
+            renderThreadStart = true;
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
             {
@@ -79,55 +140,27 @@ namespace OpenTkControl
             _renderThread.Start(_endThreadCts.Token);
         }
 
-        private Task _previousUpdateImageTask;
 
-        protected override async void OnUnloaded(object sender, RoutedEventArgs args)
+        private void CloseThread()
         {
-            try
-            {
-                
-                var previousUpdateImageTask = _previousUpdateImageTask;
-                if (_previousUpdateImageTask != null)
-                {
-                    await previousUpdateImageTask;
-                }
-
-                _previousUpdateImageTask = null;
-            }
-            catch (TaskCanceledException)
-            {
-            }
-
-            base.OnUnloaded(sender, args);
+            renderThreadStart = false;
+            _renderResetEvent.Set();
             _endThreadCts.Cancel();
             _renderThread.Join();
+            _endThreadCts.Dispose();
         }
 
-        /// <summary>
-        /// Wakes up the thread when the control becomes visible
-        /// </summary>
-        /// <param name="sender">The object that sent the event</param>
-        /// <param name="args">The event arguments about this event</param>
-        private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs args)
+
+        protected override void OnLoaded(object sender, RoutedEventArgs args)
         {
-            bool visible = (bool) args.NewValue;
-
-            if (visible)
-                _becameVisibleEvent.Set();
+            base.OnLoaded(sender, args);
         }
 
-        /* if (_frameRateLimit > 0 && _frameRateLimit < 1000)
-                         {
-                             var now = DateTime.Now;
-                             var delayTime = TimeSpan.FromSeconds(1 / _frameRateLimit) - (now - _lastFrameTime);
-                             if (delayTime.CompareTo(TimeSpan.Zero) > 0)
-                                 return delayTime;
-                             _lastFrameTime = now;
-                         }
-                         else
-                         {
-                             _lastFrameTime = DateTime.MinValue;
-                         }*/
+        protected override void OnUnloaded(object sender, RoutedEventArgs args)
+        {
+            base.OnUnloaded(sender, args);
+            CloseThread();
+        }
 
         /// <summary>
         /// The function that the thread runs to render the control
@@ -142,56 +175,61 @@ namespace OpenTkControl
 #endif
 
             var token = (CancellationToken) boxedToken;
-
-            RenderProcedure.Initialize();
+            RenderProcedure.Initialize(WindowInfo);
+            var canvasInfo = CurrentCanvasInfo;
+            RenderProcedure.SizeCanvas(CurrentCanvasInfo);
             using (RenderProcedure)
             {
-                WaitHandle[] notContinuousHandles = {token.WaitHandle};
-                WaitHandle[] notVisibleHandles = {token.WaitHandle, _becameVisibleEvent};
+                WaitHandle[] renderHandles = {token.WaitHandle, _renderResetEvent};
                 while (!token.IsCancellationRequested)
                 {
-                    if (!_continuous)
-                    {
-                        WaitHandle.WaitAny(notContinuousHandles);
-                    }
-                    else if (!IsVisible)
-                    {
-                        WaitHandle.WaitAny(notVisibleHandles);
-                        _becameVisibleEvent.Reset();
-
-                        if (!_continuous)
-                            continue;
-                    }
-
+                    WaitHandle.WaitAny(renderHandles);
+                    _renderResetEvent.Reset();
                     if (token.IsCancellationRequested)
                         break;
+                    if (!canvasInfo.Equals(CurrentCanvasInfo))
+                    {
+                        RenderProcedure.SizeCanvas(canvasInfo);
+                    }
 
                     var imageSource = RenderProcedure.Render(out var directive);
                     if (imageSource != null)
                     {
-                        RunOnUiThread(() =>
+                        _lastRenderTask = OnRenderTask(() =>
                         {
-                            // Transforms are applied in reverse order
-                            drawingContext.PushTransform(directive
-                                .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
-                            drawingContext.PushTransform(_framebuffer
-                                .FlipYTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
-                            // dpi scaled rectangle from the image
-                            var rect = new Rect(0, 0, _framebuffer.D3dImage.Width, _framebuffer.D3dImage.Height);
-                            drawingContext.DrawImage(_framebuffer.D3dImage, rect); // Draw the image source 
-
-                            drawingContext.Pop(); // Remove the scale transform
-                            drawingContext.Pop(); // Remove the translation transform
-                        })
+                            if (directive.Equals(DrawingDirective.None))
+                            {
+                                var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
+                                _currentDrawingContext.DrawImage(imageSource, rect); // Draw the image source 
+                            }
+                            else
+                            {
+                                // Transforms are applied in reverse order
+                                _currentDrawingContext.PushTransform(directive
+                                    .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
+                                _currentDrawingContext.PushTransform(directive
+                                    .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
+                                // dpi scaled rectangle from the image
+                                var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
+                                _currentDrawingContext.DrawImage(imageSource, rect); // Draw the image source 
+                                _currentDrawingContext.Pop(); // Remove the scale transform
+                                _currentDrawingContext.Pop(); // Remove the translation transform
+                            }
+                        });
                     }
 
-                    if (sleepTime.CompareTo(TimeSpan.Zero) > 0)
-                        Thread.Sleep(sleepTime);
+                    if (!directive.IsOutputAsync)
+                    {
+                        _lastRenderTask.Wait(token);
+                    }
                 }
             }
-            //_lastFrameTime = DateTime.MinValue;
         }
 
-        
+        public void Dispose()
+        {
+            CloseThread();
+            _renderResetEvent?.Dispose();
+        }
     }
 }

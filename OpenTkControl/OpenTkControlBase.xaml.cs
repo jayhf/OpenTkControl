@@ -61,7 +61,7 @@ namespace OpenTkControl
         /// <summary>
         /// 依赖属性的性能较差，使用变量
         /// </summary>
-        protected IRenderProcedure RenderProcedure;
+        protected IRenderProcedure RenderProcedure { get; set; }
 
         private volatile float _frameRateLimit = (float) FrameRateLimitProperty.DefaultMetadata.DefaultValue;
 
@@ -77,28 +77,6 @@ namespace OpenTkControl
             get => (float) GetValue(FrameRateLimitProperty);
             set => SetValue(FrameRateLimitProperty, value);
         }
-
-        protected volatile bool _continuous = (bool) ContinuousProperty.DefaultMetadata.DefaultValue;
-
-        public static readonly DependencyProperty ContinuousProperty = DependencyProperty.Register(
-            nameof(Continuous), typeof(bool), typeof(UiOpenTkControl), new PropertyMetadata(true));
-
-        /// <summary>
-        /// Determines whether this control is in continuous mode. If set to false, RequestRepaint must be called
-        /// to get the control to render. Otherwise, it will automatically Render as fast as it possible up
-        /// to the <see cref="FrameRateLimit"/>
-        /// </summary>
-        public bool Continuous
-        {
-            get => (bool) GetValue(ContinuousProperty);
-            set => SetValue(ContinuousProperty, value);
-        }
-
-        /// <summary>
-        /// The last time a frame was rendered
-        /// </summary>
-        private DateTime _lastFrameTime = DateTime.MinValue;
-
 
         /// <summary>
         /// True if OnLoaded has already been called
@@ -117,12 +95,6 @@ namespace OpenTkControl
             // that allows other threads to read the values.
             DependencyPropertyDescriptor.FromProperty(FrameRateLimitProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this, (sender, args) => _frameRateLimit = FrameRateLimit);
-            DependencyPropertyDescriptor.FromProperty(ContinuousProperty, typeof(OpenTkControlBase))
-                .AddValueChanged(this, (sender, args) =>
-                {
-                    _continuous = Continuous;
-                    OnContinuousChanged();
-                });
             DependencyPropertyDescriptor.FromProperty(RendererProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this, (sender, args) =>
                 {
@@ -147,9 +119,18 @@ namespace OpenTkControl
             };
         }
 
+
+        /// <summary>
+        /// after renderprocedure changed
+        /// </summary>
         protected abstract void OnRenderProcedureChanged();
 
-        protected abstract void OnContinuousChanged();
+        /// <summary>
+        /// request change renderprocedure
+        /// </summary>
+        protected abstract void OnRenderProcedureChanging();
+
+        protected IWindowInfo WindowInfo;
 
         /// <summary>
         /// Check if it is run in designer mode.
@@ -172,7 +153,8 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnLoaded(object sender, RoutedEventArgs args)
         {
-            
+            WindowInfo = Utilities.CreateWindowsWindowInfo(
+                new WindowInteropHelper(Window.GetWindow(this)).Handle);
         }
 
         /// <summary>

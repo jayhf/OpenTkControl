@@ -9,6 +9,8 @@ namespace OpenTkControl
     {
         IRenderer Renderer { get; set; }
 
+        GLSettings Settings { get; }
+        
         void Initialize(IWindowInfo window);
 
         void SizeCanvas(CanvasInfo size);

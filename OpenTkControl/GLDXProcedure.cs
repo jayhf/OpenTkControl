@@ -59,6 +59,8 @@ namespace OpenTkControl
             this._glSettings = glSettings;
         }
 
+        public GLSettings Settings { get; }
+
         public void Initialize(IWindowInfo window)
         {
             _context = new DxGlContext(_glSettings);
@@ -103,40 +105,6 @@ namespace OpenTkControl
         {
             _context?.Dispose();
             _framebuffer?.Dispose();
-        }
-    }
-
-    public struct DrawingDirective
-    {
-        public static DrawingDirective None => new DrawingDirective();
-
-        public TranslateTransform TranslateTransform;
-
-        public ScaleTransform ScaleTransform;
-
-        public DrawingDirective(TranslateTransform translate, ScaleTransform scale)
-        {
-            this.TranslateTransform = translate;
-            this.ScaleTransform = scale;
-        }
-
-        public bool Equals(DrawingDirective other)
-        {
-            return Equals(TranslateTransform, other.TranslateTransform) && Equals(ScaleTransform, other.ScaleTransform);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is DrawingDirective other && Equals(other);
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return ((TranslateTransform != null ? TranslateTransform.GetHashCode() : 0) * 397) ^
-                       (ScaleTransform != null ? ScaleTransform.GetHashCode() : 0);
-            }
         }
     }
 }

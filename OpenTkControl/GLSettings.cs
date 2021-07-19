@@ -1,10 +1,15 @@
+using System.Diagnostics;
+using System.Windows;
+using System.Windows.Controls;
 using JetBrains.Annotations;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Platform;
 
-namespace OpenTkControl {
-    public sealed class GLSettings {
+namespace OpenTkControl
+{
+    public sealed class GLSettings
+    {
         /// If the render event is fired continuously whenever required.
         /// Disable this if you want manual control over when the rendered surface is updated.
         public bool RenderContinuously { get; set; } = true;
@@ -26,10 +31,12 @@ namespace OpenTkControl {
 
         /// If we are using an external context for the control.
         public bool IsUsingExternalContext => ContextToUse != null;
-        
+
         /// Creates a copy of the settings.
-        internal GLSettings Copy() {
-            var c = new GLSettings {
+        internal GLSettings Copy()
+        {
+            var c = new GLSettings
+            {
                 ContextToUse = ContextToUse,
                 GraphicsContextFlags = GraphicsContextFlags,
                 GraphicsProfile = GraphicsProfile,
@@ -43,25 +50,51 @@ namespace OpenTkControl {
 
         /// Determines if two settings would result in the same context being created.
         [Pure]
-        internal static bool WouldResultInSameContext([NotNull] GLSettings a, [NotNull] GLSettings b) {
-            if (a.MajorVersion != b.MajorVersion) {
+        internal static bool WouldResultInSameContext([NotNull] GLSettings a, [NotNull] GLSettings b)
+        {
+            if (a.MajorVersion != b.MajorVersion)
+            {
                 return false;
             }
 
-            if (a.MinorVersion != b.MinorVersion) {
+            if (a.MinorVersion != b.MinorVersion)
+            {
                 return false;
             }
 
-            if (a.GraphicsProfile != b.GraphicsProfile) {
+            if (a.GraphicsProfile != b.GraphicsProfile)
+            {
                 return false;
             }
 
-            if (a.GraphicsContextFlags != b.GraphicsContextFlags) {
+            if (a.GraphicsContextFlags != b.GraphicsContextFlags)
+            {
                 return false;
             }
 
             return true;
+        }
 
+        public CanvasInfo CreateCanvasInfo(FrameworkElement element)
+        {
+            if (!UseDeviceDpi)
+            {
+                return new CanvasInfo((int) element.ActualWidth, (int) element.ActualHeight, 1, 1);
+            }
+
+            var dpiScaleX = 1.0;
+            var dpiScaleY = 1.0;
+            var presentationSource = PresentationSource.FromVisual(element);
+            // this can be null in the case of not having any visual on screen, such as a tabbed view.
+            if (presentationSource != null)
+            {
+                Debug.Assert(presentationSource.CompositionTarget != null, "presentationSource.CompositionTarget != null");
+                var transformToDevice = presentationSource.CompositionTarget.TransformToDevice;
+                dpiScaleX = transformToDevice.M11;
+                dpiScaleY = transformToDevice.M22;
+            }
+
+            return new CanvasInfo((int) element.ActualWidth, (int) element.ActualHeight, dpiScaleX, dpiScaleY);
         }
     }
 }

@@ -89,6 +89,8 @@ namespace OpenTkControl
             this._glSettings = glSettings;
         }
 
+        public GLSettings Settings { get; }
+
         public void Initialize(IWindowInfo window)
         {
             try
@@ -195,6 +197,7 @@ namespace OpenTkControl
         public ImageSource Render(out DrawingDirective drawingDirective)
         {
             drawingDirective = DrawingDirective.None;
+            drawingDirective.IsOutputAsync = true;//允许异步
             try
             {
                 if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
