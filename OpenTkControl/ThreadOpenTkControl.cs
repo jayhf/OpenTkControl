@@ -233,6 +233,12 @@ namespace OpenTkControl
                     try
                     {
                         directive = RenderProcedure.Render();
+                        var directiveImageSource = directive?.ImageSource;
+                        if (directiveImageSource != null)
+                        {
+                            directive.ImageSource = (ImageSource)directiveImageSource.GetCurrentValueAsFrozen();
+                        }
+
                     }
                     catch (Exception e)
                     {
@@ -250,12 +256,7 @@ namespace OpenTkControl
                     }
                     else
                     {
-                        var directiveImageSource = directive?.ImageSource;
-                        if (directiveImageSource != null)
-                        {
-                            directive.ImageSource = (ImageSource)directiveImageSource.GetCurrentValueAsFrozen();
-                        }
-
+                        
                         _imageSourceCompletionSource.SetResult(directive);
                     }
 
