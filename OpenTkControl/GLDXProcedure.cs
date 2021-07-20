@@ -94,7 +94,6 @@ namespace OpenTkControl
             GLRender?.Invoke(deltaT);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
-            PostRender();
             return new DrawingDirective(_framebuffer.TranslateTransform, _framebuffer.FlipYTransform,_framebuffer.D3dImage);
             
         }

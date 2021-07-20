@@ -63,7 +63,7 @@ namespace OpenTkControl
 
         private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
 
-        private void CompositionTarget_Rendering(object sender, EventArgs e)
+        private async void CompositionTarget_Rendering(object sender, EventArgs e)
         {
             var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
             if (currentRenderTime == _lastRenderTime)
@@ -72,7 +72,45 @@ namespace OpenTkControl
             }
 
             _lastRenderTime = currentRenderTime.Value;
-            InvalidateVisual();
+            // CallRender();
+            // InvalidateVisual();
+            var drawingDirective = await PushRender();
+            if (drawingDirective?.ImageSource != null)
+            {
+                var drawingVisual = new DrawingVisual();
+                using (var drawingContext = drawingVisual.RenderOpen())
+                {
+                    var imageSource = drawingDirective?.ImageSource;
+                    if (imageSource != null)
+                    {
+                        if (drawingDirective.IsNeedTransform)
+                        {
+                            // Transforms are applied in reverse order
+                            drawingContext.PushTransform(drawingDirective
+                                .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
+                            drawingContext.PushTransform(drawingDirective
+                                .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
+                            // dpi scaled rectangle from the image
+                            var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
+                            drawingContext.DrawImage(imageSource, rect); // Draw the image source 
+                            drawingContext.Pop(); // Remove the scale transform
+                            drawingContext.Pop(); // Remove the translation transform
+                        }
+                        else
+                        {
+                            var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
+                            drawingContext.DrawImage(imageSource, rect); // Draw the image source 
+                        }
+
+
+                    }
+                }
+                // Image.Source = drawingDirective.ImageSource;
+            }
+            if (drawingDirective != null && !_renderCompletedResetEvent.WaitOne(0))
+            {
+                _renderCompletedResetEvent.Set();
+            }
         }
 
 
@@ -107,7 +145,7 @@ namespace OpenTkControl
         /*private TaskCompletionSource<Tuple<ImageSource, DrawingDirective>> renderCompletionSource =
             new TaskCompletionSource<Tuple<ImageSource, DrawingDirective>>();*/
 
-        protected override void OnRender(DrawingContext drawingContext)
+        /*protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
             var directive = PushRender().GetAwaiter().GetResult();
@@ -140,9 +178,17 @@ namespace OpenTkControl
             {
                 _renderCompletedResetEvent.Set();
             }
-        }
+        }*/
 
         private TaskCompletionSource<DrawingDirective> _imageSourceCompletionSource = null;
+
+        public void CallRender()
+        {
+            if (!_renderingResetEvent.WaitOne(0))
+            {
+                _renderingResetEvent.Set();
+            }
+        }
 
         public Task<DrawingDirective> PushRender()
         {
@@ -236,13 +282,13 @@ namespace OpenTkControl
                         var directiveImageSource = directive?.ImageSource;
                         if (directiveImageSource != null)
                         {
-                            directive.ImageSource = (ImageSource)directiveImageSource.GetCurrentValueAsFrozen();
+                            directive.ImageSource = (ImageSource) directiveImageSource.GetCurrentValueAsFrozen();
                         }
-
                     }
                     catch (Exception e)
                     {
                         exception = e;
+                        // Debugger.Break();
                     }
                     finally
                     {
@@ -256,7 +302,6 @@ namespace OpenTkControl
                     }
                     else
                     {
-                        
                         _imageSourceCompletionSource.SetResult(directive);
                     }
 
