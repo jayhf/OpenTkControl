@@ -45,8 +45,6 @@ namespace OpenTkControl
         /// </summary>
         private volatile WriteableBitmap _bitmap;
 
-        private IRenderer _renderer;
-
         /// <summary>
         /// The OpenGL framebuffer
         /// </summary>

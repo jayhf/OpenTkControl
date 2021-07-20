@@ -8,7 +8,7 @@ namespace OpenTkControl
 
         public ScaleTransform ScaleTransform { get; }
 
-        public ImageSource ImageSource { get; }
+        public ImageSource ImageSource { get; set; }
         
         public bool IsNeedTransform => TranslateTransform != null || ScaleTransform != null;
 

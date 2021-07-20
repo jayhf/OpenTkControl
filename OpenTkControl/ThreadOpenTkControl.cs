@@ -107,13 +107,13 @@ namespace OpenTkControl
         /*private TaskCompletionSource<Tuple<ImageSource, DrawingDirective>> renderCompletionSource =
             new TaskCompletionSource<Tuple<ImageSource, DrawingDirective>>();*/
 
-        protected override async void OnRender(DrawingContext drawingContext)
+        protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
             var directive = PushRender().GetAwaiter().GetResult();
-            if (directive?.ImageSource != null)
+            var imageSource = directive?.ImageSource;
+            if (imageSource!= null)
             {
-                var imageSource = directive.ImageSource;
                 if (directive.IsNeedTransform)
                 {
                     // Transforms are applied in reverse order
@@ -132,8 +132,10 @@ namespace OpenTkControl
                     var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
                     drawingContext.DrawImage(imageSource, rect); // Draw the image source 
                 }
-            }
 
+                
+            }
+            
             if (directive != null && _renderCompletedResetEvent.WaitOne(0))
             {
                 _renderCompletedResetEvent.Set();
@@ -245,10 +247,15 @@ namespace OpenTkControl
                     if (exception != null)
                     {
                         _imageSourceCompletionSource.SetException(exception);
-                        _imageSourceCompletionSource.SetResult(null);
                     }
                     else
                     {
+                        var directiveImageSource = directive?.ImageSource;
+                        if (directiveImageSource != null)
+                        {
+                            directive.ImageSource = (ImageSource)directiveImageSource.GetCurrentValueAsFrozen();
+                        }
+
                         _imageSourceCompletionSource.SetResult(directive);
                     }
 
