@@ -27,6 +27,11 @@ namespace OpenTkControl
             return null;
         }
 
+        protected override void OnRenderProcedureChanged()
+        {
+            throw new NotImplementedException();
+        }
+
         protected override void OnLoaded(object sender, RoutedEventArgs args)
         {
             base.OnLoaded(sender, args);
@@ -58,7 +63,7 @@ namespace OpenTkControl
             if ((_continuous && now > _nextRenderTime) || ManualRepaintEvent.WaitOne(0))
             {
                 ManualRepaintEvent.Reset();
-                _nextRenderTime = now + Render();
+                _nextRenderTime = now + Renderer();
             }
         }
 

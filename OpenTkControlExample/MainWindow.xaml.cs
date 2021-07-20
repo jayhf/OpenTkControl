@@ -6,6 +6,9 @@ using OpenTkControl;
 using OpenTK;
 using OpenTK.Graphics.OpenGL;
 using System.Drawing;
+using System.Linq;
+using OpenTK.Graphics;
+using TestRenderer;
 
 namespace OpenTkControlExample
 {
@@ -17,22 +20,57 @@ namespace OpenTkControlExample
         private float _angle;
         private int _displayList;
 
+        private const int LineCount = 10;
+        public const int PointsCount = 10000;
+
+        public const int LineLength = PointsCount * 2;
+
+
         public MainWindow()
         {
+            this.InitializeComponent();
             _fpsTimer.Interval = TimeSpan.FromSeconds(1);
-            _fpsTimer.Tick += (sender, args) => 
+            _fpsTimer.Tick += (sender, args) =>
             {
-                double seconds = _sw.Elapsed.TotalSeconds;
+                var seconds = _sw.Elapsed.TotalSeconds;
                 _sw.Restart();
-                Title = (Interlocked.Exchange(ref _fps, 0)/seconds).ToString("F1") + " FPS";
+                Title = (Interlocked.Exchange(ref _fps, 0) / seconds).ToString("F1") + " FPS";
             };
             _fpsTimer.Start();
-        }
-        
-        private void OpenTkControl_OnGlRender(object sender, OpenTkControlBase.GlRenderEventArgs e)
-        {
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            var renderer = new TendencyChartRenderer();
+            var dateTime = DateTime.Now;
+            var start = dateTime.Ticks;
+            var random = new Random();
+            for (int i = 0; i < LineCount; i++)
+            {
+                var lineChartRenderer = new LineRenderer(PointsCount) {LineColor = Color4.White};
+                var ringBuffer = lineChartRenderer.RingBuffer;
+                for (int j = 0; j < LineLength; j += 2)
+                {
+                    var time = dateTime.AddSeconds(j);
+                    var ticks = (float) (time.Ticks - start);
+                    ringBuffer[j] = ticks;
+                    ringBuffer[j + 1] = random.Next(0, 10000) * 0.1f;
+                }
 
+                renderer.Add(lineChartRenderer);
+            }
+
+            var end = (long) renderer.LineRenderers.First().RingBuffer[LineLength - 2];
+            renderer.CurrentScrollRange = new ScrollRange(0, end);
+            renderer.CurrentYAxisValue = 1000;
+            renderer.BackgroundColor = Color4.Black;
+            this.OpenTkControl.Renderer = new GLBitmapProcedure(new GLSettings())
+            {
+                Renderer = renderer,
+            };
+        }
+
+
+        private void OpenTkControl_OnGlRender(object sender)
+        {
+            /*GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadIdentity();
             float halfWidth = e.Width / 2f;
@@ -70,10 +108,10 @@ namespace OpenTkControlExample
                 GL.EndList();
             }
 
-            GL.Enable(EnableCap.Lighting);
+            // GL.Enable(EnableCap.Lighting);
             GL.Enable(EnableCap.Light0);
             GL.Enable(EnableCap.Blend);
-            GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
             GL.Enable(EnableCap.DepthTest);
 
             GL.ClearColor(Color.FromArgb(200, Color.LightBlue));
@@ -100,7 +138,7 @@ namespace OpenTkControlExample
             GL.Vertex3(0, 0, 0);
             GL.Vertex3(300, 0, 0);
 
-            GL.End();
+            GL.End();*/
 
             Interlocked.Increment(ref _fps);
         }

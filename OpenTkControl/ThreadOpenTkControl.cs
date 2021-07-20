@@ -1,17 +1,22 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
+using OpenTK.Graphics.OpenGL4;
+using OpenTK.Platform.Windows;
 
 namespace OpenTkControl
 {
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance
     /// </summary>
-    public class ThreadOpenTkControl : OpenTkControlBase
+    public class ThreadOpenTkControl : OpenTkControlBase, IDisposable
     {
         public static readonly DependencyProperty ThreadNameProperty = DependencyProperty.Register(
-            nameof(ThreadName), typeof(string), typeof(ThreadOpenTkControl), new PropertyMetadata("OpenTk Render Thread"));
+            nameof(ThreadName), typeof(string), typeof(ThreadOpenTkControl),
+            new PropertyMetadata("OpenTk Render Thread"));
 
         /// <summary>
         /// The name of the background thread that does the OpenGL rendering
@@ -23,11 +28,6 @@ namespace OpenTkControl
         }
 
         /// <summary>
-        /// This event is set to notify the thread to wake up when the control becomes visible
-        /// </summary>
-        private readonly ManualResetEvent _becameVisibleEvent = new ManualResetEvent(false);
-
-        /// <summary>
         /// The Thread object for the rendering thread
         /// </summary>
         private Thread _renderThread;
@@ -37,23 +37,135 @@ namespace OpenTkControl
         /// </summary>
         private CancellationTokenSource _endThreadCts;
 
-
         public ThreadOpenTkControl()
         {
-            IsVisibleChanged += OnIsVisibleChanged;
+            IsVisibleChanged += (_, args) =>
+            {
+                if ((bool) args.NewValue)
+                {
+                    CompositionTarget.Rendering += CompositionTarget_Rendering;
+                }
+                else
+                {
+                    CompositionTarget.Rendering -= CompositionTarget_Rendering;
+                }
+            };
+            this.SizeChanged += ThreadOpenTkControl_SizeChanged;
         }
 
-        public override Task RunOnUiThread(Action action)
+        private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (RenderProcedure != null)
+            {
+                CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+            }
+        }
+
+        private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
+
+        private void CompositionTarget_Rendering(object sender, EventArgs e)
+        {
+            var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
+            if (currentRenderTime == _lastRenderTime)
+            {
+                return;
+            }
+
+            _lastRenderTime = currentRenderTime.Value;
+            InvalidateVisual();
+        }
+
+
+        protected CanvasInfo CurrentCanvasInfo;
+
+        protected override void OnRenderProcedureChanged()
+        {
+            if (this.RenderProcedure != null)
+            {
+                CurrentCanvasInfo = this.RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                StartThread();
+            }
+        }
+
+        protected override void OnRenderProcedureChanging()
+        {
+            if (this.RenderProcedure != null)
+            {
+                CloseThread();
+            }
+        }
+
+        public Task OnRenderTask(Action action)
         {
             return Dispatcher.InvokeAsync(action).Task;
         }
 
-        protected override void OnLoaded(object sender, RoutedEventArgs args)
+        private readonly ManualResetEvent _renderingResetEvent = new ManualResetEvent(false);
+
+        private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
+
+        /*private TaskCompletionSource<Tuple<ImageSource, DrawingDirective>> renderCompletionSource =
+            new TaskCompletionSource<Tuple<ImageSource, DrawingDirective>>();*/
+
+        protected override void OnRender(DrawingContext drawingContext)
         {
-            base.OnLoaded(sender, args);
+            base.OnRender(drawingContext);
+            var directive = PushRender().GetAwaiter().GetResult();
+            var imageSource = directive?.ImageSource;
+            if (imageSource!= null)
+            {
+                if (directive.IsNeedTransform)
+                {
+                    // Transforms are applied in reverse order
+                    drawingContext.PushTransform(directive
+                        .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
+                    drawingContext.PushTransform(directive
+                        .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
+                    // dpi scaled rectangle from the image
+                    var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
+                    drawingContext.DrawImage(imageSource, rect); // Draw the image source 
+                    drawingContext.Pop(); // Remove the scale transform
+                    drawingContext.Pop(); // Remove the translation transform
+                }
+                else
+                {
+                    var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
+                    drawingContext.DrawImage(imageSource, rect); // Draw the image source 
+                }
 
+                
+            }
+            
+            if (directive != null && _renderCompletedResetEvent.WaitOne(0))
+            {
+                _renderCompletedResetEvent.Set();
+            }
+        }
+
+        private TaskCompletionSource<DrawingDirective> _imageSourceCompletionSource = null;
+
+        public Task<DrawingDirective> PushRender()
+        {
+            _imageSourceCompletionSource = new TaskCompletionSource<DrawingDirective>();
+            if (!_renderingResetEvent.WaitOne(0))
+            {
+                _renderingResetEvent.Set();
+            }
+
+            return _imageSourceCompletionSource.Task;
+        }
+
+        private volatile bool _renderThreadStart = false;
+
+        public void StartThread()
+        {
+            if (_renderThreadStart)
+            {
+                return;
+            }
+
+            _renderThreadStart = true;
             _endThreadCts = new CancellationTokenSource();
-
             _renderThread = new Thread(RenderThread)
             {
                 IsBackground = true,
@@ -63,26 +175,27 @@ namespace OpenTkControl
             _renderThread.Start(_endThreadCts.Token);
         }
 
+        private void CloseThread()
+        {
+            _renderThreadStart = false;
+            _renderingResetEvent.Set();
+            _endThreadCts.Cancel();
+            _renderThread.Join();
+            _endThreadCts.Dispose();
+        }
+
+        protected override void OnLoaded(object sender, RoutedEventArgs args)
+        {
+            base.OnLoaded(sender, args);
+        }
+
         protected override void OnUnloaded(object sender, RoutedEventArgs args)
         {
             base.OnUnloaded(sender, args);
-
-            _endThreadCts.Cancel();
-            _renderThread.Join();
+            // CloseThread();
         }
 
-        /// <summary>
-        /// Wakes up the thread when the control becomes visible
-        /// </summary>
-        /// <param name="sender">The object that sent the event</param>
-        /// <param name="args">The event arguments about this event</param>
-        private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs args)
-        {
-            bool visible = (bool)args.NewValue;
-
-            if(visible)
-                _becameVisibleEvent.Set();
-        }
+        private DebugProc _debugProc;
 
         /// <summary>
         /// The function that the thread runs to render the control
@@ -92,42 +205,78 @@ namespace OpenTkControl
         {
 #if DEBUG
             // Don't render in design mode to prevent errors from calling OpenGL API methods.
-            if (Dispatcher.Invoke(() => IsDesignMode()))
+            if (Dispatcher.Invoke(IsDesignMode))
                 return;
 #endif
 
-            CancellationToken token = (CancellationToken) boxedToken;
-
-            InitOpenGl();
-
-            WaitHandle[] notContinousHandles = {token.WaitHandle, ManualRepaintEvent};
-            WaitHandle[] notVisibleHandles   = {token.WaitHandle, _becameVisibleEvent};
-            while (!token.IsCancellationRequested)
+            var token = (CancellationToken) boxedToken;
+            _debugProc = Callback;
+            RenderProcedure.Initialize(WindowInfo);
+            GL.Enable(EnableCap.DebugOutput);
+            GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
+            var canvasInfo = CurrentCanvasInfo;
+            RenderProcedure.SizeCanvas(CurrentCanvasInfo);
+            using (RenderProcedure)
             {
-                if (!_continuous)
+                WaitHandle[] renderHandles = {token.WaitHandle, _renderingResetEvent};
+                WaitHandle[] drawHandles = {token.WaitHandle, _renderCompletedResetEvent};
+                while (!token.IsCancellationRequested)
                 {
-                    WaitHandle.WaitAny(notContinousHandles);
+                    if (!canvasInfo.Equals(CurrentCanvasInfo))
+                    {
+                        canvasInfo = CurrentCanvasInfo;
+                        RenderProcedure.SizeCanvas(CurrentCanvasInfo);
+                    }
+
+                    DrawingDirective directive = null;
+                    Exception exception = null;
+                    try
+                    {
+                        directive = RenderProcedure.Render();
+                        var directiveImageSource = directive?.ImageSource;
+                        if (directiveImageSource != null)
+                        {
+                            directive.ImageSource = (ImageSource)directiveImageSource.GetCurrentValueAsFrozen();
+                        }
+
+                    }
+                    catch (Exception e)
+                    {
+                        exception = e;
+                    }
+                    finally
+                    {
+                        WaitHandle.WaitAny(renderHandles);
+                        _renderingResetEvent.Reset();
+                    }
+
+                    if (exception != null)
+                    {
+                        _imageSourceCompletionSource.SetException(exception);
+                    }
+                    else
+                    {
+                        
+                        _imageSourceCompletionSource.SetResult(directive);
+                    }
+
+                    if (token.IsCancellationRequested)
+                        break;
+
+                    if (directive != null && !directive.IsOutputAsync)
+                    {
+                        //不允许异步渲染
+                        WaitHandle.WaitAny(drawHandles);
+                        _renderCompletedResetEvent.Reset();
+                    }
                 }
-                else if (!IsVisible)
-                {
-                    WaitHandle.WaitAny(notVisibleHandles);
-                    _becameVisibleEvent.Reset();
-
-                    if(!_continuous)
-                        continue;
-                }
-                
-                if (token.IsCancellationRequested)
-                    break;
-
-                ManualRepaintEvent.Reset();
-
-                TimeSpan sleepTime = Render();
-                if(sleepTime.CompareTo(TimeSpan.Zero) > 0)
-                    Thread.Sleep(sleepTime);
             }
+        }
 
-            DeInitOpenGl();
+        public void Dispose()
+        {
+            CloseThread();
+            _renderingResetEvent?.Dispose();
         }
     }
 }
