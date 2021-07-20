@@ -15,15 +15,6 @@ namespace OpenTkControl
 {
     public class GLBitmapProcedure : IRenderProcedure
     {
-        public event EventHandler<OpenGlErrorArgs> OpenGLErrorReceived;
-
-        /// <summary>
-        /// Called whenever an exception occurs during initialization, rendering or deinitialization
-        /// </summary>
-        public event EventHandler<UnhandledExceptionEventArgs> ExceptionOccurred;
-
-        private DebugProc _debugProc;
-
         /// <summary>
         /// True if a new OpenGL context has been created since the last render call
         /// </summary>
@@ -82,38 +73,26 @@ namespace OpenTkControl
 
         private volatile bool _rendererInitialized = false;
 
-        private readonly GLSettings _glSettings;
+        public GLSettings GlSettings { get; }
 
         public GLBitmapProcedure(GLSettings glSettings)
         {
-            this._glSettings = glSettings;
+            GlSettings = glSettings;
         }
-
-        public GLSettings Settings { get; }
 
         public void Initialize(IWindowInfo window)
         {
-            try
+            _windowInfo = window;
+            var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
+            _context = new GraphicsContext(mode, _windowInfo, GlSettings.MajorVersion, GlSettings.MinorVersion,
+                GraphicsContextFlags.Default);
+            _newContext = true;
+            _context.LoadAll();
+            _context.MakeCurrent(_windowInfo);
+            if (Renderer != null)
             {
-                _windowInfo = window;
-                var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
-                _context = new GraphicsContext(mode, _windowInfo, _glSettings.MajorVersion, _glSettings.MinorVersion,
-                    GraphicsContextFlags.Default);
-                _newContext = true;
-                _context.LoadAll();
-                _context.MakeCurrent(_windowInfo);
-                GL.Enable(EnableCap.DebugOutput);
-                _debugProc = Callback;
-                GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-                if (Renderer != null)
-                {
-                    this.Renderer.Initialize(_context);
-                    _rendererInitialized = true;
-                }
-            }
-            catch (Exception e)
-            {
-                OnExceptionOccurred(new UnhandledExceptionEventArgs(e, false));
+                this.Renderer.Initialize(_context);
+                _rendererInitialized = true;
             }
         }
 
@@ -164,6 +143,47 @@ namespace OpenTkControl
             }
         }
 
+        public DrawingDirective Render()
+        {
+            if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
+                _context.MakeCurrent(_windowInfo);
+            if (!_rendererInitialized)
+            {
+                Renderer.Initialize(this._context);
+            }
+
+            var args =
+                new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, CheckNewContext());
+            OnGlRender(args);
+            var dirtyArea = args.RepaintRect;
+            if (dirtyArea.Width <= 0 || dirtyArea.Height <= 0)
+                return null;
+
+            try
+            {
+                _previousUpdateImageTask?.Wait();
+            }
+            catch (TaskCanceledException)
+            {
+                return null;
+            }
+            finally
+            {
+                _previousUpdateImageTask = null;
+            }
+
+            _doubleBuffer.SwapBuffer();
+            _doubleBuffer.ReadCurrent();
+            var copyLatest = _doubleBuffer.GetLatest();
+            if (copyLatest.FrameBuffer == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            UpdateImage(copyLatest);
+            return new DrawingDirective(null, null, _bitmap, true); //允许异步
+        }
+
         /// <summary>
         /// Updates <see cref="_newContext"/>
         /// </summary>
@@ -194,56 +214,6 @@ namespace OpenTkControl
             _bitmap.Unlock();
         }
 
-        public ImageSource Render(out DrawingDirective drawingDirective)
-        {
-            drawingDirective = DrawingDirective.None;
-            drawingDirective.IsOutputAsync = true;//允许异步
-            try
-            {
-                if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
-                    _context.MakeCurrent(_windowInfo);
-                if (!_rendererInitialized)
-                {
-                    Renderer.Initialize(this._context);
-                }
-
-                var args =
-                    new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, CheckNewContext());
-                OnGlRender(args);
-                var dirtyArea = args.RepaintRect;
-                if (dirtyArea.Width <= 0 || dirtyArea.Height <= 0)
-                    return null;
-
-                try
-                {
-                    _previousUpdateImageTask?.Wait();
-                }
-                catch (TaskCanceledException)
-                {
-                    return null;
-                }
-                finally
-                {
-                    _previousUpdateImageTask = null;
-                }
-
-                _doubleBuffer.SwapBuffer();
-                _doubleBuffer.ReadCurrent();
-                var copyLatest = _doubleBuffer.GetLatest();
-                if (copyLatest.FrameBuffer == IntPtr.Zero)
-                {
-                    return null;
-                }
-
-                UpdateImage(copyLatest);
-                return _bitmap;
-            }
-            catch (Exception e)
-            {
-                OnExceptionOccurred(new UnhandledExceptionEventArgs(e, false));
-                return null;
-            }
-        }
 
         /// <summary>
         /// Creates new OpenGl buffers of the specified size, including <see cref="_frameBuffer"/>, <see cref="_depthBuffer"/>,
@@ -305,36 +275,13 @@ namespace OpenTkControl
             _doubleBuffer.Release();
         }
 
-        private void Callback(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
-            IntPtr message, IntPtr userparam)
-        {
-            OnOpenGlErrorReceived(
-                new OpenGlErrorArgs(source, type, id, severity, length, message, userparam));
-        }
-
-        protected virtual void OnExceptionOccurred(UnhandledExceptionEventArgs e)
-        {
-            ExceptionOccurred?.Invoke(this, e);
-        }
-
-        protected virtual void OnOpenGlErrorReceived(OpenGlErrorArgs e)
-        {
-            OpenGLErrorReceived?.Invoke(this, e);
-        }
 
         public void Dispose()
         {
-            try
-            {
-                ReleaseFrameBuffers();
-                _context.Dispose();
-                _context = null;
-                _windowInfo.Dispose();
-            }
-            catch (Exception e)
-            {
-                OnExceptionOccurred(new UnhandledExceptionEventArgs(e, false));
-            }
+            ReleaseFrameBuffers();
+            _context.Dispose();
+            _context = null;
+            _windowInfo.Dispose();
         }
     }
 }

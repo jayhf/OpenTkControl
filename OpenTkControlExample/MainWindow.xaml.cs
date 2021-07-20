@@ -25,53 +25,50 @@ namespace OpenTkControlExample
 
         public const int LineLength = PointsCount * 2;
 
-        private TendencyChartRenderer renderer = new TendencyChartRenderer();
 
         public MainWindow()
         {
+            this.InitializeComponent();
             _fpsTimer.Interval = TimeSpan.FromSeconds(1);
-            _fpsTimer.Tick += (sender, args) => 
+            _fpsTimer.Tick += (sender, args) =>
             {
-                double seconds = _sw.Elapsed.TotalSeconds;
+                var seconds = _sw.Elapsed.TotalSeconds;
                 _sw.Restart();
-                Title = (Interlocked.Exchange(ref _fps, 0)/seconds).ToString("F1") + " FPS";
+                Title = (Interlocked.Exchange(ref _fps, 0) / seconds).ToString("F1") + " FPS";
             };
             _fpsTimer.Start();
-        }
-
-        private bool isInitialized;
-        
-        private void OpenTkControl_OnGlRender(object sender, OpenTkControlBase.GlRenderEventArgs e)
-        {
-            if (!isInitialized)
+            var renderer = new TendencyChartRenderer();
+            var dateTime = DateTime.Now;
+            var start = dateTime.Ticks;
+            var random = new Random();
+            for (int i = 0; i < LineCount; i++)
             {
-                var dateTime = DateTime.Now;
-                var start = dateTime.Ticks;
-                var random = new Random();
-                for (int i = 0; i < LineCount; i++)
+                var lineChartRenderer = new LineRenderer(PointsCount) {LineColor = Color4.White};
+                var ringBuffer = lineChartRenderer.RingBuffer;
+                for (int j = 0; j < LineLength; j += 2)
                 {
-                    var lineChartRenderer = new LineRenderer(PointsCount) { LineColor = Color4.White };
-                    var ringBuffer = lineChartRenderer.RingBuffer;
-                    for (int j = 0; j < LineLength; j += 2)
-                    {
-                        var time = dateTime.AddSeconds(j);
-                        var ticks = (float)(time.Ticks - start);
-                        ringBuffer[j] = ticks;
-                        ringBuffer[j + 1] = random.Next(0, 10000) * 0.1f;
-                    }
-
-                    renderer.Add(lineChartRenderer);
+                    var time = dateTime.AddSeconds(j);
+                    var ticks = (float) (time.Ticks - start);
+                    ringBuffer[j] = ticks;
+                    ringBuffer[j + 1] = random.Next(0, 10000) * 0.1f;
                 }
 
-                var end = (long)renderer.LineRenderers.First().RingBuffer[LineLength - 2];
-                renderer.CurrentScrollRange = new ScrollRange(0, end);
-                renderer.CurrentYAxisValue = 1000;
-                renderer.BackgroundColor = Color4.Black;
-                renderer.Initialize();
-                isInitialized = true;
+                renderer.Add(lineChartRenderer);
             }
-            renderer.Render();
-            
+
+            var end = (long) renderer.LineRenderers.First().RingBuffer[LineLength - 2];
+            renderer.CurrentScrollRange = new ScrollRange(0, end);
+            renderer.CurrentYAxisValue = 1000;
+            renderer.BackgroundColor = Color4.Black;
+            this.OpenTkControl.Renderer = new GLDXProcedure(new GLSettings())
+            {
+                Renderer = renderer,
+            };
+        }
+
+
+        private void OpenTkControl_OnGlRender(object sender)
+        {
             /*GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             
             GL.MatrixMode(MatrixMode.Projection);

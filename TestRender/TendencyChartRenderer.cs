@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
+using OpenTkControl;
 
 namespace TestRenderer
 {
@@ -20,7 +21,7 @@ namespace TestRenderer
         }
     }
 
-    public class TendencyChartRenderer : IDisposable
+    public class TendencyChartRenderer : IDisposable, IRenderer
     {
         public ConcurrentBag<LineRenderer> LineRenderers { get; set; } = new ConcurrentBag<LineRenderer>();
 
@@ -49,18 +50,6 @@ namespace TestRenderer
 
         private Shader _shader;
 
-        /// <summary>
-        /// 只能用于opengl上下文
-        /// </summary>
-        public void Initialize()
-        {
-            _shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
-            _shader.Use();
-            foreach (var lineRenderer in LineRenderers)
-            {
-                lineRenderer.Initialize(this._shader);
-            }
-        }
 
         public void Add(LineRenderer lineRenderer)
         {
@@ -89,7 +78,25 @@ namespace TestRenderer
             }
         }
 
-        public void Render()
+        public void Dispose()
+        {
+            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+            GL.BindVertexArray(0);
+            GL.UseProgram(0);
+            GL.DeleteProgram(_shader.Handle);
+        }
+
+        public void Initialize(IGraphicsContext context)
+        {
+            _shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
+            _shader.Use();
+            foreach (var lineRenderer in LineRenderers)
+            {
+                lineRenderer.Initialize(this._shader);
+            }
+        }
+
+        public void Render(GlRenderEventArgs args)
         {
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             GL.ClearColor(BackgroundColor);
@@ -109,12 +116,9 @@ namespace TestRenderer
             }
         }
 
-        public void Dispose()
+        public void Resize(PixelSize size)
         {
-            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-            GL.BindVertexArray(0);
-            GL.UseProgram(0);
-            GL.DeleteProgram(_shader.Handle);
+            GL.Viewport(0, 0, size.Width, size.Height);
         }
     }
 }

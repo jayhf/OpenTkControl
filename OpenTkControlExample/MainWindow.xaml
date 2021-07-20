@@ -9,7 +9,15 @@
         Height="1080" 
         Width="1920">
     <Grid>
-        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" GlRender="OpenTkControl_OnGlRender" ExceptionOccurred="OpenTkControl_OnExceptionOccurred"/>
+        <TabControl>
+            <TabItem Header="asdfasdv">
+
+            </TabItem>
+            <TabItem Header="asdf">
+                <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" ExceptionOccurred="OpenTkControl_OnExceptionOccurred"/>
+            </TabItem>
+        </TabControl>
+        
     </Grid>
 </Window>
 

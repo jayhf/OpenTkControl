@@ -52,18 +52,17 @@ namespace OpenTkControl
 
         public IRenderer Renderer { get; set; }
 
-        private readonly GLSettings _glSettings;
 
         public GLDXProcedure(GLSettings glSettings)
         {
-            this._glSettings = glSettings;
+            this.GlSettings = glSettings;
         }
 
-        public GLSettings Settings { get; }
+        public GLSettings GlSettings { get; }
 
         public void Initialize(IWindowInfo window)
         {
-            _context = new DxGlContext(_glSettings);
+            _context = new DxGlContext(GlSettings, window);
         }
 
         public void SizeCanvas(CanvasInfo size)
@@ -81,11 +80,10 @@ namespace OpenTkControl
             }
         }
 
-        public ImageSource Render(out DrawingDirective drawingDirective)
+        public DrawingDirective Render()
         {
             if (_framebuffer == null)
             {
-                drawingDirective = DrawingDirective.None;
                 return null;
             }
 
@@ -97,8 +95,8 @@ namespace OpenTkControl
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
             PostRender();
-            drawingDirective = new DrawingDirective(_framebuffer.TranslateTransform, _framebuffer.FlipYTransform);
-            return _framebuffer.D3dImage;
+            return new DrawingDirective(_framebuffer.TranslateTransform, _framebuffer.FlipYTransform,_framebuffer.D3dImage);
+            
         }
 
         public void Dispose()

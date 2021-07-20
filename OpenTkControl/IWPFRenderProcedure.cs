@@ -9,12 +9,12 @@ namespace OpenTkControl
     {
         IRenderer Renderer { get; set; }
 
-        GLSettings Settings { get; }
-        
+        GLSettings GlSettings { get; }
+
         void Initialize(IWindowInfo window);
 
         void SizeCanvas(CanvasInfo size);
 
-        ImageSource Render(out DrawingDirective drawingDirective);
+        DrawingDirective Render();
     }
 }

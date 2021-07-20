@@ -48,6 +48,13 @@ namespace OpenTkControl
             });
         }
 
+        public event EventHandler<OpenGlErrorArgs> OpenGlErrorReceived;
+
+        /// <summary>
+        /// Called whenever an exception occurs during initialization, rendering or deinitialization
+        /// </summary>
+        public event EventHandler<UnhandledExceptionEventArgs> ExceptionOccurred;
+
         public static readonly DependencyProperty RendererProperty = DependencyProperty.Register(
             "Renderer", typeof(IRenderProcedure), typeof(OpenTkControlBase),
             new PropertyMetadata(default(IRenderProcedure)));
@@ -98,6 +105,7 @@ namespace OpenTkControl
             DependencyPropertyDescriptor.FromProperty(RendererProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this, (sender, args) =>
                 {
+                    OnRenderProcedureChanging();
                     RenderProcedure = Renderer;
                     OnRenderProcedureChanged();
                 });
@@ -138,13 +146,19 @@ namespace OpenTkControl
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected bool IsDesignMode() => DesignerProperties.GetIsInDesignMode(this);
 
-        /// <summary>
-        /// Executes an action on the UI thread
-        /// </summary>
-        /// <param name="action">The action to run</param>
-        /// <returns>a Task that will complete when the action finishes running or null if already complete</returns>
-        // public abstract Task RunOnUiThread(Action action);
+        protected override void OnRender(DrawingContext drawingContext)
+        {
+            if (IsDesignMode())
+            {
+                DesignTimeHelper.DrawDesignTimeHelper(this, drawingContext);
+            }
 
+            base.OnRender(drawingContext);
+            if (RenderProcedure == null)
+            {
+                UnstartedControlHelper.DrawUnstartedControlHelper(this, drawingContext);
+            }
+        }
 
         /// <summary>
         /// Called when this control is loaded
@@ -153,6 +167,11 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnLoaded(object sender, RoutedEventArgs args)
         {
+            if (IsDesignMode())
+            {
+                return;
+            }
+
             WindowInfo = Utilities.CreateWindowsWindowInfo(
                 new WindowInteropHelper(Window.GetWindow(this)).Handle);
         }
@@ -164,6 +183,24 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnUnloaded(object sender, RoutedEventArgs args)
         {
+        }
+
+        protected void Callback(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
+            IntPtr message, IntPtr userparam)
+        {
+            OnOpenGlErrorReceived(
+                new OpenGlErrorArgs(source, type, id, severity, length, message, userparam));
+        }
+
+
+        protected virtual void OnExceptionOccurred(UnhandledExceptionEventArgs e)
+        {
+            ExceptionOccurred?.Invoke(this, e);
+        }
+
+        protected virtual void OnOpenGlErrorReceived(OpenGlErrorArgs e)
+        {
+            OpenGlErrorReceived?.Invoke(this, e);
         }
     }
 }

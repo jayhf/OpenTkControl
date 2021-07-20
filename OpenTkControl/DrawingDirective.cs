@@ -2,23 +2,27 @@ using System.Windows.Media;
 
 namespace OpenTkControl
 {
-    public struct DrawingDirective
+    public class DrawingDirective
     {
-        public static  DrawingDirective None => new DrawingDirective();
-
         public TranslateTransform TranslateTransform { get; }
 
         public ScaleTransform ScaleTransform { get; }
+
+        public ImageSource ImageSource { get; }
+        
+        public bool IsNeedTransform => TranslateTransform != null || ScaleTransform != null;
 
         /// <summary>
         /// 是否支持异步输出UI
         /// </summary>
         public bool IsOutputAsync;
 
-        public DrawingDirective(TranslateTransform translate, ScaleTransform scale, bool isOutputAsync = false)
+        public DrawingDirective(TranslateTransform translate, ScaleTransform scale, ImageSource imageSource,
+            bool isOutputAsync = false)
         {
             this.TranslateTransform = translate;
             this.ScaleTransform = scale;
+            ImageSource = imageSource;
             this.IsOutputAsync = isOutputAsync;
         }
 
