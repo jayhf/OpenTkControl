@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Windows.Media;
 using System.Windows.Shell;
 using OpenTK.Platform;
 
@@ -7,6 +6,10 @@ namespace OpenTkControl
 {
     public interface IRenderProcedure : IDisposable
     {
+        IRenderCanvas Canvas { get; }
+
+        bool IsInitialized { get; }
+
         IRenderer Renderer { get; set; }
 
         GLSettings GlSettings { get; }

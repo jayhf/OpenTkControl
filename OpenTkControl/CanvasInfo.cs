@@ -4,8 +4,8 @@
     {
         public CanvasInfo(int width, int height, double dpiScaleX, double dpiScaleY)
         {
-            Width = width;
-            Height = height;
+            ActualWidth = width;
+            ActualHeight = height;
             DpiScaleX = dpiScaleX;
             DpiScaleY = dpiScaleY;
         }
@@ -14,13 +14,14 @@
 
         public double DpiScaleY { get; }
 
-        public int Width { get; }
-        public int Height { get; }
+        public int ActualWidth { get; }
+
+        public int ActualHeight { get; }
 
         public bool Equals(CanvasInfo other)
         {
-            return DpiScaleX.Equals(other.DpiScaleX) && DpiScaleY.Equals(other.DpiScaleY) && Width == other.Width &&
-                   Height == other.Height;
+            return DpiScaleX.Equals(other.DpiScaleX) && DpiScaleY.Equals(other.DpiScaleY) && ActualWidth == other.ActualWidth &&
+                   ActualHeight == other.ActualHeight;
         }
 
         public override bool Equals(object obj)
@@ -34,8 +35,8 @@
             {
                 var hashCode = DpiScaleX.GetHashCode();
                 hashCode = (hashCode * 397) ^ DpiScaleY.GetHashCode();
-                hashCode = (hashCode * 397) ^ Width;
-                hashCode = (hashCode * 397) ^ Height;
+                hashCode = (hashCode * 397) ^ ActualWidth;
+                hashCode = (hashCode * 397) ^ ActualHeight;
                 return hashCode;
             }
         }

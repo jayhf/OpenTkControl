@@ -10,4 +10,5 @@
             <ScaleTransform ScaleY="-1"/>
         </Image.RenderTransform>
     </Image>
+    <!-- <Image x:Name="Image" Stretch="Fill"/> -->
 </UserControl>

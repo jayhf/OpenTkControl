@@ -60,6 +60,7 @@
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />
+    <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
     <Compile Include="IWPFRenderProcedure.cs" />
     <Compile Include="OpenGLError.cs" />
@@ -70,6 +71,7 @@
       <DependentUpon>OpenTkControlBase.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UiOpenTkControl.cs" />
     <Compile Include="UnstartedControlHelper.cs" />
   </ItemGroup>
   <ItemGroup>

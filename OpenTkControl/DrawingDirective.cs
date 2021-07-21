@@ -9,21 +9,26 @@ namespace OpenTkControl
         public ScaleTransform ScaleTransform { get; }
 
         public ImageSource ImageSource { get; set; }
-        
+
         public bool IsNeedTransform => TranslateTransform != null || ScaleTransform != null;
 
         /// <summary>
-        /// 是否支持异步输出UI
+        /// 
         /// </summary>
-        public bool IsOutputAsync;
+        public bool CanDraw { get; set; }
+
+        /// <summary>
+        /// async drawing
+        /// </summary>
+        public bool IsDrawingAsync { get; }
 
         public DrawingDirective(TranslateTransform translate, ScaleTransform scale, ImageSource imageSource,
-            bool isOutputAsync = false)
+            bool isDrawAsync = false)
         {
             this.TranslateTransform = translate;
             this.ScaleTransform = scale;
             ImageSource = imageSource;
-            this.IsOutputAsync = isOutputAsync;
+            this.IsDrawingAsync = isDrawAsync;
         }
 
         public bool Equals(DrawingDirective other)

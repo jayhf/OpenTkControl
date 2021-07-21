@@ -13,6 +13,15 @@ using OpenTK.Platform;
 
 namespace OpenTkControl
 {
+    public class BitmapCanvas:IRenderCanvas
+    {
+        public ImageSource Canvas { get; }
+        public void Create(CanvasInfo info)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public class GLBitmapProcedure : IRenderProcedure
     {
         /// <summary>
@@ -60,16 +69,23 @@ namespace OpenTkControl
         /// </summary>
         private int _depthBuffer;
 
-        /// <summary>
-        /// A Task that represents updating the screen with the current WriteableBitmap back buffer
-        /// </summary>
-        private Task _previousUpdateImageTask;
+        public IRenderCanvas Canvas { get; }
+        public bool IsInitialized { get; private set; }
 
-        public IRenderer Renderer { get; set; }
+        public IRenderer Renderer
+        {
+            get => _renderer;
+            set
+            {
+                _renderer = value;
+                _rendererInitialized = false;
+            }
+        }
 
         private readonly DoublePixelBuffer _doubleBuffer = new DoublePixelBuffer();
 
         private volatile bool _rendererInitialized = false;
+        private IRenderer _renderer;
 
         public GLSettings GlSettings { get; }
 
@@ -87,11 +103,8 @@ namespace OpenTkControl
             _newContext = true;
             _context.LoadAll();
             _context.MakeCurrent(_windowInfo);
-            if (Renderer != null)
-            {
-                this.Renderer.Initialize(_context);
-                _rendererInitialized = true;
-            }
+            CheckRenderer();
+            IsInitialized = true;
         }
 
         /// <summary>
@@ -102,8 +115,8 @@ namespace OpenTkControl
         /// <param name="height">The new buffer height</param>
         private void CalculateBufferSize(CanvasInfo info, out int width, out int height)
         {
-            width = (int) (info.Width / info.DpiScaleX);
-            height = (int) (info.Height / info.DpiScaleY);
+            width = (int) (info.ActualWidth / info.DpiScaleX);
+            height = (int) (info.ActualHeight / info.DpiScaleY);
         }
 
         /// <summary>
@@ -126,14 +139,8 @@ namespace OpenTkControl
             {
                 _bitmapWidth = width;
                 _bitmapHeight = height;
-
-                if (Renderer != null)
+                if (CheckRenderer())
                 {
-                    if (!_rendererInitialized)
-                    {
-                        Renderer.Initialize(_context);
-                    }
-
                     Renderer.Resize(new PixelSize(width, height));
                 }
 
@@ -141,13 +148,34 @@ namespace OpenTkControl
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>indicate that if renderer initialize successfully or already initialized</returns>
+        private bool CheckRenderer()
+        {
+            if (_rendererInitialized)
+            {
+                return true;
+            }
+
+            if (Renderer != null)
+            {
+                Renderer.Initialize(_context);
+                _rendererInitialized = true;
+                return true;
+            }
+
+            return false;
+        }
+
         public DrawingDirective Render()
         {
             if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
                 _context.MakeCurrent(_windowInfo);
-            if (!_rendererInitialized)
+            if (!CheckRenderer())
             {
-                Renderer.Initialize(this._context);
+                return null;
             }
 
             var args =
@@ -156,20 +184,6 @@ namespace OpenTkControl
             var dirtyArea = args.RepaintRect;
             if (dirtyArea.Width <= 0 || dirtyArea.Height <= 0)
                 return null;
-
-            try
-            {
-                _previousUpdateImageTask?.Wait();
-            }
-            catch (TaskCanceledException)
-            {
-                return null;
-            }
-            finally
-            {
-                _previousUpdateImageTask = null;
-            }
-
             _doubleBuffer.SwapBuffer();
             _doubleBuffer.ReadCurrent();
             var copyLatest = _doubleBuffer.GetLatest();

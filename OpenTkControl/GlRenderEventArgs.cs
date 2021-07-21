@@ -13,6 +13,8 @@ namespace OpenTkControl
         /// </summary>
         public bool NewContext { get; }
 
+        public PixelSize PixelSize => new PixelSize(Width, Height);
+
         /// <summary>
         /// The width of the drawing area in pixels
         /// </summary>
@@ -34,7 +36,6 @@ namespace OpenTkControl
         /// <param name="width"><see cref="Width"/></param>
         /// <param name="height"><see cref="Height"/></param>
         /// <param name="newContext"></param>
-        /// <param name="resized"><see cref="Resized"/></param>
         public GlRenderEventArgs(int width, int height, bool newContext)
         {
             Width = width;

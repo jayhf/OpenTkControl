@@ -45,8 +45,9 @@ namespace OpenTkControl {
         /// Specific wgl_dx_interop handle that marks the framebuffer as ready for interop.
         public IntPtr DxInteropRegisteredHandle { get; }
 
+        public PixelSize PixelSize => new PixelSize(FramebufferWidth, FramebufferHeight);
         
-        public D3DImage D3dImage { get; }
+        // public D3DImage D3dImage { get; }
 
         public TranslateTransform TranslateTransform { get; }
         public ScaleTransform FlipYTransform { get; }
@@ -102,12 +103,8 @@ namespace OpenTkControl {
                 FramebufferAttachment.DepthAttachment,
                 RenderbufferTarget.Renderbuffer,
                 GLDepthRenderBufferHandle);
-
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            
-            
-            D3dImage = new D3DImage(96.0 * dpiScaleX, 96.0 * dpiScaleY);
-            
+            // D3dImage = new D3DImage(96.0 * dpiScaleX, 96.0 * dpiScaleY);
             TranslateTransform = new TranslateTransform(0, height);
             FlipYTransform = new ScaleTransform(1, -1);
         }

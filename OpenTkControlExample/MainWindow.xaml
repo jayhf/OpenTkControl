@@ -9,12 +9,18 @@
         Height="1080" 
         Width="1920">
     <Grid>
+        
+        <!--<openTkControl:UiOpenTkControl x:Name="OpenTkControl" 
+                                       Width="800"
+                                       Height="800"/>-->
         <TabControl>
             <TabItem Header="asdfasdv">
 
             </TabItem>
             <TabItem Header="asdf">
-                <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" ExceptionOccurred="OpenTkControl_OnExceptionOccurred"/>
+                <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl"
+                                                   Height="800"
+                                                   Width="800"/>
             </TabItem>
         </TabControl>
         

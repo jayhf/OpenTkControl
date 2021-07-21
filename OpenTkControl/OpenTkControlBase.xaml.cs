@@ -96,7 +96,6 @@ namespace OpenTkControl
         protected OpenTkControlBase()
         {
             InitializeComponent();
-
             // Update all of the volatile copies the variables
             // This is a workaround for the WPF threading restric_rendererResetEventtions on DependencyProperties
             // that allows other threads to read the values.
@@ -160,6 +159,8 @@ namespace OpenTkControl
             }
         }
 
+        private HwndSource _hwndSource;
+
         /// <summary>
         /// Called when this control is loaded
         /// </summary>
@@ -172,8 +173,9 @@ namespace OpenTkControl
                 return;
             }
 
-            WindowInfo = Utilities.CreateWindowsWindowInfo(
-                new WindowInteropHelper(Window.GetWindow(this)).Handle);
+            var baseHandle = new WindowInteropHelper(Window.GetWindow(this)).Handle;
+            _hwndSource = new HwndSource(0, 0, 0, 0, 0, "GLWpfControl", baseHandle);
+            this.WindowInfo = Utilities.CreateWindowsWindowInfo(_hwndSource.Handle);
         }
 
         /// <summary>
@@ -183,6 +185,8 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnUnloaded(object sender, RoutedEventArgs args)
         {
+            this._hwndSource.Dispose();
+            this.WindowInfo.Dispose();
         }
 
         protected void Callback(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
