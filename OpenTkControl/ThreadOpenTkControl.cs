@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -51,6 +52,11 @@ namespace OpenTkControl
                 }
             };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
+            timer = new Timer((state =>
+            {
+                fps = currentFrameCount;
+                currentFrameCount = 0;
+            }), null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1));
         }
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -106,13 +112,17 @@ namespace OpenTkControl
 
         /*private TaskCompletionSource<Tuple<ImageSource, DrawingDirective>> renderCompletionSource =
             new TaskCompletionSource<Tuple<ImageSource, DrawingDirective>>();*/
+        private Typeface mFpsTypeface = new Typeface(new FontFamily("Consolas"), FontStyles.Normal, FontWeights.Bold,
+            FontStretches.Normal);
+
+        private SolidColorBrush solidColorBrush = new SolidColorBrush(Colors.Blue);
 
         protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
             var directive = PushRender().GetAwaiter().GetResult();
             var imageSource = directive?.ImageSource;
-            if (imageSource!= null)
+            if (imageSource != null)
             {
                 if (directive.IsNeedTransform)
                 {
@@ -132,10 +142,12 @@ namespace OpenTkControl
                     var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
                     drawingContext.DrawImage(imageSource, rect); // Draw the image source 
                 }
-
-                
             }
-            
+
+            drawingContext.DrawText(
+                new FormattedText($"fps:{fps}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, mFpsTypeface, 16,
+                    solidColorBrush, 1),
+                new Point(10, 10));
             if (directive != null && _renderCompletedResetEvent.WaitOne(0))
             {
                 _renderCompletedResetEvent.Set();
@@ -197,6 +209,9 @@ namespace OpenTkControl
 
         private DebugProc _debugProc;
 
+        private Timer timer;
+        private volatile int currentFrameCount, fps;
+
         /// <summary>
         /// The function that the thread runs to render the control
         /// </summary>
@@ -233,12 +248,12 @@ namespace OpenTkControl
                     try
                     {
                         directive = RenderProcedure.Render();
+                        Interlocked.Increment(ref currentFrameCount);
                         var directiveImageSource = directive?.ImageSource;
                         if (directiveImageSource != null)
                         {
-                            directive.ImageSource = (ImageSource)directiveImageSource.GetCurrentValueAsFrozen();
+                            directive.ImageSource = (ImageSource) directiveImageSource.GetCurrentValueAsFrozen();
                         }
-
                     }
                     catch (Exception e)
                     {
@@ -256,7 +271,6 @@ namespace OpenTkControl
                     }
                     else
                     {
-                        
                         _imageSourceCompletionSource.SetResult(directive);
                     }
 
