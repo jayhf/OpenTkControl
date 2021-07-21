@@ -77,11 +77,5 @@
     <None Include="OpenTK.dll.config" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Page Include="OpenTkControlBase.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -47,11 +47,8 @@ namespace OpenTkControl {
 
         public PixelSize PixelSize => new PixelSize(FramebufferWidth, FramebufferHeight);
         
-        // public D3DImage D3dImage { get; }
-
         public TranslateTransform TranslateTransform { get; }
         public ScaleTransform FlipYTransform { get; }
-
 
         public DxGLFramebuffer([NotNull] DxGlContext context, int width, int height, double dpiScaleX, double dpiScaleY) {
             DxGlContext = context;
@@ -104,7 +101,6 @@ namespace OpenTkControl {
                 RenderbufferTarget.Renderbuffer,
                 GLDepthRenderBufferHandle);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            // D3dImage = new D3DImage(96.0 * dpiScaleX, 96.0 * dpiScaleY);
             TranslateTransform = new TranslateTransform(0, height);
             FlipYTransform = new ScaleTransform(1, -1);
         }

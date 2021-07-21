@@ -35,7 +35,7 @@ namespace OpenTkControl
     /// <summary>
     /// Interaction logic for OpenTkControlBase.xaml. OpenTkControlBase is a base class for OpenTK WPF controls
     /// </summary>
-    public abstract partial class OpenTkControlBase
+    public abstract class OpenTkControlBase : FrameworkElement
     {
         /// <summary>
         /// Initialize the OpenTk Toolkit
