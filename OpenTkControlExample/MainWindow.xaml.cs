@@ -21,7 +21,7 @@ namespace OpenTkControlExample
         private int _displayList;
 
         private const int LineCount = 10;
-        public const int PointsCount = 10;
+        public const int PointsCount = 10000;
 
         public const int LineLength = PointsCount * 2;
 

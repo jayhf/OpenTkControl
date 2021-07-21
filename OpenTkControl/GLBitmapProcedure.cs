@@ -20,6 +20,16 @@ namespace OpenTkControl
         {
             throw new NotImplementedException();
         }
+
+        public void Begin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void End()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class GLBitmapProcedure : IRenderProcedure
@@ -71,6 +81,7 @@ namespace OpenTkControl
 
         public IRenderCanvas Canvas { get; }
         public bool IsInitialized { get; private set; }
+        public bool CanRender { get; }
 
         public IRenderer Renderer
         {
@@ -171,13 +182,13 @@ namespace OpenTkControl
 
         public DrawingDirective Render()
         {
-            if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
-                _context.MakeCurrent(_windowInfo);
+            
             if (!CheckRenderer())
             {
                 return null;
             }
-
+            if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
+                _context.MakeCurrent(_windowInfo);
             var args =
                 new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, CheckNewContext());
             OnGlRender(args);

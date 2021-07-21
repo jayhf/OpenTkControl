@@ -15,7 +15,7 @@ namespace OpenTkControl
         /// <summary>
         /// 
         /// </summary>
-        public bool CanDraw { get; set; }
+        public bool CanDraw => ImageSource.Width != 0 && ImageSource.Height != 0;
 
         /// <summary>
         /// async drawing

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
+using System.Security.AccessControl;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -53,7 +55,16 @@ namespace OpenTkControl
                 }
             };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
+            timer = new Timer((state =>
+            {
+                averageFrame = currentFrame;
+                currentFrame = 0;
+            }), null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(1));
         }
+
+        private volatile int currentFrame, averageFrame;
+
+        private Timer timer;
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -74,18 +85,47 @@ namespace OpenTkControl
             }
 
             _lastRenderTime = currentRenderTime.Value;
-            // CallRender();
-            // InvalidateVisual();
-            var drawingDirective = await PushRender();
-            if (drawingDirective?.ImageSource != null)
+            if (!_renderThreadStart)
             {
-                Image.Source = drawingDirective.ImageSource;
+                return;
             }
 
-            if (drawingDirective != null && !_renderCompletedResetEvent.WaitOne(0))
+            await PushRender();
+            InvalidateVisual();
+            /*if (drawingDirective?.ImageSource != null)
+            {
+                var drawingVisual = new DrawingVisual();
+                using (var drawingContext = drawingVisual.RenderOpen())
+                {
+                    var imageSource = drawingDirective.ImageSource;
+                    if (imageSource != null && drawingDirective.CanDraw)
+                    {
+                        if (drawingDirective.IsNeedTransform)
+                        {
+                            // Transforms are applied in reverse order
+                            drawingContext.PushTransform(drawingDirective
+                                .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
+                            drawingContext.PushTransform(drawingDirective
+                                .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
+                            // dpi scaled rectangle from the image
+                            var rect = new Rect(0, 0, imageSource.Width, imageSource.Width);
+                            drawingContext.DrawImage(imageSource, rect); // Draw the image source 
+                            drawingContext.Pop(); // Remove the scale transform
+                            drawingContext.Pop(); // Remove the translation transform
+                        }
+                        else
+                        {
+                            var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
+                            drawingContext.DrawImage(imageSource, rect); // Draw the image source 
+                        }
+                    }
+                }
+            }*/
+
+            /*if (drawingDirective != null && !_renderCompletedResetEvent.WaitOne(0))
             {
                 _renderCompletedResetEvent.Set();
-            }
+            }*/
         }
 
 
@@ -109,52 +149,50 @@ namespace OpenTkControl
             }
         }
 
-        public Task OnRenderTask(Action action)
+        public Task OnUITask(Action action)
         {
             return Dispatcher.InvokeAsync(action).Task;
         }
 
-        private readonly ManualResetEvent _renderingResetEvent = new ManualResetEvent(false);
+        private Typeface mFpsTypeface = new Typeface(new FontFamily("Consolas"), FontStyles.Normal, FontWeights.Bold,
+            FontStretches.Normal);
 
-        private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
+        private SolidColorBrush brush = new SolidColorBrush(Colors.Blue);
 
-        /*private TaskCompletionSource<Tuple<ImageSource, DrawingDirective>> renderCompletionSource =
-            new TaskCompletionSource<Tuple<ImageSource, DrawingDirective>>();*/
-
-        /*protected override void OnRender(DrawingContext drawingContext)
+        protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
-            var directive = PushRender().GetAwaiter().GetResult();
-            var imageSource = directive?.ImageSource;
-            if (imageSource!= null)
+            if (_imageSource != null)
             {
-                if (directive.IsNeedTransform)
-                {
-                    // Transforms are applied in reverse order
-                    drawingContext.PushTransform(directive
-                        .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
-                    drawingContext.PushTransform(directive
-                        .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
-                    // dpi scaled rectangle from the image
-                    var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-                    drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                    drawingContext.Pop(); // Remove the scale transform
-                    drawingContext.Pop(); // Remove the translation transform
-                }
-                else
-                {
-                    var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-                    drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                }
-
-                
+                drawingContext.DrawImage(_imageSource, new Rect(new Size(_imageSource.Width, _imageSource.Height)));
+                drawingContext.DrawText(
+                    new FormattedText($"fps:{averageFrame}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+                        mFpsTypeface, 16, brush, 1),
+                    new Point(10, 10));
             }
-            
-            if (directive != null && _renderCompletedResetEvent.WaitOne(0))
+
+            if (_isWaitingCompletedEvent)
             {
                 _renderCompletedResetEvent.Set();
             }
+        }
+
+        /*protected override int VisualChildrenCount { get; } = 1;
+
+        private DrawingVisual _drawingVisual = new DrawingVisual();
+
+        protected override Visual GetVisualChild(int index)
+        {
+            return _drawingVisual;
         }*/
+
+        private volatile bool _isWaitingRenderEvent;
+
+        private volatile bool _isWaitingCompletedEvent;
+
+        private readonly ManualResetEvent _renderingResetEvent = new ManualResetEvent(false);
+
+        private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
 
         private TaskCompletionSource<DrawingDirective> _imageSourceCompletionSource = null;
 
@@ -169,7 +207,7 @@ namespace OpenTkControl
         public Task<DrawingDirective> PushRender()
         {
             _imageSourceCompletionSource = new TaskCompletionSource<DrawingDirective>();
-            if (!_renderingResetEvent.WaitOne(0))
+            if (_isWaitingRenderEvent)
             {
                 _renderingResetEvent.Set();
             }
@@ -179,6 +217,7 @@ namespace OpenTkControl
 
         private volatile bool _renderThreadStart = false;
 
+        private ImageSource _imageSource;
 
         public void StartThread()
         {
@@ -187,6 +226,8 @@ namespace OpenTkControl
                 return;
             }
 
+            RenderProcedure.Canvas.Create(new CanvasInfo(0, 0, 1, 1));
+            _imageSource = RenderProcedure.Canvas.Canvas;
             _renderThreadStart = true;
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
@@ -217,7 +258,6 @@ namespace OpenTkControl
         }
 
 
-
         protected override void OnUnloaded(object sender, RoutedEventArgs args)
         {
             base.OnUnloaded(sender, args);
@@ -225,6 +265,7 @@ namespace OpenTkControl
         }
 
         private DebugProc _debugProc;
+
 
         /// <summary>
         /// The function that the thread runs to render the control
@@ -237,9 +278,10 @@ namespace OpenTkControl
             RenderProcedure.Initialize(WindowInfo);
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-            OnRenderTask(() => CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this)).Wait(token);
-            var canvasInfo = CurrentCanvasInfo;
+            var canvas = RenderProcedure.Canvas;
+            OnUITask(() => { CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this); }).Wait(token);
             RenderProcedure.SizeCanvas(CurrentCanvasInfo);
+            var canvasInfo = CurrentCanvasInfo;
             using (RenderProcedure)
             {
                 WaitHandle[] renderHandles = {token.WaitHandle, _renderingResetEvent};
@@ -249,77 +291,46 @@ namespace OpenTkControl
                     if (!canvasInfo.Equals(CurrentCanvasInfo))
                     {
                         canvasInfo = CurrentCanvasInfo;
+                        // OnUITask(() => { canvas.Create(CurrentCanvasInfo); }).Wait(token);
                         RenderProcedure.SizeCanvas(CurrentCanvasInfo);
                     }
 
-                    DrawingDirective drawingDirective = null;
-                    Exception exception = null;
-                    try
+                    _isWaitingRenderEvent = true;
+                    WaitHandle.WaitAny(renderHandles);
+                    _isWaitingRenderEvent = false;
+                    _renderingResetEvent.Reset();
+                    if (!RenderProcedure.CanRender)
                     {
-                        drawingDirective = RenderProcedure.Render();
-                        if (drawingDirective != null && drawingDirective.ImageSource != null)
-                        {
-                            var drawingVisual = new DrawingVisual();
-                            using (var drawingContext = drawingVisual.RenderOpen())
-                            {
-                                var imageSource = drawingDirective.ImageSource;
-                                if (imageSource != null)
-                                {
-                                    if (drawingDirective.IsNeedTransform)
-                                    {
-                                        // Transforms are applied in reverse order
-                                        drawingContext.PushTransform(drawingDirective
-                                            .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
-                                        drawingContext.PushTransform(drawingDirective
-                                            .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
-                                        // dpi scaled rectangle from the image
-                                        var rect = new Rect(0, 0, canvasInfo.ActualWidth, canvasInfo.ActualHeight);
-                                        drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                                        drawingContext.Pop(); // Remove the scale transform
-                                        drawingContext.Pop(); // Remove the translation transform
-                                    }
-                                    else
-                                    {
-                                        var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-                                        drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                                    }
-                                }
-                            }
-
-                            var bmp = new RenderTargetBitmap(canvasInfo.ActualWidth, canvasInfo.ActualHeight, 96, 96,
-                                PixelFormats.Pbgra32);
-                            bmp.Render(drawingVisual);
-                            drawingDirective.ImageSource = (ImageSource) bmp.GetCurrentValueAsFrozen();
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        exception = e;
-                        // Debugger.Break();
-                    }
-                    finally
-                    {
-                        WaitHandle.WaitAny(renderHandles);
-                        _renderingResetEvent.Reset();
-                    }
-
-                    if (exception != null)
-                    {
-                        _imageSourceCompletionSource.SetException(exception);
+                        Thread.Sleep(100);
+                        continue;
                     }
                     else
                     {
-                        _imageSourceCompletionSource.SetResult(drawingDirective);
-                    }
+                        DrawingDirective drawingDirective = null;
+                        try
+                        {
+                            OnUITask(() => canvas.Begin()).Wait(token);
+                            Interlocked.Increment(ref currentFrame);
+                            drawingDirective = RenderProcedure.Render();
+                            OnUITask(() => canvas.End()).Wait(token);
+                            _imageSourceCompletionSource.SetResult(drawingDirective);
+                        }
+                        catch (Exception e)
+                        {
+                            _imageSourceCompletionSource.SetException(e);
+                        }
 
-                    if (token.IsCancellationRequested)
-                        break;
+                        if (token.IsCancellationRequested)
+                            break;
 
-                    if (drawingDirective != null && !drawingDirective.IsDrawingAsync)
-                    {
-                        //不允许异步渲染
-                        WaitHandle.WaitAny(drawHandles);
-                        _renderCompletedResetEvent.Reset();
+                        if (drawingDirective != null)
+                        {
+                            //不允许异步渲染
+                            _isWaitingCompletedEvent = true;
+                            WaitHandle.WaitAny(drawHandles);
+                            _isWaitingCompletedEvent = false;
+                            _renderCompletedResetEvent.Reset();
+                        }
                     }
                 }
             }

@@ -95,7 +95,6 @@ namespace OpenTkControl
         /// </summary>
         protected OpenTkControlBase()
         {
-            InitializeComponent();
             // Update all of the volatile copies the variables
             // This is a workaround for the WPF threading restric_rendererResetEventtions on DependencyProperties
             // that allows other threads to read the values.

@@ -10,6 +10,8 @@ namespace OpenTkControl
 
         bool IsInitialized { get; }
 
+        bool CanRender { get; }
+
         IRenderer Renderer { get; set; }
 
         GLSettings GlSettings { get; }
