@@ -94,40 +94,6 @@ namespace OpenTkControl
             {
                 InvalidateVisual();
             }
-            /*if (drawingDirective?.ImageSource != null)
-            {
-                var drawingVisual = new DrawingVisual();
-                using (var drawingContext = drawingVisual.RenderOpen())
-                {
-                    var imageSource = drawingDirective.ImageSource;
-                    if (imageSource != null && drawingDirective.CanDraw)
-                    {
-                        if (drawingDirective.IsNeedTransform)
-                        {
-                            // Transforms are applied in reverse order
-                            drawingContext.PushTransform(drawingDirective
-                                .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
-                            drawingContext.PushTransform(drawingDirective
-                                .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
-                            // dpi scaled rectangle from the image
-                            var rect = new Rect(0, 0, imageSource.Width, imageSource.Width);
-                            drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                            drawingContext.Pop(); // Remove the scale transform
-                            drawingContext.Pop(); // Remove the translation transform
-                        }
-                        else
-                        {
-                            var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-                            drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                        }
-                    }
-                }
-            }*/
-
-            /*if (drawingDirective != null && !_renderCompletedResetEvent.WaitOne(0))
-            {
-                _renderCompletedResetEvent.Set();
-            }*/
         }
 
 
@@ -178,15 +144,6 @@ namespace OpenTkControl
                 _renderCompletedResetEvent.Set();
             }
         }
-
-        /*protected override int VisualChildrenCount { get; } = 1;
-
-        private DrawingVisual _drawingVisual = new DrawingVisual();
-
-        protected override Visual GetVisualChild(int index)
-        {
-            return _drawingVisual;
-        }*/
 
         private volatile bool _isWaitingRenderEvent;
 
