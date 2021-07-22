@@ -13,6 +13,30 @@ using OpenTK.Platform;
 
 namespace OpenTkControl
 {
+    public class BitmapCanvas:IRenderCanvas
+    {
+        public ImageSource FrontSource { get; }
+        public ImageSource GetFrontSource()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Create(CanvasInfo info)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Begin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void End()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public class GLBitmapProcedure : IRenderProcedure
     {
         /// <summary>
@@ -43,7 +67,7 @@ namespace OpenTkControl
         /// <summary>
         /// The source of the internal Image
         /// </summary>
-        // private volatile WriteableBitmap _bitmap;
+        private volatile WriteableBitmap _bitmap;
 
         /// <summary>
         /// The OpenGL framebuffer
@@ -60,10 +84,14 @@ namespace OpenTkControl
         /// </summary>
         private int _depthBuffer;
 
-        public IRenderCanvas Canvas => canvas;
-        public bool IsInitialized { get; private set; }
 
-        public bool CanRender => canvas.Bitmap != null;
+        public void SwapBuffer()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsInitialized { get; private set; }
+        public bool CanRender { get; }
 
         public IRenderer Renderer
         {
@@ -85,6 +113,18 @@ namespace OpenTkControl
         public GLBitmapProcedure(GLSettings glSettings)
         {
             GlSettings = glSettings;
+        }
+
+        public IRenderCanvas Buffer { get; }
+
+        public void Begin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void End()
+        {
+            throw new NotImplementedException();
         }
 
         public void Initialize(IWindowInfo window)
@@ -124,7 +164,7 @@ namespace OpenTkControl
                 throw new GraphicsException(error.ToString());
         }
 
-        public void SizeCanvas(CanvasInfo canvas)
+        public void SetSize(CanvasInfo canvas)
         {
             CalculateBufferSize(canvas, out var width, out var height);
             //Need Abs(...) > 1 to handle an edge case where the resizing the bitmap causes the height to increase in an infinite loop
@@ -138,28 +178,6 @@ namespace OpenTkControl
                 }
 
                 AllocateFrameBuffers(width, height);
-            }
-        }
-
-        private BitmapCanvas canvas = new BitmapCanvas();
-
-        public void Begin()
-        {
-        }
-
-        private Nullable<BufferInfo> bufferInfo;
-
-        public void End()
-        {
-            if (bufferInfo.HasValue)
-            {
-                var info = bufferInfo.Value;
-                var dirtyArea = info.RepaintRect;
-                var bitmap = canvas.Bitmap;
-                bitmap.Lock();
-                bitmap.WritePixels(dirtyArea, info.FrameBuffer, info.BufferSize, bitmap.BackBufferStride);
-                bitmap.AddDirtyRect(dirtyArea);
-                bitmap.Unlock();
             }
         }
 
@@ -184,14 +202,13 @@ namespace OpenTkControl
             return false;
         }
 
-
         public DrawingDirective Render()
         {
+            
             if (!CheckRenderer())
             {
                 return null;
             }
-
             if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
                 _context.MakeCurrent(_windowInfo);
             var args =
@@ -202,8 +219,14 @@ namespace OpenTkControl
                 return null;
             _doubleBuffer.SwapBuffer();
             _doubleBuffer.ReadCurrent();
-            bufferInfo = _doubleBuffer.GetLatest();
-            return new DrawingDirective(null, null, true); //允许异步
+            var copyLatest = _doubleBuffer.GetLatest();
+            if (copyLatest.FrameBuffer == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            UpdateImage(copyLatest);
+            return new DrawingDirective(null, null, _bitmap, true); //允许异步
         }
 
         /// <summary>
@@ -216,6 +239,26 @@ namespace OpenTkControl
             _newContext = false;
             return true;
         }
+
+        /// <summary>
+        /// Updates what is currently being drawn on the screen from the back buffer.
+        /// Must be called from the UI thread
+        /// </summary>
+        /// <param name="info"></param>
+        private void UpdateImage(BufferInfo info)
+        {
+            var dirtyArea = info.RepaintRect;
+            if (info.IsResized)
+            {
+                _bitmap = new WriteableBitmap(info.Width, info.Height, 96, 96, PixelFormats.Pbgra32, null);
+            }
+
+            _bitmap.Lock();
+            _bitmap.WritePixels(dirtyArea, info.FrameBuffer, info.BufferSize, _bitmap.BackBufferStride);
+            _bitmap.AddDirtyRect(dirtyArea);
+            _bitmap.Unlock();
+        }
+
 
         /// <summary>
         /// Creates new OpenGl buffers of the specified size, including <see cref="_frameBuffer"/>, <see cref="_depthBuffer"/>,

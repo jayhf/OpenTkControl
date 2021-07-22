@@ -6,7 +6,16 @@ namespace OpenTkControl
 {
     public interface IRenderProcedure : IDisposable
     {
-        IRenderCanvas Canvas { get; }
+        IRenderCanvas Buffer { get; }
+
+        void Begin();
+
+        void End();
+
+        /// <summary>
+        /// not required
+        /// </summary>
+        void SwapBuffer();
 
         bool IsInitialized { get; }
 
@@ -18,7 +27,7 @@ namespace OpenTkControl
 
         void Initialize(IWindowInfo window);
 
-        void SizeCanvas(CanvasInfo size);
+        void SetSize(CanvasInfo size);
 
         void Begin();
 

@@ -4,7 +4,7 @@ namespace OpenTkControl
 {
     public interface IRenderCanvas
     {
-        ImageSource Canvas { get; }
+        ImageSource GetFrontSource();
 
         void Create(CanvasInfo info);
     }

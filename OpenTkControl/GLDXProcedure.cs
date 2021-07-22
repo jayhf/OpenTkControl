@@ -10,38 +10,63 @@ using OpenTK.Platform.Windows;
 
 namespace OpenTkControl
 {
-    public class DxCanvas : IRenderCanvas
+    public class DoubleDxCanvas : IDoubleBuffer
     {
-        public D3DImage Image { get; private set; }
+        private readonly DxCanvas[] _dxCanvasArray = new DxCanvas[] {new DxCanvas(), new DxCanvas()};
 
-        public ImageSource Canvas => Image;
+        private DxCanvas _backBuffer, _frontBuffer;
 
-        private GLDXProcedure dxProcedure;
-
-        public DxCanvas(GLDXProcedure dxProcedure)
+        public DoubleDxCanvas()
         {
-            this.dxProcedure = dxProcedure;
+            _backBuffer = _dxCanvasArray[0];
+            _frontBuffer = _dxCanvasArray[1];
+        }
+
+        public DxCanvas GetReadBuffer()
+        {
+            return _frontBuffer;
+        }
+
+        public DxCanvas GetWriteBuffer()
+        {
+            return _backBuffer;
+        }
+
+        public void SwapBuffer()
+        {
+            var mid = _backBuffer;
+            _backBuffer = _frontBuffer;
+            _frontBuffer = mid;
+        }
+
+        public ImageSource GetFrontSource()
+        {
+            return GetReadBuffer().GetFrontSource();
         }
 
         public void Create(CanvasInfo info)
         {
-            Debug.WriteLine(Thread.CurrentThread.ManagedThreadId);
-            Image = new D3DImage(96.0 * info.DpiScaleX, 96.0 * info.DpiScaleY);
+            foreach (var dxCanvas in _dxCanvasArray)
+            {
+                dxCanvas.Create(info);
+            }
+        }
+    }
+
+    public class DxCanvas : IRenderCanvas
+    {
+        private D3DImage _image;
+
+        public D3DImage Image => _image;
+
+        public ImageSource GetFrontSource()
+        {
+            return _image;
         }
 
-        public void Begin()
+        public void Create(CanvasInfo info)
         {
-            Image.Lock();
-        }
-
-        public void End()
-        {
-            var dxCanvasImage = this.Image;
-            dxCanvasImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9,
-                dxProcedure.DxRenderTargetHandle);
-            dxCanvasImage.AddDirtyRect(new Int32Rect(0, 0, dxProcedure.Width,
-                dxProcedure.Height));
-            dxCanvasImage.Unlock();
+            _image = new D3DImage(96.0 * info.DpiScaleX, 96.0 * info.DpiScaleY);
         }
     }
 
@@ -65,9 +90,12 @@ namespace OpenTkControl
 
         private volatile bool _rendererInitialized = false;
 
-        private DxCanvas dxCanvas;
+        private DoubleDxCanvas doubleDxCanvas = new DoubleDxCanvas();
 
-        public IRenderCanvas Canvas => dxCanvas;
+        public void SwapBuffer()
+        {
+            this.doubleDxCanvas.SwapBuffer();
+        }
 
         public bool IsInitialized { get; private set; }
 
@@ -91,7 +119,24 @@ namespace OpenTkControl
         public GLDXProcedure(GLSettings glSettings)
         {
             this.GlSettings = glSettings;
-            dxCanvas = new DxCanvas(this);
+        }
+
+        public IRenderCanvas Buffer => doubleDxCanvas;
+
+        public void Begin()
+        {
+            var writeBuffer = doubleDxCanvas.GetWriteBuffer().Image;
+            writeBuffer.Lock();
+        }
+
+        public void End()
+        {
+            var dxCanvasImage = doubleDxCanvas.GetWriteBuffer().Image;
+            dxCanvasImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9,
+                this.DxRenderTargetHandle);
+            dxCanvasImage.AddDirtyRect(new Int32Rect(0, 0, this.Width,
+                this.Height));
+            dxCanvasImage.Unlock();
         }
 
         /// Sets up the framebuffer, directx stuff for rendering. 
@@ -135,7 +180,7 @@ namespace OpenTkControl
             IsInitialized = true;
         }
 
-        public void SizeCanvas(CanvasInfo size)
+        public void SetSize(CanvasInfo size)
         {
             var width = size.ActualWidth;
             var height = size.ActualHeight;
@@ -156,16 +201,6 @@ namespace OpenTkControl
             }
         }
 
-        public void Begin()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void End()
-        {
-            throw new NotImplementedException();
-        }
-
         public DrawingDirective Render()
         {
             PreRender();
@@ -173,7 +208,8 @@ namespace OpenTkControl
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
             PostRender();
-            return new DrawingDirective(_framebuffer.TranslateTransform, _framebuffer.FlipYTransform);
+            return new DrawingDirective(_framebuffer.TranslateTransform, _framebuffer.FlipYTransform,
+                Buffer.GetFrontSource());
         }
 
         public void Dispose()
