@@ -15,7 +15,12 @@ namespace OpenTkControl
 {
     public class BitmapCanvas:IRenderCanvas
     {
-        public ImageSource Canvas { get; }
+        public ImageSource FrontSource { get; }
+        public ImageSource GetFrontSource()
+        {
+            throw new NotImplementedException();
+        }
+
         public void Create(CanvasInfo info)
         {
             throw new NotImplementedException();
@@ -79,7 +84,12 @@ namespace OpenTkControl
         /// </summary>
         private int _depthBuffer;
 
-        public IRenderCanvas Canvas { get; }
+
+        public void SwapBuffer()
+        {
+            throw new NotImplementedException();
+        }
+
         public bool IsInitialized { get; private set; }
         public bool CanRender { get; }
 
@@ -103,6 +113,18 @@ namespace OpenTkControl
         public GLBitmapProcedure(GLSettings glSettings)
         {
             GlSettings = glSettings;
+        }
+
+        public IRenderCanvas Buffer { get; }
+
+        public void Begin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void End()
+        {
+            throw new NotImplementedException();
         }
 
         public void Initialize(IWindowInfo window)
@@ -142,7 +164,7 @@ namespace OpenTkControl
                 throw new GraphicsException(error.ToString());
         }
 
-        public void SizeCanvas(CanvasInfo canvas)
+        public void SetSize(CanvasInfo canvas)
         {
             CalculateBufferSize(canvas, out var width, out var height);
             //Need Abs(...) > 1 to handle an edge case where the resizing the bitmap causes the height to increase in an infinite loop

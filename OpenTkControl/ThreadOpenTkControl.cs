@@ -76,6 +76,26 @@ namespace OpenTkControl
 
         private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
 
+        protected override void OnRender(DrawingContext drawingContext)
+        {
+            base.OnRender(drawingContext);
+            var canvasFrontSource = canvas?.GetFrontSource();
+            if (canvasFrontSource != null)
+            {
+                drawingContext.DrawImage(canvasFrontSource,
+                    new Rect(new Size(canvasFrontSource.Width, canvasFrontSource.Height)));
+                drawingContext.DrawText(
+                    new FormattedText($"fps:{averageFrame}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+                        mFpsTypeface, 16, brush, 1),
+                    new Point(10, 10));
+            }
+
+            if (_isWaitingCompletedEvent)
+            {
+                _renderCompletedResetEvent.Set();
+            }
+        }
+
         private async void CompositionTarget_Rendering(object sender, EventArgs e)
         {
             var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
@@ -89,11 +109,11 @@ namespace OpenTkControl
             {
                 return;
             }
-
-            if (await PushRender() != null)
+            InvalidateVisual();
+            /*if (await PushRender() != null)
             {
-                InvalidateVisual();
-            }
+                
+            }*/
             /*if (drawingDirective?.ImageSource != null)
             {
                 var drawingVisual = new DrawingVisual();
@@ -161,23 +181,6 @@ namespace OpenTkControl
 
         private SolidColorBrush brush = new SolidColorBrush(Colors.DarkOrange);
 
-        protected override void OnRender(DrawingContext drawingContext)
-        {
-            base.OnRender(drawingContext);
-            if (_imageSource != null)
-            {
-                drawingContext.DrawImage(_imageSource, new Rect(new Size(_imageSource.Width, _imageSource.Height)));
-                drawingContext.DrawText(
-                    new FormattedText($"fps:{averageFrame}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-                        mFpsTypeface, 16, brush, 1),
-                    new Point(10, 10));
-            }
-
-            if (_isWaitingCompletedEvent)
-            {
-                _renderCompletedResetEvent.Set();
-            }
-        }
 
         /*protected override int VisualChildrenCount { get; } = 1;
 
@@ -198,14 +201,6 @@ namespace OpenTkControl
 
         private TaskCompletionSource<DrawingDirective> _imageSourceCompletionSource = null;
 
-        public void CallRender()
-        {
-            if (!_renderingResetEvent.WaitOne(0))
-            {
-                _renderingResetEvent.Set();
-            }
-        }
-
         public Task<DrawingDirective> PushRender()
         {
             if (_isWaitingRenderEvent)
@@ -222,7 +217,7 @@ namespace OpenTkControl
 
         private volatile bool _renderThreadStart = false;
 
-        private ImageSource _imageSource;
+        private IRenderCanvas canvas;
 
         public void StartThread()
         {
@@ -231,8 +226,8 @@ namespace OpenTkControl
                 return;
             }
 
-            RenderProcedure.Canvas.Create(new CanvasInfo(0, 0, 1, 1));
-            _imageSource = RenderProcedure.Canvas.Canvas;
+            RenderProcedure.Buffer.Create(new CanvasInfo(0, 0, 1, 1));
+            canvas = RenderProcedure.Buffer;
             _renderThreadStart = true;
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
@@ -283,9 +278,8 @@ namespace OpenTkControl
             RenderProcedure.Initialize(WindowInfo);
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-            var canvas = RenderProcedure.Canvas;
             OnUITask(() => { CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this); }).Wait(token);
-            RenderProcedure.SizeCanvas(CurrentCanvasInfo);
+            RenderProcedure.SetSize(CurrentCanvasInfo);
             var canvasInfo = CurrentCanvasInfo;
             using (RenderProcedure)
             {
@@ -296,20 +290,19 @@ namespace OpenTkControl
                     if (!canvasInfo.Equals(CurrentCanvasInfo))
                     {
                         canvasInfo = CurrentCanvasInfo;
-                        // OnUITask(() => { canvas.Create(CurrentCanvasInfo); }).Wait(token);
-                        RenderProcedure.SizeCanvas(CurrentCanvasInfo);
+                        OnUITask(() => { canvas.Create(CurrentCanvasInfo); }).Wait(token);
+                        RenderProcedure.SetSize(CurrentCanvasInfo);
                     }
-
                     if (RenderProcedure.CanRender)
                     {
                         DrawingDirective drawingDirective = null;
                         Exception exception = null;
                         try
                         {
-                            OnUITask(() => canvas.Begin()).Wait(token);
+                            OnUITask(() => RenderProcedure.Begin()).Wait(token);
                             Interlocked.Increment(ref currentFrame);
                             drawingDirective = RenderProcedure.Render();
-                            OnUITask(() => canvas.End()).Wait(token);
+                            OnUITask(() => RenderProcedure.End()).Wait(token);
                         }
                         catch (Exception e)
                         {
@@ -317,32 +310,31 @@ namespace OpenTkControl
                         }
                         finally
                         {
-                            _isWaitingRenderEvent = true;
+                            /*_isWaitingRenderEvent = true;
                             WaitHandle.WaitAny(renderHandles);
                             _isWaitingRenderEvent = false;
-                            _renderingResetEvent.Reset();
+                            _renderingResetEvent.Reset();*/
                         }
 
-                        if (exception != null)
+                        /*if (exception != null)
                         {
                             _imageSourceCompletionSource.SetException(exception);
                         }
                         else
                         {
                             _imageSourceCompletionSource.SetResult(drawingDirective);
-                        }
+                        }*/
 
-                        if (token.IsCancellationRequested)
-                            break;
 
                         if (drawingDirective != null)
                         {
-                            //不允许异步渲染
+                            //不允许异步填充
                             _isWaitingCompletedEvent = true;
                             WaitHandle.WaitAny(drawHandles);
                             _isWaitingCompletedEvent = false;
                             _renderCompletedResetEvent.Reset();
                         }
+                        RenderProcedure.SwapBuffer();
                     }
                 }
             }
