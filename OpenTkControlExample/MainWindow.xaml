@@ -10,9 +10,7 @@
         Width="1920">
     <Grid>
 
-        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl"
-                                           Height="800"
-                                           Width="800"/>
+        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl"/>
         <!--<openTkControl:UiOpenTkControl x:Name="OpenTkControl" 
                                        Width="800"
                                        Height="800"/>-->
