@@ -43,19 +43,11 @@ namespace OpenTkControl
 
         private DebugProc _debugProc;
 
+        private bool visible;
+
         public ThreadOpenTkControl()
         {
-            IsVisibleChanged += (_, args) =>
-            {
-                if ((bool) args.NewValue)
-                {
-                    CompositionTarget.Rendering += CompositionTarget_Rendering;
-                }
-                else
-                {
-                    CompositionTarget.Rendering -= CompositionTarget_Rendering;
-                }
-            };
+            IsVisibleChanged += (_, args) => { visible = (bool) args.NewValue; };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
             timer = new Timer((state =>
             {
@@ -81,9 +73,30 @@ namespace OpenTkControl
         protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
-            var canvasFrontSource = canvas?.GetFrontSource();
+
+            if (!_renderThreadStart)
+            {
+                drawingContext.DrawText(new FormattedText($"loading", CultureInfo.CurrentCulture,
+                        FlowDirection.LeftToRight,
+                        mFpsTypeface, 26, brush, 1),
+                    new Point(100, 100));
+                return;
+            }
+
+            Debug.WriteLine("render");
+
+            if (RenderCommand == Idle)
+            {
+                return;
+            }
+
+            RenderCommand = Idle;
+            var renderCanvas = _doubleBuffer.GetFrontBuffer();
+            var canvasFrontSource = renderCanvas.GetSource();
             if (canvasFrontSource != null)
             {
+                drawingContext.DrawImage(canvasFrontSource,
+                    new Rect(new Size(canvasFrontSource.Width, canvasFrontSource.Height)));
                 drawingContext.DrawImage(canvasFrontSource,
                     new Rect(new Size(canvasFrontSource.Width, canvasFrontSource.Height)));
                 drawingContext.DrawText(
@@ -92,29 +105,11 @@ namespace OpenTkControl
                     new Point(10, 10));
             }
 
-            _renderCompletedResetEvent.Set();
-        }
-
-        private void CompositionTarget_Rendering(object sender, EventArgs e)
-        {
-            var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
-            if (currentRenderTime == _lastRenderTime)
+            if (isWaiting)
             {
-                return;
-            }
-
-            _lastRenderTime = currentRenderTime.Value;
-            if (!_renderThreadStart)
-            {
-                return;
-            }
-
-            if (_isWaitingCompletedEvent)
-            {
-                InvalidateVisual();
+                _renderCompletedResetEvent.Set();
             }
         }
-
 
         protected CanvasInfo CurrentCanvasInfo;
 
@@ -146,16 +141,11 @@ namespace OpenTkControl
 
         private SolidColorBrush brush = new SolidColorBrush(Colors.DarkOrange);
 
-
-        private volatile bool _isWaitingCompletedEvent;
-
-        private readonly ManualResetEvent _renderingResetEvent = new ManualResetEvent(false);
-
         private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
 
         private volatile bool _renderThreadStart = false;
 
-        private IRenderCanvas canvas;
+        private IDoubleBuffer _doubleBuffer;
 
         protected override void OnLoaded(object sender, RoutedEventArgs args)
         {
@@ -171,7 +161,6 @@ namespace OpenTkControl
             base.OnUnloaded(sender, args);
             //unload don't close thread
         }
-
 
         /// <summary>
         /// The function that the thread runs to render the control
@@ -195,38 +184,48 @@ namespace OpenTkControl
                     if (!canvasInfo.Equals(CurrentCanvasInfo))
                     {
                         canvasInfo = CurrentCanvasInfo;
-                        OnUITask(() => { canvas.Create(CurrentCanvasInfo); }).Wait(token);
+                        OnUITask(() => { _doubleBuffer.Create(CurrentCanvasInfo); }).Wait(token);
                         RenderProcedure.SetSize(CurrentCanvasInfo);
                     }
 
                     if (RenderProcedure.CanRender)
                     {
-                        DrawingDirective drawingDirective = null;
                         try
                         {
                             OnUITask(() => RenderProcedure.Begin()).Wait(token);
-                            Interlocked.Increment(ref currentFrame);
-                            drawingDirective = RenderProcedure.Render();
+                            RenderProcedure.Render();
                             OnUITask(() => RenderProcedure.End()).Wait(token);
+                            Interlocked.Increment(ref currentFrame);
+                            if (RenderCommand == Run)
+                            {
+                                isWaiting = true;
+                                WaitHandle.WaitAny(drawHandles);
+                                _renderCompletedResetEvent.Reset();
+                                isWaiting = false;
+                            }
+
+                            RenderProcedure.SwapBuffer();
                         }
                         finally
                         {
-                            if (drawingDirective != null)
-                            {
-                                //不允许异步填充
-                                _isWaitingCompletedEvent = true;
-                                WaitHandle.WaitAny(drawHandles);
-                                _isWaitingCompletedEvent = false;
-                                _renderCompletedResetEvent.Reset();
-                            }
                         }
 
-                        RenderProcedure.SwapBuffer();
+                        if (_doubleBuffer?.GetFrontBuffer().GetSource() != null)
+                        {
+                            RenderCommand = Run;
+                            OnUITask(() => { InvalidateVisual(); });
+                        }
                     }
                 }
             }
         }
 
+        private volatile int RenderCommand = Idle;
+
+        private const int Run = 1;
+        private const int Idle = 0;
+
+        private volatile bool isWaiting = false;
 
         public void StartThread()
         {
@@ -236,8 +235,7 @@ namespace OpenTkControl
             }
 
             RenderProcedure.Buffer.Create(new CanvasInfo(0, 0, 1, 1));
-            canvas = RenderProcedure.Buffer;
-            _renderThreadStart = true;
+            _doubleBuffer = RenderProcedure.Buffer;
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
             {
@@ -246,12 +244,12 @@ namespace OpenTkControl
                 Name = ThreadName
             };
             _renderThread.Start(_endThreadCts.Token);
+            _renderThreadStart = true;
         }
 
         private void CloseThread()
         {
             _renderThreadStart = false;
-            _renderingResetEvent.Set();
             _endThreadCts.Cancel();
             _renderThread.Join();
             _endThreadCts.Dispose();
@@ -260,7 +258,6 @@ namespace OpenTkControl
         public void Dispose()
         {
             CloseThread();
-            _renderingResetEvent?.Dispose();
         }
     }
 }

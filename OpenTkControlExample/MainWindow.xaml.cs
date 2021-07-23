@@ -14,11 +14,11 @@ namespace OpenTkControlExample
 {
     public partial class MainWindow
     {
+       
         private const int LineCount = 10;
         public const int PointsCount = 10000;
 
         public const int LineLength = PointsCount * 2;
-
 
         public MainWindow()
         {
@@ -46,11 +46,12 @@ namespace OpenTkControlExample
             renderer.CurrentScrollRange = new ScrollRange(0, end);
             renderer.CurrentYAxisValue = 1000;
             renderer.BackgroundColor = Color4.Black;
-            this.OpenTkControl.Renderer = new GLBitmapProcedure(new GLSettings())
+            this.OpenTkControl.Renderer = new GLDXProcedure(new GLSettings())
             {
                 Renderer = renderer,
             };
         }
+
 
         private void OpenTkControl_OnExceptionOccurred(object sender, UnhandledExceptionEventArgs e)
         {

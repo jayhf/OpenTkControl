@@ -69,7 +69,7 @@ namespace OpenTkControl
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
                 var drawingDirective = RenderProcedure.Render();
-                var imageSource = new BitmapImage();//drawingDirective?.ImageSource;
+                var imageSource = new BitmapImage();//drawingDirective?.;
                 if (imageSource != null)
                 {
                     if (drawingDirective.IsNeedTransform)
