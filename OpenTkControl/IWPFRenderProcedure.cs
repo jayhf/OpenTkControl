@@ -20,6 +20,10 @@ namespace OpenTkControl
 
         void SizeCanvas(CanvasInfo size);
 
+        void Begin();
+
+        void End();
+
         DrawingDirective Render();
     }
 }

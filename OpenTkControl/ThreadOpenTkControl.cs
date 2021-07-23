@@ -125,9 +125,11 @@ namespace OpenTkControl
         private Typeface mFpsTypeface = new Typeface(new FontFamily("Consolas"), FontStyles.Normal, FontWeights.Bold,
             FontStretches.Normal);
 
-        private SolidColorBrush brush = new SolidColorBrush(Colors.DarkOrange);
+        private SolidColorBrush brush = new SolidColorBrush(Colors.DodgerBlue);
 
         private volatile bool IsNeedRender = false;
+
+        private IRenderCanvas canvas;
 
         protected override void OnRender(DrawingContext drawingContext)
         {
@@ -143,9 +145,10 @@ namespace OpenTkControl
 
             IsNeedRender = false;
             base.OnRender(drawingContext);
-            if (_imageSource != null)
+            var imageSource = canvas?.Canvas;
+            if (imageSource != null)
             {
-                drawingContext.DrawImage(_imageSource, new Rect(new Size(_imageSource.Width, _imageSource.Height)));
+                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
                 drawingContext.DrawText(
                     new FormattedText($"fps:{averageFrame}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
                         mFpsTypeface, 16, brush, 1),
@@ -192,8 +195,6 @@ namespace OpenTkControl
 
         private volatile bool _renderThreadStart = false;
 
-        private ImageSource _imageSource;
-
         public void StartThread()
         {
             if (_renderThreadStart)
@@ -202,7 +203,7 @@ namespace OpenTkControl
             }
 
             RenderProcedure.Canvas.Create(new CanvasInfo(0, 0, 1, 1));
-            _imageSource = RenderProcedure.Canvas.Canvas;
+            canvas = RenderProcedure.Canvas;
             _renderThreadStart = true;
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
@@ -254,7 +255,11 @@ namespace OpenTkControl
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
             var canvas = RenderProcedure.Canvas;
-            OnUITask(() => { CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this); }).Wait(token);
+            OnUITask(() =>
+            {
+                CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                canvas.Create(CurrentCanvasInfo);
+            }).Wait(token);
             RenderProcedure.SizeCanvas(CurrentCanvasInfo);
             var canvasInfo = CurrentCanvasInfo;
             using (RenderProcedure)
@@ -266,7 +271,7 @@ namespace OpenTkControl
                     if (!canvasInfo.Equals(CurrentCanvasInfo))
                     {
                         canvasInfo = CurrentCanvasInfo;
-                        // OnUITask(() => { canvas.Create(CurrentCanvasInfo); }).Wait(token);
+                        OnUITask(() => { canvas.Create(CurrentCanvasInfo); }).Wait(token);
                         RenderProcedure.SizeCanvas(CurrentCanvasInfo);
                     }
 
@@ -276,10 +281,10 @@ namespace OpenTkControl
                         Exception exception = null;
                         try
                         {
-                            OnUITask(() => canvas.Begin()).Wait(token);
+                            OnUITask(() => RenderProcedure.Begin()).Wait(token);
                             Interlocked.Increment(ref currentFrame);
                             drawingDirective = RenderProcedure.Render();
-                            OnUITask(() => canvas.End()).Wait(token);
+                            OnUITask(() => RenderProcedure.End()).Wait(token);
                         }
                         catch (Exception e)
                         {
@@ -294,7 +299,7 @@ namespace OpenTkControl
                         }
 
                         IsNeedRender = true;
-                        OnUITask((() => InvalidateVisual()));
+                        OnUITask(() => InvalidateVisual());
                         /*if (exception != null)
                         {
                             _imageSourceCompletionSource.SetException(exception);
@@ -304,9 +309,8 @@ namespace OpenTkControl
                             _imageSourceCompletionSource.SetResult(drawingDirective);
                         }*/
 
-                        if (drawingDirective != null)
+                        if (drawingDirective != null && !drawingDirective.IsDrawingAsync)
                         {
-                            //不允许异步渲染
                             _isWaitingCompletedEvent = true;
                             WaitHandle.WaitAny(drawHandles);
                             _isWaitingCompletedEvent = false;

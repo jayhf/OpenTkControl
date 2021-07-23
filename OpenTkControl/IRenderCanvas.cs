@@ -7,9 +7,5 @@ namespace OpenTkControl
         ImageSource Canvas { get; }
 
         void Create(CanvasInfo info);
-
-        void Begin();
-
-        void End();
     }
 }

@@ -156,6 +156,16 @@ namespace OpenTkControl
             }
         }
 
+        public void Begin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void End()
+        {
+            throw new NotImplementedException();
+        }
+
         public DrawingDirective Render()
         {
             PreRender();
@@ -163,8 +173,7 @@ namespace OpenTkControl
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
             PostRender();
-            return new DrawingDirective(_framebuffer.TranslateTransform, _framebuffer.FlipYTransform,
-                Canvas.Canvas);
+            return new DrawingDirective(_framebuffer.TranslateTransform, _framebuffer.FlipYTransform);
         }
 
         public void Dispose()

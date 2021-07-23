@@ -47,6 +47,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BitmapCanvas.cs" />
     <Compile Include="DesignTimeHelper.cs" />
     <Compile Include="DoublePixelBuffer.cs" />
     <Compile Include="BufferInfo.cs" />
