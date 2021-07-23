@@ -120,9 +120,9 @@ namespace OpenTkControl
             }
 
             RenderCommand = Idle;
-            var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
-            drawingContext.DrawImage(imageSource,new Rect(new Size(imageSource.Width,imageSource.Height)));
-            // drawingContext.DrawDrawing(drawingVisual.FrontBuffer.Drawing);
+            // var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
+            // drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
+            drawingContext.DrawDrawing(drawingVisual.FrontBuffer.Drawing);
             realFraps.Increment();
             fraps.DrawFps(drawingContext, new Point(10, 10));
             realFraps.DrawFps(drawingContext, new Point(10, 50));
@@ -229,46 +229,31 @@ namespace OpenTkControl
                         {
                         }
 
-                        var test = false;
                         OnUITask(() =>
                         {
                             var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
                             if (imageSource != null && imageSource.Width > 0 && imageSource.Height > 0)
                             {
-
-                                RenderCommand = Run;
-                                x++;
-                                RenderTrigger = x;
-                            }
-                            /*
-                            if (imageSource != null && imageSource.Width > 0 && imageSource.Height > 0)
-                            {
-                                test = true;
-                                
                                 using (var drawingContext = drawingVisual.BackBuffer.RenderOpen())
                                 {
                                     drawingContext.DrawImage(imageSource,
                                         new Rect(new Size(imageSource.Width, imageSource.Height)));
-                                    fraps.DrawFps(drawingContext,new Point(10,10));
+                                    fraps.DrawFps(drawingContext, new Point(10, 10));
                                 }
+                                drawingVisual.Swap();
+                                RenderCommand = Run;
+                                x++;
+                                RenderTrigger = x;
+                            }
+                            else
+                            {
+                                _renderCompletedResetEvent.Set();
+                            }
 
-                            }*/
-
-                            // drawingVisual.Swap();
-                            // _renderCompletedResetEvent.Set();
                         });
 
                         WaitHandle.WaitAny(drawHandles);
                         _renderCompletedResetEvent.Reset();
-                        /*if (test)
-                        {
-                            RenderCommand = Run;
-                            OnUITask((() =>
-                            {
-                                
-                            }));
-                        }*/
-                        // RenderProcedure.SwapBuffer();
                     }
                     else
                     {
