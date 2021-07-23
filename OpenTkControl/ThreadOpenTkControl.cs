@@ -43,7 +43,7 @@ namespace OpenTkControl
 
         public ThreadOpenTkControl()
         {
-            IsVisibleChanged += (_, args) =>
+            /*IsVisibleChanged += (_, args) =>
             {
                 if ((bool) args.NewValue)
                 {
@@ -53,7 +53,7 @@ namespace OpenTkControl
                 {
                     CompositionTarget.Rendering -= CompositionTarget_Rendering;
                 }
-            };
+            };*/
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
             timer = new Timer((state =>
             {
@@ -127,8 +127,21 @@ namespace OpenTkControl
 
         private SolidColorBrush brush = new SolidColorBrush(Colors.DarkOrange);
 
+        private volatile bool IsNeedRender = false;
+
         protected override void OnRender(DrawingContext drawingContext)
         {
+            if (!_renderThreadStart)
+            {
+                return;
+            }
+
+            if (!IsNeedRender)
+            {
+                return;
+            }
+
+            IsNeedRender = false;
             base.OnRender(drawingContext);
             if (_imageSource != null)
             {
@@ -274,23 +287,22 @@ namespace OpenTkControl
                         }
                         finally
                         {
-                            _isWaitingRenderEvent = true;
+                            /*_isWaitingRenderEvent = true;
                             WaitHandle.WaitAny(renderHandles);
                             _isWaitingRenderEvent = false;
-                            _renderingResetEvent.Reset();
+                            _renderingResetEvent.Reset();*/
                         }
 
-                        if (exception != null)
+                        IsNeedRender = true;
+                        OnUITask((() => InvalidateVisual()));
+                        /*if (exception != null)
                         {
                             _imageSourceCompletionSource.SetException(exception);
                         }
                         else
                         {
                             _imageSourceCompletionSource.SetResult(drawingDirective);
-                        }
-
-                        if (token.IsCancellationRequested)
-                            break;
+                        }*/
 
                         if (drawingDirective != null)
                         {
