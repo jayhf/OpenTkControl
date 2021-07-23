@@ -51,8 +51,10 @@
     <Compile Include="DoublePixelBuffer.cs" />
     <Compile Include="BufferInfo.cs" />
     <Compile Include="DrawingDirective.cs" />
+    <Compile Include="DxCanvas.cs" />
     <Compile Include="DXGLContext.cs" />
     <Compile Include="DxGLFramebuffer.cs" />
+    <Compile Include="Fraps.cs" />
     <Compile Include="GLBitmapProcedure.cs" />
     <Compile Include="GlRenderEventArgs.cs" />
     <Compile Include="GLDXProcedure.cs" />
@@ -61,6 +63,7 @@
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />
+    <Compile Include="IOpenGlRender.cs" />
     <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
     <Compile Include="IWPFRenderProcedure.cs" />

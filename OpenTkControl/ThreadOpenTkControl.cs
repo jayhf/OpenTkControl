@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices.ComTypes;
 using System.Security.AccessControl;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +23,7 @@ namespace OpenTkControl
         public static readonly DependencyProperty ThreadNameProperty = DependencyProperty.Register(
             nameof(ThreadName), typeof(string), typeof(ThreadOpenTkControl),
             new PropertyMetadata("OpenTk Render Thread"));
+
 
         /// <summary>
         /// The name of the background thread that does the OpenGL rendering
@@ -43,28 +46,19 @@ namespace OpenTkControl
 
         private DebugProc _debugProc;
 
-        private bool visible;
+        private bool _visible;
 
         public ThreadOpenTkControl()
         {
-            IsVisibleChanged += (_, args) => { visible = (bool) args.NewValue; };
+            IsVisibleChanged += (_, args) => { _visible = (bool) args.NewValue; };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
-            timer = new Timer((state =>
-            {
-                averageFrame = currentFrame;
-                currentFrame = 0;
-            }), null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(1));
         }
-
-        private volatile int currentFrame, averageFrame;
-
-        private Timer timer;
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
-                CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
             }
         }
 
@@ -72,46 +66,53 @@ namespace OpenTkControl
 
         protected override void OnRender(DrawingContext drawingContext)
         {
+            Debug.WriteLine("draw in");
             base.OnRender(drawingContext);
+            /*drawingContext.DrawRectangle(Brushes.LightSeaGreen, new Pen(Brushes.DarkBlue, 2),
+                new Rect(new Point(10, 10), new Size(100, 100)));*/
 
             if (!_renderThreadStart)
             {
-                drawingContext.DrawText(new FormattedText($"loading", CultureInfo.CurrentCulture,
-                        FlowDirection.LeftToRight,
-                        mFpsTypeface, 26, brush, 1),
-                    new Point(100, 100));
+                Debug.WriteLine("draw interrupt");
                 return;
             }
 
-            Debug.WriteLine("render");
-
             if (RenderCommand == Idle)
             {
+                Debug.WriteLine("draw prevent");
                 return;
             }
 
             RenderCommand = Idle;
-            var renderCanvas = _doubleBuffer.GetFrontBuffer();
-            var canvasFrontSource = renderCanvas.GetSource();
-            if (canvasFrontSource != null)
+            var source = RenderProcedure.GetFrontBuffer().GetSource();
+            if (source.Width > 0 && source.Height > 0)
             {
-                drawingContext.DrawImage(canvasFrontSource,
-                    new Rect(new Size(canvasFrontSource.Width, canvasFrontSource.Height)));
-                drawingContext.DrawImage(canvasFrontSource,
-                    new Rect(new Size(canvasFrontSource.Width, canvasFrontSource.Height)));
-                drawingContext.DrawText(
-                    new FormattedText($"fps:{averageFrame}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-                        mFpsTypeface, 16, brush, 1),
-                    new Point(10, 10));
+                Debug.WriteLine("draw success");
+                var drawingVisual = new DrawingVisual();
+                using (var renderOpen = drawingVisual.RenderOpen())
+                {
+                    renderOpen.DrawImage(source,
+                        new Rect(new Size(source.Width, source.Height)));
+                }
+
+                if (HistorySources.Count < 200)
+                {
+                    HistorySources.Add(drawingVisual);
+                }
+
+                drawingContext.DrawImage(source,
+                    new Rect(new Size(source.Width, source.Height)));
+            }
+            else
+            {
+                Debug.WriteLine("draw empty");
             }
 
-            if (isWaiting)
-            {
-                _renderCompletedResetEvent.Set();
-            }
+            _renderCompletedResetEvent.Set();
+            Debug.WriteLine("draw out");
         }
 
-        protected CanvasInfo CurrentCanvasInfo;
+        protected CanvasInfo RecentCanvasInfo;
 
         protected override void OnRenderProcedureChanged()
         {
@@ -136,16 +137,9 @@ namespace OpenTkControl
             return Dispatcher.InvokeAsync(action).Task;
         }
 
-        private Typeface mFpsTypeface = new Typeface(new FontFamily("Consolas"), FontStyles.Normal, FontWeights.Bold,
-            FontStretches.Normal);
-
-        private SolidColorBrush brush = new SolidColorBrush(Colors.DarkOrange);
-
         private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
 
         private volatile bool _renderThreadStart = false;
-
-        private IDoubleBuffer _doubleBuffer;
 
         protected override void OnLoaded(object sender, RoutedEventArgs args)
         {
@@ -155,6 +149,8 @@ namespace OpenTkControl
                 StartThread();
             }
         }
+
+        public IList<DrawingVisual> HistorySources { get; set; } = new List<DrawingVisual>();
 
         protected override void OnUnloaded(object sender, RoutedEventArgs args)
         {
@@ -173,48 +169,47 @@ namespace OpenTkControl
             RenderProcedure.Initialize(WindowInfo);
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-            OnUITask(() => { CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this); }).Wait(token);
-            RenderProcedure.SetSize(CurrentCanvasInfo);
-            var canvasInfo = CurrentCanvasInfo;
+            OnUITask(() =>
+            {
+                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                RenderProcedure.SizeCanvas(RecentCanvasInfo);
+            }).Wait(token);
+            RenderProcedure.SizeFrame(RecentCanvasInfo);
+            var canvasInfo = RecentCanvasInfo;
             using (RenderProcedure)
             {
                 WaitHandle[] drawHandles = {token.WaitHandle, _renderCompletedResetEvent};
                 while (!token.IsCancellationRequested)
                 {
-                    if (!canvasInfo.Equals(CurrentCanvasInfo))
+                    if (!canvasInfo.Equals(RecentCanvasInfo))
                     {
-                        canvasInfo = CurrentCanvasInfo;
-                        OnUITask(() => { _doubleBuffer.Create(CurrentCanvasInfo); }).Wait(token);
-                        RenderProcedure.SetSize(CurrentCanvasInfo);
+                        canvasInfo = RecentCanvasInfo;
+                        OnUITask(() => { RenderProcedure.SizeCanvas(RecentCanvasInfo); }).Wait(token);
+                        RenderProcedure.SizeFrame(RecentCanvasInfo);
                     }
 
-                    if (RenderProcedure.CanRender)
+                    if (RenderProcedure.ReadyToRender)
                     {
                         try
                         {
+                            Debug.WriteLine("render in");
                             OnUITask(() => RenderProcedure.Begin()).Wait(token);
                             RenderProcedure.Render();
                             OnUITask(() => RenderProcedure.End()).Wait(token);
-                            Interlocked.Increment(ref currentFrame);
-                            if (RenderCommand == Run)
-                            {
-                                isWaiting = true;
-                                WaitHandle.WaitAny(drawHandles);
-                                _renderCompletedResetEvent.Reset();
-                                isWaiting = false;
-                            }
-
-                            RenderProcedure.SwapBuffer();
+                            Debug.WriteLine("render out");
                         }
                         finally
                         {
-                        }
-
-                        if (_doubleBuffer?.GetFrontBuffer().GetSource() != null)
-                        {
                             RenderCommand = Run;
-                            OnUITask(() => { InvalidateVisual(); });
+                            OnUITask(InvalidateVisual);
+                            WaitHandle.WaitAny(drawHandles);
+                            _renderCompletedResetEvent.Reset();
+                            RenderProcedure.SwapBuffer();
                         }
+                    }
+                    else
+                    {
+                        Thread.Sleep(30);
                     }
                 }
             }
@@ -225,8 +220,6 @@ namespace OpenTkControl
         private const int Run = 1;
         private const int Idle = 0;
 
-        private volatile bool isWaiting = false;
-
         public void StartThread()
         {
             if (_renderThreadStart)
@@ -234,8 +227,6 @@ namespace OpenTkControl
                 return;
             }
 
-            RenderProcedure.Buffer.Create(new CanvasInfo(0, 0, 1, 1));
-            _doubleBuffer = RenderProcedure.Buffer;
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
             {

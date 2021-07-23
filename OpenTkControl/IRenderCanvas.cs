@@ -10,7 +10,5 @@ namespace OpenTkControl
         ImageSource GetSource();
 
         void Create(CanvasInfo info);
-
-        bool CanRender { get; }
     }   
 }
