@@ -31,7 +31,7 @@ namespace OpenTkControl
 
         public IRenderCanvas GetFrontBuffer()
         {
-            return _frontBuffer;
+            return _backBuffer;
         }
 
         public IRenderCanvas GetBackBuffer()

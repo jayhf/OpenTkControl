@@ -33,12 +33,12 @@ namespace OpenTkControl
             }), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
         }
 
-        public void DrawFps(DrawingContext drawingContext)
+        public void DrawFps(DrawingContext drawingContext, Point point)
         {
             drawingContext.DrawText(new FormattedText($"fps:{FPS}", CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight,
                     mFpsTypeface, 26, brush, 1),
-                new Point(100, 100));
+                point);
         }
     }
 }

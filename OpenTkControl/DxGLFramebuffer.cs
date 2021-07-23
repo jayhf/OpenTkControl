@@ -110,7 +110,7 @@ namespace OpenTkControl {
             GL.DeleteFramebuffer(GLFramebufferHandle);
             GL.DeleteRenderbuffer(GLDepthRenderBufferHandle);
             GL.DeleteTexture(GLSharedTextureHandle);
-            Wgl.DXUnregisterObjectNV(DxGlContext.GlDeviceHandle, DxInteropRegisteredHandle);
+            // Wgl.DXUnregisterObjectNV(DxGlContext.GlDeviceHandle, DxInteropRegisteredHandle);
             DXInterop.Release(DxRenderTargetHandle);
         }
     }

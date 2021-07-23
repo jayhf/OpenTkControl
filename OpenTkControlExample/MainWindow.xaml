@@ -14,13 +14,19 @@
 
         <Button Width="100"
                 Height="30"
-                VerticalAlignment="Top"
+                VerticalAlignment="Center"
                 HorizontalAlignment="Left"
                 Click="ButtonBase_OnClick" />
         <ListBox Width="300"
                  x:Name="Box"
                  Background="AntiqueWhite"
                  HorizontalAlignment="Right">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel IsVirtualizing="True"
+                                            VirtualizationMode="Recycling"/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type ImageSource}">
                     <Border BorderThickness="2"
@@ -28,7 +34,7 @@
                             Margin="5">
                         <Image Source="{Binding}"
                                Width="290"
-                               Stretch="Uniform"/>
+                               Stretch="Uniform" />
 
                     </Border>
                 </DataTemplate>
@@ -48,5 +54,10 @@
             </TabItem>
         </TabControl>-->
 
+        <Slider VerticalAlignment="Top"
+                Width="666"
+                Minimum="0"
+                ValueChanged="Slider_OnValueChanged"
+                x:Name="Slider" />
     </Grid>
 </Window>
