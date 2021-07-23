@@ -28,7 +28,7 @@ namespace OpenTkControl
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
                 var canvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                RenderProcedure.SetSize(canvasInfo);
+                RenderProcedure.SizeFrame(canvasInfo);
             }
         }
 
@@ -38,7 +38,7 @@ namespace OpenTkControl
             {
                 RenderProcedure.Initialize(this.WindowInfo);
                 var canvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                RenderProcedure.SetSize(canvasInfo);
+                RenderProcedure.SizeFrame(canvasInfo);
             }
         }
 
@@ -53,7 +53,7 @@ namespace OpenTkControl
             {
                 RenderProcedure.Initialize(this.WindowInfo);
                 var canvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                RenderProcedure.SetSize(canvasInfo);
+                RenderProcedure.SizeFrame(canvasInfo);
             }
         }
 

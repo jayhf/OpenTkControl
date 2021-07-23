@@ -7,6 +7,10 @@ using OpenTK;
 using OpenTK.Graphics.OpenGL;
 using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using OpenTK.Graphics;
 using TestRenderer;
 
@@ -14,8 +18,7 @@ namespace OpenTkControlExample
 {
     public partial class MainWindow
     {
-       
-        private const int LineCount = 10;
+        private const int LineCount = 50;
         public const int PointsCount = 10000;
 
         public const int LineLength = PointsCount * 2;
@@ -50,12 +53,28 @@ namespace OpenTkControlExample
             {
                 Renderer = renderer,
             };
+            Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(20));
+                this.OpenTkControl.Renderer = null;
+            });
         }
 
 
         private void OpenTkControl_OnExceptionOccurred(object sender, UnhandledExceptionEventArgs e)
         {
             Debug.WriteLine(e.ExceptionObject);
+        }
+
+        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+        {
+            foreach (var historySource in OpenTkControl.HistorySources)
+            {
+                var renderTargetBitmap =
+                    new RenderTargetBitmap((int)this.ActualWidth, (int)this.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                renderTargetBitmap.Render(historySource);
+                Box.Items.Add(renderTargetBitmap);
+            }
         }
     }
 }

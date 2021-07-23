@@ -65,6 +65,17 @@ namespace OpenTkControl
             set { SetValue(RendererProperty, value); }
         }
 
+
+        public bool ShowFps
+        {
+            get { return (bool) GetValue(ShowFpsProperty); }
+            set { SetValue(ShowFpsProperty, value); }
+        }
+
+        public static readonly DependencyProperty ShowFpsProperty =
+            DependencyProperty.Register("ShowFps", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(true));
+
+
         /// <summary>
         /// 依赖属性的性能较差，使用变量
         /// </summary>

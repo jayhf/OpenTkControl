@@ -1,38 +1,25 @@
 ﻿using System;
 using System.Windows.Shell;
-using OpenTK.Platform;
 
 namespace OpenTkControl
 {
-    public interface IRenderProcedure : IDisposable
+    public interface IRenderProcedure : IOpenGlRender, IDisposable
     {
-        IDoubleBuffer Buffer { get; }
+        void SizeCanvas(CanvasInfo size);
 
         void Begin();
 
         void End();
 
-        /// <summary>
-        /// not required
-        /// </summary>
         void SwapBuffer();
+
+        IRenderCanvas GetFrontBuffer();
+
 
         bool IsInitialized { get; }
 
-        bool CanRender { get; }
+        bool ReadyToRender { get; }
 
         IRenderer Renderer { get; set; }
-
-        GLSettings GlSettings { get; }
-
-        void Initialize(IWindowInfo window);
-
-        void SetSize(CanvasInfo size);
-
-        void Begin();
-
-        void End();
-
-        DrawingDirective Render();
     }
 }
