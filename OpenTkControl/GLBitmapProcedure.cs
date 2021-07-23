@@ -16,7 +16,10 @@ namespace OpenTkControl
     public class BitmapCanvas:IRenderCanvas
     {
         public ImageSource FrontSource { get; }
-        public ImageSource GetFrontSource()
+
+        public Guid Id { get; }
+
+        public ImageSource GetSource()
         {
             throw new NotImplementedException();
         }
@@ -25,6 +28,8 @@ namespace OpenTkControl
         {
             throw new NotImplementedException();
         }
+
+        public bool CanRender { get; }
 
         public void Begin()
         {
@@ -115,7 +120,7 @@ namespace OpenTkControl
             GlSettings = glSettings;
         }
 
-        public IRenderCanvas Buffer { get; }
+        public IDoubleBuffer Buffer { get; }
 
         public void Begin()
         {
@@ -226,7 +231,7 @@ namespace OpenTkControl
             }
 
             UpdateImage(copyLatest);
-            return new DrawingDirective(null, null, _bitmap, true); //允许异步
+            return new DrawingDirective(null, null, true); //允许异步
         }
 
         /// <summary>

@@ -8,26 +8,18 @@ namespace OpenTkControl
 
         public ScaleTransform ScaleTransform { get; }
 
-        public ImageSource ImageSource { get; set; }
-
         public bool IsNeedTransform => TranslateTransform != null || ScaleTransform != null;
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public bool CanDraw => ImageSource.Width != 0 && ImageSource.Height != 0;
 
         /// <summary>
         /// async drawing
         /// </summary>
         public bool IsDrawingAsync { get; }
 
-        public DrawingDirective(TranslateTransform translate, ScaleTransform scale, ImageSource imageSource,
+        public DrawingDirective(TranslateTransform translate, ScaleTransform scale,
             bool isDrawAsync = false)
         {
             this.TranslateTransform = translate;
             this.ScaleTransform = scale;
-            ImageSource = imageSource;
             this.IsDrawingAsync = isDrawAsync;
         }
 

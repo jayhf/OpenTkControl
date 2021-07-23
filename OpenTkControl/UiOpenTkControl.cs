@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace OpenTkControl
 {
@@ -68,7 +69,7 @@ namespace OpenTkControl
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
                 var drawingDirective = RenderProcedure.Render();
-                var imageSource = drawingDirective?.ImageSource;
+                var imageSource = new BitmapImage();//drawingDirective?.;
                 if (imageSource != null)
                 {
                     if (drawingDirective.IsNeedTransform)

@@ -6,7 +6,7 @@ namespace OpenTkControl
 {
     public interface IRenderProcedure : IDisposable
     {
-        IRenderCanvas Buffer { get; }
+        IDoubleBuffer Buffer { get; }
 
         void Begin();
 
