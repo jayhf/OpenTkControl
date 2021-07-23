@@ -14,19 +14,23 @@ using System.Windows.Media.Imaging;
 using OpenTK.Graphics;
 using TestRenderer;
 
+
+
 namespace OpenTkControlExample
 {
     public partial class MainWindow
     {
-        private const int LineCount = 50;
+        private const int LineCount = 10;
         public const int PointsCount = 10000;
 
         public const int LineLength = PointsCount * 2;
 
+        private TendencyChartRenderer renderer = new TendencyChartRenderer();
+
         public MainWindow()
         {
             this.InitializeComponent();
-            var renderer = new TendencyChartRenderer();
+
             var dateTime = DateTime.Now;
             var start = dateTime.Ticks;
             var random = new Random();
@@ -46,6 +50,8 @@ namespace OpenTkControlExample
             }
 
             var end = (long) renderer.LineRenderers.First().RingBuffer[LineLength - 2];
+            Slider.Maximum = end;
+            Slider.Value = end;
             renderer.CurrentScrollRange = new ScrollRange(0, end);
             renderer.CurrentYAxisValue = 1000;
             renderer.BackgroundColor = Color4.Black;
@@ -53,11 +59,6 @@ namespace OpenTkControlExample
             {
                 Renderer = renderer,
             };
-            Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromSeconds(20));
-                this.OpenTkControl.Renderer = null;
-            });
         }
 
 
@@ -68,13 +69,16 @@ namespace OpenTkControlExample
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
+            this.OpenTkControl.Renderer = null;
             foreach (var historySource in OpenTkControl.HistorySources)
             {
-                var renderTargetBitmap =
-                    new RenderTargetBitmap((int)this.ActualWidth, (int)this.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-                renderTargetBitmap.Render(historySource);
-                Box.Items.Add(renderTargetBitmap);
+                Box.Items.Add(historySource);
             }
+        }
+
+        private void Slider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            renderer.CurrentScrollRange = new ScrollRange(0, (long) e.NewValue);
         }
     }
 }

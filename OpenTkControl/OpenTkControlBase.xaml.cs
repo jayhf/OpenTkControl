@@ -32,6 +32,28 @@ using RenderbufferTarget = OpenTK.Graphics.OpenGL4.RenderbufferTarget;
 
 namespace OpenTkControl
 {
+    public class DoubleBufferDrawingVisual
+    {
+        private DrawingVisual drawingVisual0 = new DrawingVisual(), drawingVisual1 = new DrawingVisual();
+
+        public DrawingVisual BackBuffer { get; set; }
+
+        public DrawingVisual FrontBuffer { get; set; }
+
+        public DoubleBufferDrawingVisual()
+        {
+            BackBuffer = drawingVisual0;
+            FrontBuffer = drawingVisual1;
+        }
+
+        public void Swap()
+        {
+            var drawingVisual = BackBuffer;
+            BackBuffer = FrontBuffer;
+            FrontBuffer = drawingVisual;
+        }
+    }
+
     /// <summary>
     /// Interaction logic for OpenTkControlBase.xaml. OpenTkControlBase is a base class for OpenTK WPF controls
     /// </summary>
@@ -75,6 +97,15 @@ namespace OpenTkControl
         public static readonly DependencyProperty ShowFpsProperty =
             DependencyProperty.Register("ShowFps", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(true));
 
+        public static readonly DependencyProperty RenderTriggerProperty = DependencyProperty.Register(
+            "RenderTrigger", typeof(int), typeof(OpenTkControlBase),
+            new FrameworkPropertyMetadata(default(int), FrameworkPropertyMetadataOptions.AffectsRender));
+
+        public int RenderTrigger
+        {
+            get { return (int) GetValue(RenderTriggerProperty); }
+            set { SetValue(RenderTriggerProperty, value); }
+        }
 
         /// <summary>
         /// 依赖属性的性能较差，使用变量
@@ -195,6 +226,10 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnUnloaded(object sender, RoutedEventArgs args)
         {
+            if (IsDesignMode())
+            {
+                return;
+            }
             this._hwndSource.Dispose();
             this.WindowInfo.Dispose();
         }

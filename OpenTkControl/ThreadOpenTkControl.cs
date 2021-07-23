@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform.Windows;
 
@@ -48,10 +49,42 @@ namespace OpenTkControl
 
         private bool _visible;
 
-        public ThreadOpenTkControl()
+        private Fraps fraps = new Fraps();
+
+        public ThreadOpenTkControl() : base()
         {
-            IsVisibleChanged += (_, args) => { _visible = (bool) args.NewValue; };
+            /*IsVisibleChanged += (_, args) =>
+            {
+                if ((bool) args.NewValue)
+                {
+                    CompositionTarget.Rendering += OnCompTargetRender;
+                }
+                else
+                {
+                    CompositionTarget.Rendering -= OnCompTargetRender;
+                }
+            };*/
+            // IsVisibleChanged += (_, args) => { _visible = (bool) args.NewValue; };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
+        }
+
+        private int x;
+
+        private void OnCompTargetRender(object sender, EventArgs e)
+        {
+            var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
+            if (currentRenderTime == _lastRenderTime)
+            {
+                // It's possible for Rendering to call back twice in the same frame
+                // so only render when we haven't already rendered in this frame.
+                // Reference: https://docs.microsoft.com/en-us/dotnet/desktop/wpf/advanced/walkthrough-hosting-direct3d9-content-in-wpf?view=netframeworkdesktop-4.8#to-import-direct3d9-content
+                return;
+            }
+
+            _lastRenderTime = currentRenderTime.Value;
+            // InvalidateVisual();
+            RenderTrigger = x;
+            x++;
         }
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -59,57 +92,41 @@ namespace OpenTkControl
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                ;
             }
         }
 
         private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
 
+        TimeSpan stanSpan = TimeSpan.FromMilliseconds(300);
+
+        DateTime _date = DateTime.Now;
+
+        private Fraps realFraps = new Fraps();
+
+        private DoubleBufferDrawingVisual drawingVisual = new DoubleBufferDrawingVisual();
+
         protected override void OnRender(DrawingContext drawingContext)
         {
-            Debug.WriteLine("draw in");
-            base.OnRender(drawingContext);
-            /*drawingContext.DrawRectangle(Brushes.LightSeaGreen, new Pen(Brushes.DarkBlue, 2),
-                new Rect(new Point(10, 10), new Size(100, 100)));*/
-
             if (!_renderThreadStart)
             {
-                Debug.WriteLine("draw interrupt");
                 return;
             }
 
-            if (RenderCommand == Idle)
+            base.OnRender(drawingContext);
+            if (RenderCommand != Run)
             {
-                Debug.WriteLine("draw prevent");
                 return;
             }
 
             RenderCommand = Idle;
-            var source = RenderProcedure.GetFrontBuffer().GetSource();
-            if (source.Width > 0 && source.Height > 0)
-            {
-                Debug.WriteLine("draw success");
-                var drawingVisual = new DrawingVisual();
-                using (var renderOpen = drawingVisual.RenderOpen())
-                {
-                    renderOpen.DrawImage(source,
-                        new Rect(new Size(source.Width, source.Height)));
-                }
-
-                if (HistorySources.Count < 200)
-                {
-                    HistorySources.Add(drawingVisual);
-                }
-
-                drawingContext.DrawImage(source,
-                    new Rect(new Size(source.Width, source.Height)));
-            }
-            else
-            {
-                Debug.WriteLine("draw empty");
-            }
-
+            var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
+            drawingContext.DrawImage(imageSource,new Rect(new Size(imageSource.Width,imageSource.Height)));
+            // drawingContext.DrawDrawing(drawingVisual.FrontBuffer.Drawing);
+            realFraps.Increment();
+            fraps.DrawFps(drawingContext, new Point(10, 10));
+            realFraps.DrawFps(drawingContext, new Point(10, 50));
             _renderCompletedResetEvent.Set();
-            Debug.WriteLine("draw out");
         }
 
         protected CanvasInfo RecentCanvasInfo;
@@ -118,6 +135,11 @@ namespace OpenTkControl
         {
             if (Dispatcher.Invoke(IsDesignMode))
                 return;
+            if (this.RenderProcedure == null)
+            {
+                CloseThread();
+            }
+
             if (this.RenderProcedure != null && IsLoaded)
             {
                 StartThread();
@@ -150,7 +172,7 @@ namespace OpenTkControl
             }
         }
 
-        public IList<DrawingVisual> HistorySources { get; set; } = new List<DrawingVisual>();
+        public IList<ImageSource> HistorySources { get; set; } = new List<ImageSource>();
 
         protected override void OnUnloaded(object sender, RoutedEventArgs args)
         {
@@ -176,8 +198,10 @@ namespace OpenTkControl
             }).Wait(token);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
             var canvasInfo = RecentCanvasInfo;
+            int x = 0;
             using (RenderProcedure)
             {
+                Task renderTask = null;
                 WaitHandle[] drawHandles = {token.WaitHandle, _renderCompletedResetEvent};
                 while (!token.IsCancellationRequested)
                 {
@@ -192,20 +216,59 @@ namespace OpenTkControl
                     {
                         try
                         {
-                            Debug.WriteLine("render in");
-                            OnUITask(() => RenderProcedure.Begin()).Wait(token);
+                            OnUITask(() => RenderProcedure?.Begin()).Wait(token);
                             RenderProcedure.Render();
-                            OnUITask(() => RenderProcedure.End()).Wait(token);
-                            Debug.WriteLine("render out");
+                            fraps.Increment();
+                            OnUITask(() => RenderProcedure?.End()).Wait(token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
                         }
                         finally
                         {
-                            RenderCommand = Run;
-                            OnUITask(InvalidateVisual);
-                            WaitHandle.WaitAny(drawHandles);
-                            _renderCompletedResetEvent.Reset();
-                            RenderProcedure.SwapBuffer();
                         }
+
+                        var test = false;
+                        OnUITask(() =>
+                        {
+                            var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
+                            if (imageSource != null && imageSource.Width > 0 && imageSource.Height > 0)
+                            {
+
+                                RenderCommand = Run;
+                                x++;
+                                RenderTrigger = x;
+                            }
+                            /*
+                            if (imageSource != null && imageSource.Width > 0 && imageSource.Height > 0)
+                            {
+                                test = true;
+                                
+                                using (var drawingContext = drawingVisual.BackBuffer.RenderOpen())
+                                {
+                                    drawingContext.DrawImage(imageSource,
+                                        new Rect(new Size(imageSource.Width, imageSource.Height)));
+                                    fraps.DrawFps(drawingContext,new Point(10,10));
+                                }
+
+                            }*/
+
+                            // drawingVisual.Swap();
+                            // _renderCompletedResetEvent.Set();
+                        });
+
+                        WaitHandle.WaitAny(drawHandles);
+                        _renderCompletedResetEvent.Reset();
+                        /*if (test)
+                        {
+                            RenderCommand = Run;
+                            OnUITask((() =>
+                            {
+                                
+                            }));
+                        }*/
+                        // RenderProcedure.SwapBuffer();
                     }
                     else
                     {
@@ -227,6 +290,8 @@ namespace OpenTkControl
                 return;
             }
 
+            fraps.Start();
+            realFraps.Start();
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
             {
@@ -241,7 +306,14 @@ namespace OpenTkControl
         private void CloseThread()
         {
             _renderThreadStart = false;
-            _endThreadCts.Cancel();
+            try
+            {
+                _endThreadCts.Cancel();
+            }
+            catch (Exception e)
+            {
+            }
+
             _renderThread.Join();
             _endThreadCts.Dispose();
         }
