@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Platform;
 using OpenTK.Platform.Windows;
@@ -12,54 +13,35 @@ using Buffer = OpenTK.Graphics.OpenGL.Buffer;
 
 namespace OpenTkControl
 {
-    public class DoubleDxCanvas : IDoubleBuffer
+    public class DoubleDrawing
     {
-        private readonly DxCanvas[] _dxCanvasArray = {new DxCanvas(), new DxCanvas()};
+        private DrawingVisual[] drawingVisual = new DrawingVisual[2] {new DrawingVisual(), new DrawingVisual()};
 
-        private DxCanvas _backBuffer, _frontBuffer;
+        public DrawingVisual FrontVisual { get; private set; }
+        public DrawingVisual BackVisual { get; private set; }
 
-        public DoubleDxCanvas()
+        public DoubleDrawing()
         {
-            _backBuffer = _dxCanvasArray[0];
-            _frontBuffer = _dxCanvasArray[1];
+            FrontVisual = drawingVisual[0];
+            BackVisual = drawingVisual[1];
         }
 
-        public DxCanvas GetWriteBuffer()
+        public void Swap()
         {
-            return _backBuffer;
+            var visual = FrontVisual;
+            FrontVisual = BackVisual;
+            BackVisual = visual;
         }
-
-        public IRenderCanvas GetFrontBuffer()
-        {
-            return _backBuffer;
-        }
-
-        public IRenderCanvas GetBackBuffer()
-        {
-            return _backBuffer;
-        }
-
-        public void SwapBuffer()
-        {
-            var mid = _backBuffer;
-            _backBuffer = _frontBuffer;
-            _frontBuffer = mid;
-        }
-
-        public void Create(CanvasInfo info)
-        {
-            foreach (var dxCanvas in _dxCanvasArray)
-            {
-                dxCanvas.Create(info);
-            }
-        }
+        
     }
 
     ///Renderer that uses DX_Interop for a fast-path.
     public class GLDXProcedure : IRenderProcedure
     {
         private DxGlContext _context;
+
         private DxGLFramebuffer _framebuffers;
+
         private IRenderer _renderer;
 
         /// The OpenGL framebuffer handle.
@@ -77,18 +59,7 @@ namespace OpenTkControl
 
         private readonly DoubleDxCanvas _doubleDxCanvas = new DoubleDxCanvas();
 
-        public void SwapBuffer()
-        {
-            this._doubleDxCanvas.SwapBuffer();
-        }
-
-        public IRenderCanvas GetFrontBuffer()
-        {
-            return _doubleDxCanvas.GetFrontBuffer();
-        }
-
         public bool IsInitialized { get; private set; }
-
 
         public bool ReadyToRender => Width != 0 && Height != 0;
 
@@ -107,6 +78,16 @@ namespace OpenTkControl
         public GLDXProcedure(GLSettings glSettings)
         {
             this.GlSettings = glSettings;
+        }
+
+        public void SwapBuffer()
+        {
+            this._doubleDxCanvas.SwapBuffer();
+        }
+
+        public IImageBuffer GetFrontBuffer()
+        {
+            return _doubleDxCanvas.GetFrontBuffer();
         }
 
         public void SizeCanvas(CanvasInfo info)

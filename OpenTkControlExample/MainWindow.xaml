@@ -10,14 +10,16 @@
         Width="1920">
     <Grid>
 
-        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" />
+        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" 
+                                           Width="1000"
+                                           Height="1000"/>
 
         <Button Width="100"
                 Height="30"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Left"
                 Click="ButtonBase_OnClick" />
-        <ListBox Width="300"
+        <!--<ListBox Width="300"
                  x:Name="Box"
                  Background="AntiqueWhite"
                  HorizontalAlignment="Right">
@@ -39,7 +41,7 @@
                     </Border>
                 </DataTemplate>
             </ListBox.ItemTemplate>
-        </ListBox>
+        </ListBox>-->
         <!--<openTkControl:UiOpenTkControl x:Name="OpenTkControl" 
                                        Width="800"
                                        Height="800"/>-->

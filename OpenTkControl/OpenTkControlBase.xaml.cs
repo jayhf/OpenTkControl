@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -32,28 +33,6 @@ using RenderbufferTarget = OpenTK.Graphics.OpenGL4.RenderbufferTarget;
 
 namespace OpenTkControl
 {
-    public class DoubleBufferDrawingVisual
-    {
-        private DrawingVisual drawingVisual0 = new DrawingVisual(), drawingVisual1 = new DrawingVisual();
-
-        public DrawingVisual BackBuffer { get; set; }
-
-        public DrawingVisual FrontBuffer { get; set; }
-
-        public DoubleBufferDrawingVisual()
-        {
-            BackBuffer = drawingVisual0;
-            FrontBuffer = drawingVisual1;
-        }
-
-        public void Swap()
-        {
-            var drawingVisual = BackBuffer;
-            BackBuffer = FrontBuffer;
-            FrontBuffer = drawingVisual;
-        }
-    }
-
     /// <summary>
     /// Interaction logic for OpenTkControlBase.xaml. OpenTkControlBase is a base class for OpenTK WPF controls
     /// </summary>
@@ -98,12 +77,12 @@ namespace OpenTkControl
             DependencyProperty.Register("ShowFps", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(true));
 
         public static readonly DependencyProperty RenderTriggerProperty = DependencyProperty.Register(
-            "RenderTrigger", typeof(int), typeof(OpenTkControlBase),
-            new FrameworkPropertyMetadata(default(int), FrameworkPropertyMetadataOptions.AffectsRender));
+            "RenderTrigger", typeof(bool), typeof(OpenTkControlBase),
+            new FrameworkPropertyMetadata(default(bool), FrameworkPropertyMetadataOptions.AffectsRender));
 
-        public int RenderTrigger
+        public bool RenderTrigger
         {
-            get { return (int) GetValue(RenderTriggerProperty); }
+            get { return (bool) GetValue(RenderTriggerProperty); }
             set { SetValue(RenderTriggerProperty, value); }
         }
 

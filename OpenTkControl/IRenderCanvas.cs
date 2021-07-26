@@ -3,12 +3,11 @@ using System.Windows.Media;
 
 namespace OpenTkControl
 {
+    /// <summary>
+    /// render canvas, better to operate in ui thread.
+    /// </summary>
     public interface IRenderCanvas
     {
-        Guid Id { get; }
-
-        ImageSource GetSource();
-
         void Create(CanvasInfo info);
     }   
 }

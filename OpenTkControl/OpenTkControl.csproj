@@ -47,7 +47,9 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="D3DImage2.cs" />
     <Compile Include="DesignTimeHelper.cs" />
+    <Compile Include="DoubleDxCanvas.cs" />
     <Compile Include="DoublePixelBuffer.cs" />
     <Compile Include="BufferInfo.cs" />
     <Compile Include="DrawingDirective.cs" />
@@ -60,6 +62,7 @@
     <Compile Include="GLDXProcedure.cs" />
     <Compile Include="GLSettings.cs" />
     <Compile Include="IDoubleBuffer.cs" />
+    <Compile Include="IImageBuffer.cs" />
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />
