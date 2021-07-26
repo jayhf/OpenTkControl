@@ -301,6 +301,8 @@ namespace OpenTkControl
 
         public void Dispose()
         {
+            this._controlFraps.Dispose();
+            this._openglFraps.Dispose();
             CloseThread();
         }
     }
