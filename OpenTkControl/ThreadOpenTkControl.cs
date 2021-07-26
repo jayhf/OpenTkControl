@@ -69,7 +69,7 @@ namespace OpenTkControl
 
         public ThreadOpenTkControl() : base()
         {
-            /*IsVisibleChanged += (_, args) =>
+            IsVisibleChanged += (_, args) =>
             {
                 if ((bool) args.NewValue)
                 {
@@ -79,10 +79,9 @@ namespace OpenTkControl
                 {
                     CompositionTarget.Rendering -= OnCompTargetRender;
                 }
-            };*/
+            };
             // IsVisibleChanged += (_, args) => { _visible = (bool) args.NewValue; };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
-            // this.Source = renderTargetBitmap;
         }
 
 
@@ -94,35 +93,68 @@ namespace OpenTkControl
                 return;
             }
 
+            Debug.WriteLine($"fire {DateTime.Now}");
             _lastRenderTime = currentRenderTime.Value;
-            // RenderTrigger = !RenderTrigger;
-            InvalidateVisual();
+            RenderTrigger = !RenderTrigger;
+            // InvalidateVisual();
         }
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (RenderProcedure != null && RenderProcedure.IsInitialized)
+            if (RenderProcedure != null)
             {
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
             }
         }
 
-        // private readonly DrawingVisual _drawingVisual = new DrawingVisual();
-        // private RenderTargetBitmap renderTargetBitmap;
-            // = new RenderTargetBitmap(1000, 1000, 1, 1, PixelFormats.Pbgra32);
+        /*private RenderTargetBitmap renderTargetBitmap
+            = new RenderTargetBitmap(1000, 1000, 1, 1, PixelFormats.Pbgra32);*/
 
 
         protected override void OnRender(DrawingContext drawingContext)
         {
+            Debug.WriteLine($"render {DateTime.Now}");
+            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
+            if (frontBuffer.IsAvailable)
+            {
+                this.Source = frontBuffer.ImageSource;
+                /*var imageSource = frontBuffer.ImageSource;
+                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));#1#
+            }*/
+
             // base.OnRender(drawingContext);
-            // var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
-            // drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
+            var frontBuffer = RenderProcedure.GetFrontBuffer();
+            if (frontBuffer.IsAvailable)
+            {
+                drawingContext.DrawImage(frontBuffer.ImageSource, new Rect(new Point(), this.RenderSize));
+            }
+
+            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
+            if (frontBuffer.IsAvailable)
+            {
+                var imageSource = frontBuffer.ImageSource;
+                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
+            }*/
+
             /*drawingContext.DrawImage(renderTargetBitmap,
                 new Rect(new Size(renderTargetBitmap.Width, renderTargetBitmap.Width)));*/
+            // drawingContext.DrawImage(bitmap, new Rect(new Size(bitmap.Width, bitmap.Height)));
+            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
+            if (frontBuffer.IsAvailable)
+            {
+                var imageSource = frontBuffer.ImageSource;
+                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
+            }*/
+
             realFraps.Increment();
             fraps.DrawFps(drawingContext, new Point(10, 10));
             realFraps.DrawFps(drawingContext, new Point(10, 50));
+            if (waiting)
+            {
+                _renderCompletedResetEvent.Set();
+            }
         }
+
 
         protected override void OnRenderProcedureChanged()
         {
@@ -178,8 +210,8 @@ namespace OpenTkControl
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
             OnUITask(() =>
             {
-                RecentCanvasInfo = new CanvasInfo(1000, 1000, 1, 1);
-                //RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                // RecentCanvasInfo = new CanvasInfo(1000, 1000, 1, 1);
+                RenderProcedure.GlSettings.CreateCanvasInfo(this);
                 RenderProcedure.SizeCanvas(RecentCanvasInfo);
             }).Wait(token);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
@@ -197,15 +229,15 @@ namespace OpenTkControl
                         RenderProcedure.SizeFrame(RecentCanvasInfo);
                     }
 
+                    DrawingDirective drawingDirective = null;
                     if (RenderProcedure.ReadyToRender)
                     {
                         try
                         {
                             OnUITask(() => RenderProcedure?.Begin()).Wait(token);
-                            RenderProcedure.Render();
+                            drawingDirective = RenderProcedure.Render();
                             fraps.Increment();
                             OnUITask(() => RenderProcedure?.End()).Wait(token);
-                            RenderProcedure.SwapBuffer();
                         }
                         catch (OperationCanceledException)
                         {
@@ -215,35 +247,34 @@ namespace OpenTkControl
                         {
                         }
 
-                        OnUITask(() =>
+                        /*OnUITask(() =>
                         {
                             Debug.WriteLine("render in");
-                            
+
                             var frontBuffer = RenderProcedure.GetFrontBuffer();
                             if (frontBuffer.IsAvailable)
                             {
-                                var imageSource = frontBuffer.ImageSource;
-                                var renderTargetBitmap = new RenderTargetBitmap((int)imageSource.Width, (int)imageSource.Height,
-                                    96, 96, PixelFormats.Pbgra32);
-                                var drawingVisual = new DrawingVisual();
-                                using (var drawingContext = drawingVisual.RenderOpen())
+                                /*using (var drawingContext = drawingVisual.RenderOpen())
                                 {
+                                    var imageSource = frontBuffer.ImageSource;
                                     drawingContext.DrawImage(imageSource,
                                         new Rect(new Size(imageSource.Width, imageSource.Height)));
-                                }
-                                renderTargetBitmap.Render(drawingVisual);
-                                this.Source = renderTargetBitmap;
+                                }#1#
                                 InvalidateVisual();
                             }
-                            // _renderCompletedResetEvent.Set();
-                            Debug.WriteLine("render out");
-                        });
-                        
-                        // renderTask?.Wait(token);
-                        /*WaitHandle.WaitAny(drawHandles);
-                        _renderCompletedResetEvent.Reset();
-                        */
 
+                            else
+                            {
+                                _renderCompletedResetEvent.Set();
+                            }
+                            Debug.WriteLine("render out");
+                        })*/
+                        // renderTask?.Wait(token);
+                        waiting = true;
+                        WaitHandle.WaitAny(drawHandles);
+                        _renderCompletedResetEvent.Reset();
+                        waiting = false;
+                        // RenderProcedure.SwapBuffer();
                     }
                     else
                     {
@@ -252,6 +283,8 @@ namespace OpenTkControl
                 }
             }
         }
+
+        private volatile bool waiting = true;
 
         public void StartThread()
         {
