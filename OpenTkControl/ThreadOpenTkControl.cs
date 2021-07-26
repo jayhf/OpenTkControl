@@ -69,7 +69,7 @@ namespace OpenTkControl
 
         public ThreadOpenTkControl() : base()
         {
-            IsVisibleChanged += (_, args) =>
+            /*IsVisibleChanged += (_, args) =>
             {
                 if ((bool) args.NewValue)
                 {
@@ -79,9 +79,10 @@ namespace OpenTkControl
                 {
                     CompositionTarget.Rendering -= OnCompTargetRender;
                 }
-            };
+            };*/
             // IsVisibleChanged += (_, args) => { _visible = (bool) args.NewValue; };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
+            // this.Source = renderTargetBitmap;
         }
 
 
@@ -107,6 +108,8 @@ namespace OpenTkControl
         }
 
         // private readonly DrawingVisual _drawingVisual = new DrawingVisual();
+        // private RenderTargetBitmap renderTargetBitmap;
+            // = new RenderTargetBitmap(1000, 1000, 1, 1, PixelFormats.Pbgra32);
 
 
         protected override void OnRender(DrawingContext drawingContext)
@@ -114,7 +117,8 @@ namespace OpenTkControl
             // base.OnRender(drawingContext);
             // var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
             // drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
-            drawingContext.DrawDrawing(doubleDrawing.FrontVisual.Drawing);
+            /*drawingContext.DrawImage(renderTargetBitmap,
+                new Rect(new Size(renderTargetBitmap.Width, renderTargetBitmap.Width)));*/
             realFraps.Increment();
             fraps.DrawFps(drawingContext, new Point(10, 10));
             realFraps.DrawFps(drawingContext, new Point(10, 50));
@@ -198,9 +202,10 @@ namespace OpenTkControl
                         try
                         {
                             OnUITask(() => RenderProcedure?.Begin()).Wait(token);
-                            var drawingDirective = RenderProcedure.Render();
+                            RenderProcedure.Render();
                             fraps.Increment();
                             OnUITask(() => RenderProcedure?.End()).Wait(token);
+                            RenderProcedure.SwapBuffer();
                         }
                         catch (OperationCanceledException)
                         {
@@ -213,24 +218,32 @@ namespace OpenTkControl
                         OnUITask(() =>
                         {
                             Debug.WriteLine("render in");
+                            
                             var frontBuffer = RenderProcedure.GetFrontBuffer();
                             if (frontBuffer.IsAvailable)
                             {
                                 var imageSource = frontBuffer.ImageSource;
-                                using (var drawingContext = doubleDrawing.BackVisual.RenderOpen())
+                                var renderTargetBitmap = new RenderTargetBitmap((int)imageSource.Width, (int)imageSource.Height,
+                                    96, 96, PixelFormats.Pbgra32);
+                                var drawingVisual = new DrawingVisual();
+                                using (var drawingContext = drawingVisual.RenderOpen())
                                 {
                                     drawingContext.DrawImage(imageSource,
                                         new Rect(new Size(imageSource.Width, imageSource.Height)));
                                 }
-                                doubleDrawing.Swap();
+                                renderTargetBitmap.Render(drawingVisual);
+                                this.Source = renderTargetBitmap;
+                                InvalidateVisual();
                             }
-                            _renderCompletedResetEvent.Set();
+                            // _renderCompletedResetEvent.Set();
                             Debug.WriteLine("render out");
                         });
+                        
                         // renderTask?.Wait(token);
-                        WaitHandle.WaitAny(drawHandles);
+                        /*WaitHandle.WaitAny(drawHandles);
                         _renderCompletedResetEvent.Reset();
-                        RenderProcedure.SwapBuffer();
+                        */
+
                     }
                     else
                     {
@@ -239,8 +252,6 @@ namespace OpenTkControl
                 }
             }
         }
-
-        private DoubleDrawing doubleDrawing = new DoubleDrawing();
 
         public void StartThread()
         {
