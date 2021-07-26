@@ -66,15 +66,15 @@ namespace OpenTkControl
             set { SetValue(RendererProperty, value); }
         }
 
-
-        public bool ShowFps
+        public bool IsShowFps
         {
-            get { return (bool) GetValue(ShowFpsProperty); }
-            set { SetValue(ShowFpsProperty, value); }
+            get { return (bool) GetValue(IsShowFpsProperty); }
+            set { SetValue(IsShowFpsProperty, value); }
         }
 
-        public static readonly DependencyProperty ShowFpsProperty =
-            DependencyProperty.Register("ShowFps", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(true));
+        public static readonly DependencyProperty IsShowFpsProperty =
+            DependencyProperty.Register("IsShowFps", typeof(bool), typeof(OpenTkControlBase),
+                new PropertyMetadata(true));
 
         public static readonly DependencyProperty RenderTriggerProperty = DependencyProperty.Register(
             "RenderTrigger", typeof(bool), typeof(OpenTkControlBase),
@@ -91,49 +91,21 @@ namespace OpenTkControl
         /// </summary>
         protected IRenderProcedure RenderProcedure { get; set; }
 
-        private volatile float _frameRateLimit = (float) FrameRateLimitProperty.DefaultMetadata.DefaultValue;
-
-        public static readonly DependencyProperty FrameRateLimitProperty = DependencyProperty.Register(
-            nameof(FrameRateLimit), typeof(float), typeof(OpenTkControlBase),
-            new PropertyMetadata(float.PositiveInfinity));
-
-        /// <summary>
-        /// The maximum frame rate to render at. Anything over 1000 is treated as unlimited.
-        /// </summary>
-        public float FrameRateLimit
-        {
-            get => (float) GetValue(FrameRateLimitProperty);
-            set => SetValue(FrameRateLimitProperty, value);
-        }
-
         /// <summary>
         /// True if OnLoaded has already been called
         /// </summary>
         private bool _alreadyLoaded;
+
+        protected bool ShowFps = (bool) IsShowFpsProperty.DefaultMetadata.DefaultValue;
 
         /// <summary>
         /// Creates the <see cref="OpenTkControlBase"/>/>
         /// </summary>
         protected OpenTkControlBase()
         {
-            // this.Stretch = Stretch.Fill;
-            /*this.RenderTransformOrigin = new Point(0.5, 0.5);
-            var transformGroup = new TransformGroup();
-            transformGroup.Children = new TransformCollection(new Transform[]
-            {
-                new ScaleTransform(1, -1),
-                new TranslateTransform(0, 1000),
-                
-            });*/
-            // this.RenderTransform = transformGroup;
-            /*
-            this.RenderTransformOrigin = new Point(0.5, 0.5);
-            this.RenderTransform = new ScaleTransform() {ScaleY = -1};*/
-            // Update all of the volatile copies the variables
-            // This is a workaround for the WPF threading restric_rendererResetEventtions on DependencyProperties
-            // that allows other threads to read the values.
-            DependencyPropertyDescriptor.FromProperty(FrameRateLimitProperty, typeof(OpenTkControlBase))
-                .AddValueChanged(this, (sender, args) => _frameRateLimit = FrameRateLimit);
+            //used for fast read and thread safe
+            DependencyPropertyDescriptor.FromProperty(IsShowFpsProperty, typeof(OpenTkControlBase))
+                .AddValueChanged(this, (sender, args) => ShowFps = IsShowFps);
             DependencyPropertyDescriptor.FromProperty(RendererProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this, (sender, args) =>
                 {
@@ -145,7 +117,6 @@ namespace OpenTkControl
             {
                 if (_alreadyLoaded)
                     return;
-
                 _alreadyLoaded = true;
                 OnLoaded(sender, args);
             };
@@ -161,12 +132,12 @@ namespace OpenTkControl
 
 
         /// <summary>
-        /// after renderprocedure changed
+        /// after render procedure changed
         /// </summary>
         protected abstract void OnRenderProcedureChanged();
 
         /// <summary>
-        /// request change renderprocedure
+        /// request change render procedure
         /// </summary>
         protected abstract void OnRenderProcedureChanging();
 

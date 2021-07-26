@@ -17,7 +17,7 @@ using OpenTK.Platform.Windows;
 namespace OpenTkControl
 {
 /*candidate approach: use rendertargetbitmap*/
-    
+
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance
     /// </summary>
@@ -49,25 +49,13 @@ namespace OpenTkControl
 
         private DebugProc _debugProc;
 
-        private bool _visible;
-
-        private readonly Fraps fraps = new Fraps();
+        private readonly Fraps _openglFraps = new Fraps();
 
         protected CanvasInfo RecentCanvasInfo;
 
         private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
 
-        TimeSpan stanSpan = TimeSpan.FromMilliseconds(300);
-
-        DateTime _date = DateTime.Now;
-
-        private volatile int Status = Idle;
-
-        private const int Fire = 2;
-        public const int Ready = 1;
-        private const int Idle = 0;
-
-        private Fraps realFraps = new Fraps();
+        private Fraps _controlFraps = new Fraps();
 
         public ThreadOpenTkControl() : base()
         {
@@ -87,7 +75,7 @@ namespace OpenTkControl
         }
 
 
-        private async void OnCompTargetRender(object sender, EventArgs e)
+        private void OnCompTargetRender(object sender, EventArgs e)
         {
             var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
             if (currentRenderTime == _lastRenderTime)
@@ -109,20 +97,17 @@ namespace OpenTkControl
         }
 
 
-        private readonly DrawingVisual _drawingVisual = new DrawingVisual();
+        private readonly DrawingVisual _drawingCopy = new DrawingVisual();
+
+        /// <summary>
+        /// d3d image maybe flicker when 
+        /// </summary>
+        private volatile bool _isWaitingForSync = true;
 
         protected override void OnRender(DrawingContext drawingContext)
         {
             Debug.WriteLine($"render {DateTime.Now}");
-            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
-            if (frontBuffer.IsAvailable)
-            {
-                this.Source = frontBuffer.ImageSource;
-                /*var imageSource = frontBuffer.ImageSource;
-                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));#1#
-            }*/
-            // base.OnRender(drawingContext);
-            drawingContext.DrawDrawing(_drawingVisual.Drawing);
+            drawingContext.DrawDrawing(_drawingCopy.Drawing);
             /*var frontBuffer = RenderProcedure.GetFrontBuffer();
             if (frontBuffer.IsAvailable)
             {
@@ -146,10 +131,14 @@ namespace OpenTkControl
                 drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
             }*/
 
-            realFraps.Increment();
-            fraps.DrawFps(drawingContext, new Point(10, 10));
-            realFraps.DrawFps(drawingContext, new Point(10, 50));
-            if (waiting)
+            if (ShowFps)
+            {
+                _controlFraps.Increment();
+                _openglFraps.DrawFps(drawingContext, new Point(10, 10));
+                _controlFraps.DrawFps(drawingContext, new Point(10, 50));
+            }
+
+            if (_isWaitingForSync)
             {
                 _renderCompletedResetEvent.Set();
             }
@@ -233,7 +222,11 @@ namespace OpenTkControl
                         {
                             OnUITask(() => RenderProcedure?.Begin()).Wait(token);
                             RenderProcedure.Render();
-                            fraps.Increment();
+                            if (ShowFps)
+                            {
+                                _openglFraps.Increment();
+                            }
+
                             OnUITask(() => RenderProcedure?.End()).Wait(token);
                         }
                         catch (OperationCanceledException)
@@ -249,22 +242,18 @@ namespace OpenTkControl
                             var frontBuffer = RenderProcedure.GetFrontBuffer();
                             if (frontBuffer.IsAvailable)
                             {
-                                using (var drawingContext = _drawingVisual.RenderOpen())
+                                using (var drawingContext = _drawingCopy.RenderOpen())
                                 {
                                     var imageSource = frontBuffer.ImageSource;
                                     drawingContext.DrawImage(imageSource, new Rect(this.RenderSize));
                                 }
                             }
-
-                            else
-                            {
-                                _renderCompletedResetEvent.Set();
-                            }
                         });
-                        waiting = true;
+                        
+                        _isWaitingForSync = true;
                         WaitHandle.WaitAny(drawHandles);
                         _renderCompletedResetEvent.Reset();
-                        waiting = false;
+                        _isWaitingForSync = false;
                         RenderProcedure.SwapBuffer();
                     }
                     else
@@ -275,8 +264,6 @@ namespace OpenTkControl
             }
         }
 
-        private volatile bool waiting = true;
-
         public void StartThread()
         {
             if (_renderThreadStart)
@@ -284,8 +271,8 @@ namespace OpenTkControl
                 return;
             }
 
-            fraps.Start();
-            realFraps.Start();
+            _openglFraps.Start();
+            _controlFraps.Start();
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
             {

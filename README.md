@@ -1,3 +1,10 @@
+
+# Declaration
+I've experienced a flickering on intel gpu (10700 uhd630) when low fps on official project, 
+I tried to solved it by use GL.Finish() but it'll be blocked frequently as opentk render run in ui thread. 
+So I commenced combination of  [official project](https://github.com/opentk/GLWpfControl) and this.
+
+## Below is origin: 
 # OpenTkControl
 
 This project aims to make it possible to achieve better performance with OpenTk in WPF and it achieves this by copying the data less than existing solutions, such as the examples here: https://github.com/freakinpenguin/OpenTK-WPF. It also allows for all of the rendering to be performed off of the UI thread to improve responsiveness and provides a variety of settings that can be used to further improve performance.

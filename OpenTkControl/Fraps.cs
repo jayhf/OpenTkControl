@@ -6,39 +6,47 @@ using System.Windows.Media;
 
 namespace OpenTkControl
 {
-    public class Fraps
+    public class Fraps : IDisposable
     {
-        public int FPS { get; private set; }
+        public string Name { get; set; }
 
-        private Timer timer;
+        public int Fps { get; private set; }
 
-        private volatile int framecounts = 0;
+        private Timer _timer;
 
-        private Typeface mFpsTypeface = new Typeface(new FontFamily("Consolas"), FontStyles.Normal, FontWeights.Bold,
+        private volatile int _frameCount = 0;
+
+        public Typeface FpsTypeface { get; } = new Typeface(new FontFamily("Arial"), FontStyles.Normal,
+            FontWeights.Black,
             FontStretches.Normal);
 
-        private SolidColorBrush brush = new SolidColorBrush(Colors.DeepSkyBlue);
+        public SolidColorBrush Brush { get; } = new SolidColorBrush(Colors.DeepSkyBlue);
 
         public void Increment()
         {
-            Interlocked.Increment(ref framecounts);
+            Interlocked.Increment(ref _frameCount);
         }
 
         public void Start()
         {
-            timer = new Timer((state =>
+            _timer = new Timer((state =>
             {
-                FPS = framecounts;
-                framecounts = 0;
+                Fps = _frameCount;
+                _frameCount = 0;
             }), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
         }
 
         public void DrawFps(DrawingContext drawingContext, Point point)
         {
-            drawingContext.DrawText(new FormattedText($"fps:{FPS}", CultureInfo.CurrentCulture,
+            drawingContext.DrawText(new FormattedText($"{Name} fps:{Fps}", CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight,
-                    mFpsTypeface, 26, brush, 1),
+                    FpsTypeface, 21, Brush, 1),
                 point);
+        }
+
+        public void Dispose()
+        {
+            _timer?.Dispose();
         }
     }
 }
