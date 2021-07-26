@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -35,7 +36,7 @@ namespace OpenTkControl
     /// <summary>
     /// Interaction logic for OpenTkControlBase.xaml. OpenTkControlBase is a base class for OpenTK WPF controls
     /// </summary>
-    public abstract partial class OpenTkControlBase
+    public abstract class OpenTkControlBase : FrameworkElement
     {
         /// <summary>
         /// Initialize the OpenTk Toolkit
@@ -63,6 +64,26 @@ namespace OpenTkControl
         {
             get { return (IRenderProcedure) GetValue(RendererProperty); }
             set { SetValue(RendererProperty, value); }
+        }
+
+
+        public bool ShowFps
+        {
+            get { return (bool) GetValue(ShowFpsProperty); }
+            set { SetValue(ShowFpsProperty, value); }
+        }
+
+        public static readonly DependencyProperty ShowFpsProperty =
+            DependencyProperty.Register("ShowFps", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(true));
+
+        public static readonly DependencyProperty RenderTriggerProperty = DependencyProperty.Register(
+            "RenderTrigger", typeof(bool), typeof(OpenTkControlBase),
+            new FrameworkPropertyMetadata(default(bool), FrameworkPropertyMetadataOptions.AffectsRender));
+
+        public bool RenderTrigger
+        {
+            get { return (bool) GetValue(RenderTriggerProperty); }
+            set { SetValue(RenderTriggerProperty, value); }
         }
 
         /// <summary>
@@ -95,8 +116,19 @@ namespace OpenTkControl
         /// </summary>
         protected OpenTkControlBase()
         {
-            InitializeComponent();
-
+            // this.Stretch = Stretch.Fill;
+            /*this.RenderTransformOrigin = new Point(0.5, 0.5);
+            var transformGroup = new TransformGroup();
+            transformGroup.Children = new TransformCollection(new Transform[]
+            {
+                new ScaleTransform(1, -1),
+                new TranslateTransform(0, 1000),
+                
+            });*/
+            // this.RenderTransform = transformGroup;
+            /*
+            this.RenderTransformOrigin = new Point(0.5, 0.5);
+            this.RenderTransform = new ScaleTransform() {ScaleY = -1};*/
             // Update all of the volatile copies the variables
             // This is a workaround for the WPF threading restric_rendererResetEventtions on DependencyProperties
             // that allows other threads to read the values.
@@ -160,6 +192,8 @@ namespace OpenTkControl
             }
         }
 
+        private HwndSource _hwndSource;
+
         /// <summary>
         /// Called when this control is loaded
         /// </summary>
@@ -172,8 +206,9 @@ namespace OpenTkControl
                 return;
             }
 
-            WindowInfo = Utilities.CreateWindowsWindowInfo(
-                new WindowInteropHelper(Window.GetWindow(this)).Handle);
+            var baseHandle = new WindowInteropHelper(Window.GetWindow(this)).Handle;
+            _hwndSource = new HwndSource(0, 0, 0, 0, 0, "GLWpfControl", baseHandle);
+            this.WindowInfo = Utilities.CreateWindowsWindowInfo(_hwndSource.Handle);
         }
 
         /// <summary>
@@ -183,6 +218,13 @@ namespace OpenTkControl
         /// <param name="args">Information about the event</param>
         protected virtual void OnUnloaded(object sender, RoutedEventArgs args)
         {
+            if (IsDesignMode())
+            {
+                return;
+            }
+
+            this._hwndSource.Dispose();
+            this.WindowInfo.Dispose();
         }
 
         protected void Callback(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,

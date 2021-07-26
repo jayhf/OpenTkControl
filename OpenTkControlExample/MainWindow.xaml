@@ -5,19 +5,59 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:openTkControl="clr-namespace:OpenTkControl;assembly=OpenTkControl"
         mc:Ignorable="d"
-        Title="MainWindow" 
-        Height="1080" 
+        Title="MainWindow"
+        Height="1080"
         Width="1920">
     <Grid>
-        <TabControl>
+
+        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" />
+
+        <Button Width="100"
+                Height="30"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                Click="ButtonBase_OnClick" />
+        <!--<ListBox Width="300"
+                 x:Name="Box"
+                 Background="AntiqueWhite"
+                 HorizontalAlignment="Right">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel IsVirtualizing="True"
+                                            VirtualizationMode="Recycling"/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type ImageSource}">
+                    <Border BorderThickness="2"
+                            BorderBrush="Black"
+                            Margin="5">
+                        <Image Source="{Binding}"
+                               Width="290"
+                               Stretch="Uniform" />
+
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>-->
+        <!--<openTkControl:UiOpenTkControl x:Name="OpenTkControl" 
+                                       Width="800"
+                                       Height="800"/>-->
+        <!--<TabControl>
             <TabItem Header="asdfasdv">
 
             </TabItem>
             <TabItem Header="asdf">
-                <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" ExceptionOccurred="OpenTkControl_OnExceptionOccurred"/>
+                <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl"
+                                                   Height="800"
+                                                   Width="800"/>
             </TabItem>
-        </TabControl>
-        
+        </TabControl>-->
+
+        <Slider VerticalAlignment="Top"
+                Width="666"
+                Minimum="0"
+                ValueChanged="Slider_OnValueChanged"
+                x:Name="Slider" />
     </Grid>
 </Window>
-

@@ -1,20 +1,24 @@
 ﻿using System;
-using System.Windows.Media;
 using System.Windows.Shell;
-using OpenTK.Platform;
 
 namespace OpenTkControl
 {
-    public interface IRenderProcedure : IDisposable
+    public interface IRenderProcedure : IOpenGlRender, IDisposable
     {
-        IRenderer Renderer { get; set; }
-
-        GLSettings GlSettings { get; }
-
-        void Initialize(IWindowInfo window);
-
         void SizeCanvas(CanvasInfo size);
 
-        DrawingDirective Render();
+        void Begin();
+
+        void End();
+
+        void SwapBuffer();
+
+        IImageBuffer GetFrontBuffer();
+
+        bool IsInitialized { get; }
+
+        bool ReadyToRender { get; }
+
+        IRenderer Renderer { get; set; }
     }
 }

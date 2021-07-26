@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
@@ -7,102 +9,190 @@ using System.Windows.Media;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Platform;
 using OpenTK.Platform.Windows;
+using Buffer = OpenTK.Graphics.OpenGL.Buffer;
 
 namespace OpenTkControl
 {
+    public class DoubleBuffer<T>
+    {
+        private readonly Func<T> _createFunc;
+        private T[] drawingVisual = new T[2];
+
+        public T FrontVisual { get; private set; }
+        public T BackVisual { get; private set; }
+
+        public DoubleBuffer(Func<T> createFunc)
+        {
+            _createFunc = createFunc;
+        }
+
+        public void Create()
+        {
+            drawingVisual[0] = _createFunc();
+            drawingVisual[1] = _createFunc();
+            FrontVisual = drawingVisual[0];
+            BackVisual = drawingVisual[1];
+        }
+
+        public void Swap()
+        {
+            var visual = FrontVisual;
+            FrontVisual = BackVisual;
+            BackVisual = visual;
+        }
+    }
+
     ///Renderer that uses DX_Interop for a fast-path.
     public class GLDXProcedure : IRenderProcedure
     {
-        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
         private DxGlContext _context;
 
-        public event Action<TimeSpan> GLRender;
+        private DxGLFramebuffer _framebuffers;
 
-        private DxGLFramebuffer _framebuffer;
+        private IRenderer _renderer;
 
         /// The OpenGL framebuffer handle.
-        public int FrameBufferHandle => _framebuffer?.GLFramebufferHandle ?? 0;
+        public int FrameBufferHandle => _framebuffers?.GLFramebufferHandle ?? 0;
+
+        public IntPtr DxRenderTargetHandle => _framebuffers?.DxRenderTargetHandle ?? IntPtr.Zero;
 
         /// The OpenGL Framebuffer width
-        public int Width => _framebuffer?.FramebufferWidth ?? 0;
+        public int Width => _framebuffers?.FramebufferWidth ?? 0;
 
         /// The OpenGL Framebuffer height
-        public int Height => _framebuffer?.FramebufferHeight ?? 0;
+        public int Height => _framebuffers?.FramebufferHeight ?? 0;
 
-        private TimeSpan _lastFrameStamp;
+        private volatile bool _rendererInitialized = false;
 
-        /// Sets up the framebuffer, directx stuff for rendering. 
-        private void PreRender()
+        private DxCanvas dxCanvas = new DxCanvas();
+
+        public bool IsInitialized { get; private set; }
+
+        public bool ReadyToRender => Width != 0 && Height != 0;
+
+        public IRenderer Renderer
         {
-            _framebuffer.D3dImage.Lock();
-            Wgl.DXLockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffer.DxInteropRegisteredHandle});
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffer.GLFramebufferHandle);
-            GL.Viewport(0, 0, _framebuffer.FramebufferWidth, _framebuffer.FramebufferHeight);
+            get => _renderer;
+            set
+            {
+                _renderer = value;
+                _rendererInitialized = false;
+            }
         }
 
-        /// Sets up the framebuffer and prepares stuff for usage in directx.
-        private void PostRender()
-        {
-            Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffer.DxInteropRegisteredHandle});
-            _framebuffer.D3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, _framebuffer.DxRenderTargetHandle);
-            _framebuffer.D3dImage.AddDirtyRect(new Int32Rect(0, 0, _framebuffer.FramebufferWidth,
-                _framebuffer.FramebufferHeight));
-            _framebuffer.D3dImage.Unlock();
-        }
-
-        public IRenderer Renderer { get; set; }
-
+        public GLSettings GlSettings { get; }
 
         public GLDXProcedure(GLSettings glSettings)
         {
             this.GlSettings = glSettings;
         }
 
-        public GLSettings GlSettings { get; }
+        public void SwapBuffer()
+        {
+            
+        }
+
+        public IImageBuffer GetFrontBuffer()
+        {
+            return dxCanvas;
+        }
+
+        public void SizeCanvas(CanvasInfo info)
+        {
+            dxCanvas.Create(info);
+        }
+
+        public void Begin()
+        {
+            var image = dxCanvas.Image;
+            image.Lock();
+            image.SetBackBuffer(D3DResourceType.IDirect3DSurface9,
+                this.DxRenderTargetHandle);
+        }
+
+        public void End()
+        {
+            var image = dxCanvas.Image;
+            image.AddDirtyRect(new Int32Rect(0, 0, this.Width,
+                this.Height));
+            image.Unlock();
+        }
+
+        /// Sets up the framebuffer, directx stuff for rendering. 
+        private void PreRender()
+        {
+            Wgl.DXLockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffers.DxInteropRegisteredHandle});
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffers.GLFramebufferHandle);
+        }
+
+        /// Sets up the framebuffer and prepares stuff for usage in directx.
+        private void PostRender()
+        {
+            Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffers.DxInteropRegisteredHandle});
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>indicate that if renderer initialize successfully or already initialized</returns>
+        private bool CheckRenderer()
+        {
+            if (_rendererInitialized)
+            {
+                return true;
+            }
+
+            if (Renderer != null)
+            {
+                Renderer.Initialize(_context.GraphicsContext);
+                _rendererInitialized = true;
+                return true;
+            }
+
+            return false;
+        }
 
         public void Initialize(IWindowInfo window)
         {
             _context = new DxGlContext(GlSettings, window);
+            CheckRenderer();
+            IsInitialized = true;
         }
 
-        public void SizeCanvas(CanvasInfo size)
+        public void SizeFrame(CanvasInfo size)
         {
-            var width = size.Width;
-            var height = size.Height;
-            if (_framebuffer == null || _framebuffer.Width != width || _framebuffer.Height != height)
+            var width = size.ActualWidth;
+            var height = size.ActualHeight;
+            if (_framebuffers == null || _framebuffers.Width != width || _framebuffers.Height != height)
             {
-                _framebuffer?.Dispose();
-                _framebuffer = null;
+                _framebuffers?.Dispose();
                 if (width > 0 && height > 0)
                 {
-                    _framebuffer = new DxGLFramebuffer(_context, width, height, size.DpiScaleX, size.DpiScaleY);
+                    _framebuffers = new DxGLFramebuffer(_context, width, height, size.DpiScaleX, size.DpiScaleY);
+                    if (CheckRenderer())
+                    {
+                        Renderer.Resize(_framebuffers.PixelSize);
+                    }
+
+                    // GL.Viewport(0, 0, _framebuffers.FramebufferWidth, _framebuffers.FramebufferHeight);
                 }
             }
         }
 
         public DrawingDirective Render()
         {
-            if (_framebuffer == null)
-            {
-                return null;
-            }
-
-            var curFrameStamp = _stopwatch.Elapsed;
-            var deltaT = curFrameStamp - _lastFrameStamp;
-            _lastFrameStamp = curFrameStamp;
             PreRender();
-            GLRender?.Invoke(deltaT);
+            Renderer?.Render(new GlRenderEventArgs(Width, Height, false));
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
             PostRender();
-            return new DrawingDirective(_framebuffer.TranslateTransform, _framebuffer.FlipYTransform,_framebuffer.D3dImage);
-            
+            return new DrawingDirective(_framebuffers.TranslateTransform, _framebuffers.FlipYTransform);
         }
 
         public void Dispose()
         {
             _context?.Dispose();
-            _framebuffer?.Dispose();
+            _framebuffers?.Dispose();
         }
     }
 }

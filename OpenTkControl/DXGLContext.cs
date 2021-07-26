@@ -37,7 +37,7 @@ namespace OpenTkControl
         /// The number of active controls using the shared context.
         private static int _sharedContextReferenceCount;
 
-        private readonly IWindowInfo _windowInfo;
+        private IWindowInfo _windowInfo;
 
         public DxGlContext([NotNull] GLSettings settings, IWindowInfo windowInfo)
         {
@@ -106,16 +106,12 @@ namespace OpenTkControl
 
             else
             {
-                /*// we're already in a window context, so we can just cheat by creating a new dependency object here rather than passing any around.
-                var depObject = new DependencyObject();
-                // retrieve window handle/info
+                /*var depObject = new DependencyObject();
                 var window = Window.GetWindow(depObject);
-                var baseHandle = window is null ? IntPtr.Zero : new WindowInteropHelper(window).Handle;*/
-
-                /*var hwndSource = new HwndSource(0, 0, 0, 0, 0, "GLWpfControl", this._windowInfo.Handle);
-                var windowInfo = Utilities.CreateWindowsWindowInfo(hwndSource.Handle);*/
+                var baseHandle = window is null ? IntPtr.Zero : new WindowInteropHelper(window).Handle;
+                var hwndSource = new HwndSource(0, 0, 0, 0, 0, "GLWpfControl", baseHandle);
+                _windowInfo = Utilities.CreateWindowsWindowInfo(hwndSource.Handle);*/
                 var mode = new GraphicsMode(ColorFormat.Empty, 0, 0, 0, 0, 0, false);
-
                 var gfxCtx = new GraphicsContext(mode, _windowInfo, settings.MajorVersion, settings.MinorVersion,
                     settings.GraphicsContextFlags);
                 gfxCtx.LoadAll();

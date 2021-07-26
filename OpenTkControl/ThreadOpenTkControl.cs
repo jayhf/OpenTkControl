@@ -1,15 +1,23 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices.ComTypes;
+using System.Security.AccessControl;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform.Windows;
 
 namespace OpenTkControl
 {
+/*candidate approach: use rendertargetbitmap*/
+    
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance
     /// </summary>
@@ -18,6 +26,7 @@ namespace OpenTkControl
         public static readonly DependencyProperty ThreadNameProperty = DependencyProperty.Register(
             nameof(ThreadName), typeof(string), typeof(ThreadOpenTkControl),
             new PropertyMetadata("OpenTk Render Thread"));
+
 
         /// <summary>
         /// The name of the background thread that does the OpenGL rendering
@@ -38,38 +47,47 @@ namespace OpenTkControl
         /// </summary>
         private CancellationTokenSource _endThreadCts;
 
-        public ThreadOpenTkControl()
+        private DebugProc _debugProc;
+
+        private bool _visible;
+
+        private readonly Fraps fraps = new Fraps();
+
+        protected CanvasInfo RecentCanvasInfo;
+
+        private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
+
+        TimeSpan stanSpan = TimeSpan.FromMilliseconds(300);
+
+        DateTime _date = DateTime.Now;
+
+        private volatile int Status = Idle;
+
+        private const int Fire = 2;
+        public const int Ready = 1;
+        private const int Idle = 0;
+
+        private Fraps realFraps = new Fraps();
+
+        public ThreadOpenTkControl() : base()
         {
             IsVisibleChanged += (_, args) =>
             {
                 if ((bool) args.NewValue)
                 {
-                    CompositionTarget.Rendering += CompositionTarget_Rendering;
+                    CompositionTarget.Rendering += OnCompTargetRender;
                 }
                 else
                 {
-                    CompositionTarget.Rendering -= CompositionTarget_Rendering;
+                    CompositionTarget.Rendering -= OnCompTargetRender;
                 }
             };
+            // IsVisibleChanged += (_, args) => { _visible = (bool) args.NewValue; };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
-            timer = new Timer((state =>
-            {
-                fps = currentFrameCount;
-                currentFrameCount = 0;
-            }), null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1));
         }
 
-        private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            if (RenderProcedure != null)
-            {
-                CurrentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-            }
-        }
 
-        private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
-
-        private void CompositionTarget_Rendering(object sender, EventArgs e)
+        private async void OnCompTargetRender(object sender, EventArgs e)
         {
             var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
             if (currentRenderTime == _lastRenderTime)
@@ -77,97 +95,187 @@ namespace OpenTkControl
                 return;
             }
 
+            Debug.WriteLine($"fire {DateTime.Now}");
             _lastRenderTime = currentRenderTime.Value;
-            InvalidateVisual();
+            RenderTrigger = !RenderTrigger;
+        }
+
+        private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (RenderProcedure != null)
+            {
+                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+            }
         }
 
 
-        protected CanvasInfo CurrentCanvasInfo;
+        private readonly DrawingVisual _drawingVisual = new DrawingVisual();
+
+        protected override void OnRender(DrawingContext drawingContext)
+        {
+            Debug.WriteLine($"render {DateTime.Now}");
+            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
+            if (frontBuffer.IsAvailable)
+            {
+                this.Source = frontBuffer.ImageSource;
+                /*var imageSource = frontBuffer.ImageSource;
+                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));#1#
+            }*/
+            // base.OnRender(drawingContext);
+            drawingContext.DrawDrawing(_drawingVisual.Drawing);
+            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
+            if (frontBuffer.IsAvailable)
+            {
+                drawingContext.DrawImage(frontBuffer.ImageSource, new Rect(new Point(), this.RenderSize));
+            }*/
+
+            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
+            if (frontBuffer.IsAvailable)
+            {
+                var imageSource = frontBuffer.ImageSource;
+                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
+            }*/
+
+            /*drawingContext.DrawImage(renderTargetBitmap,
+                new Rect(new Size(renderTargetBitmap.Width, renderTargetBitmap.Width)));*/
+            // drawingContext.DrawImage(bitmap, new Rect(new Size(bitmap.Width, bitmap.Height)));
+            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
+            if (frontBuffer.IsAvailable)
+            {
+                var imageSource = frontBuffer.ImageSource;
+                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
+            }*/
+
+            realFraps.Increment();
+            fraps.DrawFps(drawingContext, new Point(10, 10));
+            realFraps.DrawFps(drawingContext, new Point(10, 50));
+            if (waiting)
+            {
+                _renderCompletedResetEvent.Set();
+            }
+        }
+
 
         protected override void OnRenderProcedureChanged()
         {
-            if (this.RenderProcedure != null)
+            if (Dispatcher.Invoke(IsDesignMode))
+                return;
+            if (this.RenderProcedure == null)
             {
-                CurrentCanvasInfo = this.RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                CloseThread();
+            }
+
+            if (this.RenderProcedure != null && IsLoaded)
+            {
                 StartThread();
             }
         }
 
         protected override void OnRenderProcedureChanging()
         {
-            if (this.RenderProcedure != null)
+            if (_renderThreadStart)
             {
                 CloseThread();
             }
         }
 
-        public Task OnRenderTask(Action action)
+        public Task OnUITask(Action action)
         {
             return Dispatcher.InvokeAsync(action).Task;
         }
 
-        private readonly ManualResetEvent _renderingResetEvent = new ManualResetEvent(false);
-
         private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
 
-        /*private TaskCompletionSource<Tuple<ImageSource, DrawingDirective>> renderCompletionSource =
-            new TaskCompletionSource<Tuple<ImageSource, DrawingDirective>>();*/
-        private Typeface mFpsTypeface = new Typeface(new FontFamily("Consolas"), FontStyles.Normal, FontWeights.Bold,
-            FontStretches.Normal);
-
-        private SolidColorBrush solidColorBrush = new SolidColorBrush(Colors.Blue);
-
-        protected override void OnRender(DrawingContext drawingContext)
-        {
-            base.OnRender(drawingContext);
-            var directive = PushRender().GetAwaiter().GetResult();
-            var imageSource = directive?.ImageSource;
-            if (imageSource != null)
-            {
-                if (directive.IsNeedTransform)
-                {
-                    // Transforms are applied in reverse order
-                    drawingContext.PushTransform(directive
-                        .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
-                    drawingContext.PushTransform(directive
-                        .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
-                    // dpi scaled rectangle from the image
-                    var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-                    drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                    drawingContext.Pop(); // Remove the scale transform
-                    drawingContext.Pop(); // Remove the translation transform
-                }
-                else
-                {
-                    var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-                    drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                }
-            }
-
-            drawingContext.DrawText(
-                new FormattedText($"fps:{fps}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, mFpsTypeface, 16,
-                    solidColorBrush, 1),
-                new Point(10, 10));
-            if (directive != null && _renderCompletedResetEvent.WaitOne(0))
-            {
-                _renderCompletedResetEvent.Set();
-            }
-        }
-
-        private TaskCompletionSource<DrawingDirective> _imageSourceCompletionSource = null;
-
-        public Task<DrawingDirective> PushRender()
-        {
-            _imageSourceCompletionSource = new TaskCompletionSource<DrawingDirective>();
-            if (!_renderingResetEvent.WaitOne(0))
-            {
-                _renderingResetEvent.Set();
-            }
-
-            return _imageSourceCompletionSource.Task;
-        }
-
         private volatile bool _renderThreadStart = false;
+
+        protected override void OnLoaded(object sender, RoutedEventArgs args)
+        {
+            base.OnLoaded(sender, args);
+            if (!_renderThreadStart && RenderProcedure != null)
+            {
+                StartThread();
+            }
+        }
+
+        /// <summary>
+        /// The function that the thread runs to render the control
+        /// </summary>
+        /// <param name="boxedToken"></param>
+        private void RenderThread(object boxedToken)
+        {
+            var token = (CancellationToken) boxedToken;
+            _debugProc = Callback;
+            RenderProcedure.Initialize(WindowInfo);
+            GL.Enable(EnableCap.DebugOutput);
+            GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
+            OnUITask(() =>
+            {
+                RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                RenderProcedure.SizeCanvas(RecentCanvasInfo);
+            }).Wait(token);
+            RenderProcedure.SizeFrame(RecentCanvasInfo);
+            var canvasInfo = RecentCanvasInfo;
+            using (RenderProcedure)
+            {
+                WaitHandle[] drawHandles = {token.WaitHandle, _renderCompletedResetEvent};
+                while (!token.IsCancellationRequested)
+                {
+                    if (!canvasInfo.Equals(RecentCanvasInfo))
+                    {
+                        canvasInfo = RecentCanvasInfo;
+                        OnUITask(() => { RenderProcedure.SizeCanvas(RecentCanvasInfo); }).Wait(token);
+                        RenderProcedure.SizeFrame(RecentCanvasInfo);
+                    }
+
+                    if (RenderProcedure.ReadyToRender)
+                    {
+                        try
+                        {
+                            OnUITask(() => RenderProcedure?.Begin()).Wait(token);
+                            RenderProcedure.Render();
+                            fraps.Increment();
+                            OnUITask(() => RenderProcedure?.End()).Wait(token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                        finally
+                        {
+                        }
+
+                        OnUITask(() =>
+                        {
+                            var frontBuffer = RenderProcedure.GetFrontBuffer();
+                            if (frontBuffer.IsAvailable)
+                            {
+                                using (var drawingContext = _drawingVisual.RenderOpen())
+                                {
+                                    var imageSource = frontBuffer.ImageSource;
+                                    drawingContext.DrawImage(imageSource, new Rect(this.RenderSize));
+                                }
+                            }
+
+                            else
+                            {
+                                _renderCompletedResetEvent.Set();
+                            }
+                        });
+                        waiting = true;
+                        WaitHandle.WaitAny(drawHandles);
+                        _renderCompletedResetEvent.Reset();
+                        waiting = false;
+                        RenderProcedure.SwapBuffer();
+                    }
+                    else
+                    {
+                        Thread.Sleep(30);
+                    }
+                }
+            }
+        }
+
+        private volatile bool waiting = true;
 
         public void StartThread()
         {
@@ -176,7 +284,8 @@ namespace OpenTkControl
                 return;
             }
 
-            _renderThreadStart = true;
+            fraps.Start();
+            realFraps.Start();
             _endThreadCts = new CancellationTokenSource();
             _renderThread = new Thread(RenderThread)
             {
@@ -185,112 +294,27 @@ namespace OpenTkControl
                 Name = ThreadName
             };
             _renderThread.Start(_endThreadCts.Token);
+            _renderThreadStart = true;
         }
 
         private void CloseThread()
         {
             _renderThreadStart = false;
-            _renderingResetEvent.Set();
-            _endThreadCts.Cancel();
+            try
+            {
+                _endThreadCts.Cancel();
+            }
+            catch (Exception e)
+            {
+            }
+
             _renderThread.Join();
             _endThreadCts.Dispose();
-        }
-
-        protected override void OnLoaded(object sender, RoutedEventArgs args)
-        {
-            base.OnLoaded(sender, args);
-        }
-
-        protected override void OnUnloaded(object sender, RoutedEventArgs args)
-        {
-            base.OnUnloaded(sender, args);
-            // CloseThread();
-        }
-
-        private DebugProc _debugProc;
-
-        private Timer timer;
-        private volatile int currentFrameCount, fps;
-
-        /// <summary>
-        /// The function that the thread runs to render the control
-        /// </summary>
-        /// <param name="boxedToken"></param>
-        private void RenderThread(object boxedToken)
-        {
-#if DEBUG
-            // Don't render in design mode to prevent errors from calling OpenGL API methods.
-            if (Dispatcher.Invoke(IsDesignMode))
-                return;
-#endif
-
-            var token = (CancellationToken) boxedToken;
-            _debugProc = Callback;
-            RenderProcedure.Initialize(WindowInfo);
-            GL.Enable(EnableCap.DebugOutput);
-            GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-            var canvasInfo = CurrentCanvasInfo;
-            RenderProcedure.SizeCanvas(CurrentCanvasInfo);
-            using (RenderProcedure)
-            {
-                WaitHandle[] renderHandles = {token.WaitHandle, _renderingResetEvent};
-                WaitHandle[] drawHandles = {token.WaitHandle, _renderCompletedResetEvent};
-                while (!token.IsCancellationRequested)
-                {
-                    if (!canvasInfo.Equals(CurrentCanvasInfo))
-                    {
-                        canvasInfo = CurrentCanvasInfo;
-                        RenderProcedure.SizeCanvas(CurrentCanvasInfo);
-                    }
-
-                    DrawingDirective directive = null;
-                    Exception exception = null;
-                    try
-                    {
-                        directive = RenderProcedure.Render();
-                        Interlocked.Increment(ref currentFrameCount);
-                        var directiveImageSource = directive?.ImageSource;
-                        if (directiveImageSource != null)
-                        {
-                            directive.ImageSource = (ImageSource) directiveImageSource.GetCurrentValueAsFrozen();
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        exception = e;
-                    }
-                    finally
-                    {
-                        WaitHandle.WaitAny(renderHandles);
-                        _renderingResetEvent.Reset();
-                    }
-
-                    if (exception != null)
-                    {
-                        _imageSourceCompletionSource.SetException(exception);
-                    }
-                    else
-                    {
-                        _imageSourceCompletionSource.SetResult(directive);
-                    }
-
-                    if (token.IsCancellationRequested)
-                        break;
-
-                    if (directive != null && !directive.IsOutputAsync)
-                    {
-                        //不允许异步渲染
-                        WaitHandle.WaitAny(drawHandles);
-                        _renderCompletedResetEvent.Reset();
-                    }
-                }
-            }
         }
 
         public void Dispose()
         {
             CloseThread();
-            _renderingResetEvent?.Dispose();
         }
     }
 }
