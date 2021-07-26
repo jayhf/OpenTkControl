@@ -10,9 +10,7 @@
         Width="1920">
     <Grid>
 
-        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" 
-                                           Width="1000"
-                                           Height="1000"/>
+        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" />
 
         <Button Width="100"
                 Height="30"

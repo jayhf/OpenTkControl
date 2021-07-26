@@ -36,7 +36,7 @@ namespace OpenTkControl
     /// <summary>
     /// Interaction logic for OpenTkControlBase.xaml. OpenTkControlBase is a base class for OpenTK WPF controls
     /// </summary>
-    public abstract class OpenTkControlBase : Image
+    public abstract class OpenTkControlBase : FrameworkElement
     {
         /// <summary>
         /// Initialize the OpenTk Toolkit
@@ -116,6 +116,19 @@ namespace OpenTkControl
         /// </summary>
         protected OpenTkControlBase()
         {
+            // this.Stretch = Stretch.Fill;
+            /*this.RenderTransformOrigin = new Point(0.5, 0.5);
+            var transformGroup = new TransformGroup();
+            transformGroup.Children = new TransformCollection(new Transform[]
+            {
+                new ScaleTransform(1, -1),
+                new TranslateTransform(0, 1000),
+                
+            });*/
+            // this.RenderTransform = transformGroup;
+            /*
+            this.RenderTransformOrigin = new Point(0.5, 0.5);
+            this.RenderTransform = new ScaleTransform() {ScaleY = -1};*/
             // Update all of the volatile copies the variables
             // This is a workaround for the WPF threading restric_rendererResetEventtions on DependencyProperties
             // that allows other threads to read the values.
@@ -209,6 +222,7 @@ namespace OpenTkControl
             {
                 return;
             }
+
             this._hwndSource.Dispose();
             this.WindowInfo.Dispose();
         }

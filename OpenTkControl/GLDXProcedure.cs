@@ -13,15 +13,23 @@ using Buffer = OpenTK.Graphics.OpenGL.Buffer;
 
 namespace OpenTkControl
 {
-    public class DoubleDrawing
+    public class DoubleBuffer<T>
     {
-        private DrawingVisual[] drawingVisual = new DrawingVisual[2] {new DrawingVisual(), new DrawingVisual()};
+        private readonly Func<T> _createFunc;
+        private T[] drawingVisual = new T[2];
 
-        public DrawingVisual FrontVisual { get; private set; }
-        public DrawingVisual BackVisual { get; private set; }
+        public T FrontVisual { get; private set; }
+        public T BackVisual { get; private set; }
 
-        public DoubleDrawing()
+        public DoubleBuffer(Func<T> createFunc)
         {
+            _createFunc = createFunc;
+        }
+
+        public void Create()
+        {
+            drawingVisual[0] = _createFunc();
+            drawingVisual[1] = _createFunc();
             FrontVisual = drawingVisual[0];
             BackVisual = drawingVisual[1];
         }
@@ -32,7 +40,6 @@ namespace OpenTkControl
             FrontVisual = BackVisual;
             BackVisual = visual;
         }
-        
     }
 
     ///Renderer that uses DX_Interop for a fast-path.
@@ -57,7 +64,7 @@ namespace OpenTkControl
 
         private volatile bool _rendererInitialized = false;
 
-        private readonly DoubleDxCanvas _doubleDxCanvas = new DoubleDxCanvas();
+        private DxCanvas dxCanvas = new DxCanvas();
 
         public bool IsInitialized { get; private set; }
 
@@ -82,22 +89,22 @@ namespace OpenTkControl
 
         public void SwapBuffer()
         {
-            this._doubleDxCanvas.SwapBuffer();
+            
         }
 
         public IImageBuffer GetFrontBuffer()
         {
-            return _doubleDxCanvas.GetFrontBuffer();
+            return dxCanvas;
         }
 
         public void SizeCanvas(CanvasInfo info)
         {
-            _doubleDxCanvas.Create(info);
+            dxCanvas.Create(info);
         }
 
         public void Begin()
         {
-            var image = _doubleDxCanvas.GetWriteBuffer().Image;
+            var image = dxCanvas.Image;
             image.Lock();
             image.SetBackBuffer(D3DResourceType.IDirect3DSurface9,
                 this.DxRenderTargetHandle);
@@ -105,7 +112,7 @@ namespace OpenTkControl
 
         public void End()
         {
-            var image = _doubleDxCanvas.GetWriteBuffer().Image;
+            var image = dxCanvas.Image;
             image.AddDirtyRect(new Int32Rect(0, 0, this.Width,
                 this.Height));
             image.Unlock();
