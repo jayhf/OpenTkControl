@@ -13,8 +13,7 @@ namespace OpenTkControl
 
         void SwapBuffer();
 
-        IRenderCanvas GetFrontBuffer();
-
+        IImageBuffer GetFrontBuffer();
 
         bool IsInitialized { get; }
 

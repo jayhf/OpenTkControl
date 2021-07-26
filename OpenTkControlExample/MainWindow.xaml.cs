@@ -70,10 +70,10 @@ namespace OpenTkControlExample
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
             this.OpenTkControl.Renderer = null;
-            foreach (var historySource in OpenTkControl.HistorySources)
+            /*foreach (var historySource in OpenTkControl.HistorySources)
             {
                 Box.Items.Add(historySource);
-            }
+            }*/
         }
 
         private void Slider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

@@ -13,7 +13,7 @@ namespace OpenTkControl
         /// <summary>
         /// async drawing
         /// </summary>
-        public bool IsDrawingAsync { get; }
+        public bool IsDrawingAsync { get; } = false;
 
         public DrawingDirective(TranslateTransform translate, ScaleTransform scale,
             bool isDrawAsync = false)

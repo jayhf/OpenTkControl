@@ -1,12 +1,13 @@
 ﻿namespace OpenTkControl
 {
+    /// <summary>
+    /// double buffer 
+    /// </summary>
     public interface IDoubleBuffer
     {
-        void Create(CanvasInfo info);
+        IImageBuffer GetFrontBuffer();
 
-        IRenderCanvas GetFrontBuffer();
-
-        IRenderCanvas GetBackBuffer();
+        IImageBuffer GetBackBuffer();
 
         void SwapBuffer();
     }

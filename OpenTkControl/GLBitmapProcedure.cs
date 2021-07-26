@@ -95,7 +95,7 @@ namespace OpenTkControl
             throw new NotImplementedException();
         }
 
-        public IRenderCanvas GetFrontBuffer()
+        public IImageBuffer GetFrontBuffer()
         {
             throw new NotImplementedException();
         }

@@ -49,11 +49,27 @@ namespace OpenTkControl
 
         private bool _visible;
 
-        private Fraps fraps = new Fraps();
+        private readonly Fraps fraps = new Fraps();
+
+        protected CanvasInfo RecentCanvasInfo;
+
+        private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
+
+        TimeSpan stanSpan = TimeSpan.FromMilliseconds(300);
+
+        DateTime _date = DateTime.Now;
+
+        private volatile int Status = Idle;
+
+        private const int Fire = 2;
+        public const int Ready = 1;
+        private const int Idle = 0;
+
+        private Fraps realFraps = new Fraps();
 
         public ThreadOpenTkControl() : base()
         {
-            /*IsVisibleChanged += (_, args) =>
+            IsVisibleChanged += (_, args) =>
             {
                 if ((bool) args.NewValue)
                 {
@@ -63,28 +79,23 @@ namespace OpenTkControl
                 {
                     CompositionTarget.Rendering -= OnCompTargetRender;
                 }
-            };*/
+            };
             // IsVisibleChanged += (_, args) => { _visible = (bool) args.NewValue; };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
         }
 
-        private int x;
 
-        private void OnCompTargetRender(object sender, EventArgs e)
+        private async void OnCompTargetRender(object sender, EventArgs e)
         {
             var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
             if (currentRenderTime == _lastRenderTime)
             {
-                // It's possible for Rendering to call back twice in the same frame
-                // so only render when we haven't already rendered in this frame.
-                // Reference: https://docs.microsoft.com/en-us/dotnet/desktop/wpf/advanced/walkthrough-hosting-direct3d9-content-in-wpf?view=netframeworkdesktop-4.8#to-import-direct3d9-content
                 return;
             }
 
             _lastRenderTime = currentRenderTime.Value;
-            // InvalidateVisual();
-            RenderTrigger = x;
-            x++;
+            // RenderTrigger = !RenderTrigger;
+            InvalidateVisual();
         }
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -92,44 +103,22 @@ namespace OpenTkControl
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                ;
             }
         }
 
-        private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
+        // private readonly DrawingVisual _drawingVisual = new DrawingVisual();
 
-        TimeSpan stanSpan = TimeSpan.FromMilliseconds(300);
-
-        DateTime _date = DateTime.Now;
-
-        private Fraps realFraps = new Fraps();
-
-        private DoubleBufferDrawingVisual drawingVisual = new DoubleBufferDrawingVisual();
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            if (!_renderThreadStart)
-            {
-                return;
-            }
-
-            base.OnRender(drawingContext);
-            if (RenderCommand != Run)
-            {
-                return;
-            }
-
-            RenderCommand = Idle;
+            // base.OnRender(drawingContext);
             // var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
             // drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
-            drawingContext.DrawDrawing(drawingVisual.FrontBuffer.Drawing);
+            drawingContext.DrawDrawing(doubleDrawing.FrontVisual.Drawing);
             realFraps.Increment();
             fraps.DrawFps(drawingContext, new Point(10, 10));
             realFraps.DrawFps(drawingContext, new Point(10, 50));
-            _renderCompletedResetEvent.Set();
         }
-
-        protected CanvasInfo RecentCanvasInfo;
 
         protected override void OnRenderProcedureChanged()
         {
@@ -172,14 +161,6 @@ namespace OpenTkControl
             }
         }
 
-        public IList<ImageSource> HistorySources { get; set; } = new List<ImageSource>();
-
-        protected override void OnUnloaded(object sender, RoutedEventArgs args)
-        {
-            base.OnUnloaded(sender, args);
-            //unload don't close thread
-        }
-
         /// <summary>
         /// The function that the thread runs to render the control
         /// </summary>
@@ -193,12 +174,12 @@ namespace OpenTkControl
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
             OnUITask(() =>
             {
-                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                RecentCanvasInfo = new CanvasInfo(1000, 1000, 1, 1);
+                //RenderProcedure.GlSettings.CreateCanvasInfo(this);
                 RenderProcedure.SizeCanvas(RecentCanvasInfo);
             }).Wait(token);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
             var canvasInfo = RecentCanvasInfo;
-            int x = 0;
             using (RenderProcedure)
             {
                 Task renderTask = null;
@@ -217,7 +198,7 @@ namespace OpenTkControl
                         try
                         {
                             OnUITask(() => RenderProcedure?.Begin()).Wait(token);
-                            RenderProcedure.Render();
+                            var drawingDirective = RenderProcedure.Render();
                             fraps.Increment();
                             OnUITask(() => RenderProcedure?.End()).Wait(token);
                         }
@@ -231,29 +212,25 @@ namespace OpenTkControl
 
                         OnUITask(() =>
                         {
-                            var imageSource = RenderProcedure.GetFrontBuffer().GetSource();
-                            if (imageSource != null && imageSource.Width > 0 && imageSource.Height > 0)
+                            Debug.WriteLine("render in");
+                            var frontBuffer = RenderProcedure.GetFrontBuffer();
+                            if (frontBuffer.IsAvailable)
                             {
-                                using (var drawingContext = drawingVisual.BackBuffer.RenderOpen())
+                                var imageSource = frontBuffer.ImageSource;
+                                using (var drawingContext = doubleDrawing.BackVisual.RenderOpen())
                                 {
                                     drawingContext.DrawImage(imageSource,
                                         new Rect(new Size(imageSource.Width, imageSource.Height)));
-                                    fraps.DrawFps(drawingContext, new Point(10, 10));
                                 }
-                                drawingVisual.Swap();
-                                RenderCommand = Run;
-                                x++;
-                                RenderTrigger = x;
+                                doubleDrawing.Swap();
                             }
-                            else
-                            {
-                                _renderCompletedResetEvent.Set();
-                            }
-
+                            _renderCompletedResetEvent.Set();
+                            Debug.WriteLine("render out");
                         });
-
+                        // renderTask?.Wait(token);
                         WaitHandle.WaitAny(drawHandles);
                         _renderCompletedResetEvent.Reset();
+                        RenderProcedure.SwapBuffer();
                     }
                     else
                     {
@@ -263,10 +240,7 @@ namespace OpenTkControl
             }
         }
 
-        private volatile int RenderCommand = Idle;
-
-        private const int Run = 1;
-        private const int Idle = 0;
+        private DoubleDrawing doubleDrawing = new DoubleDrawing();
 
         public void StartThread()
         {
