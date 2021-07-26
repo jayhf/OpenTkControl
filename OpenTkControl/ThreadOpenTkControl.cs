@@ -96,7 +96,6 @@ namespace OpenTkControl
             Debug.WriteLine($"fire {DateTime.Now}");
             _lastRenderTime = currentRenderTime.Value;
             RenderTrigger = !RenderTrigger;
-            // InvalidateVisual();
         }
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -107,9 +106,8 @@ namespace OpenTkControl
             }
         }
 
-        /*private RenderTargetBitmap renderTargetBitmap
-            = new RenderTargetBitmap(1000, 1000, 1, 1, PixelFormats.Pbgra32);*/
 
+        private readonly DrawingVisual _drawingVisual = new DrawingVisual();
 
         protected override void OnRender(DrawingContext drawingContext)
         {
@@ -121,13 +119,13 @@ namespace OpenTkControl
                 /*var imageSource = frontBuffer.ImageSource;
                 drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));#1#
             }*/
-
             // base.OnRender(drawingContext);
-            var frontBuffer = RenderProcedure.GetFrontBuffer();
+            drawingContext.DrawDrawing(_drawingVisual.Drawing);
+            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
             if (frontBuffer.IsAvailable)
             {
                 drawingContext.DrawImage(frontBuffer.ImageSource, new Rect(new Point(), this.RenderSize));
-            }
+            }*/
 
             /*var frontBuffer = RenderProcedure.GetFrontBuffer();
             if (frontBuffer.IsAvailable)
@@ -210,7 +208,6 @@ namespace OpenTkControl
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
             OnUITask(() =>
             {
-                // RecentCanvasInfo = new CanvasInfo(1000, 1000, 1, 1);
                 RenderProcedure.GlSettings.CreateCanvasInfo(this);
                 RenderProcedure.SizeCanvas(RecentCanvasInfo);
             }).Wait(token);
@@ -218,7 +215,6 @@ namespace OpenTkControl
             var canvasInfo = RecentCanvasInfo;
             using (RenderProcedure)
             {
-                Task renderTask = null;
                 WaitHandle[] drawHandles = {token.WaitHandle, _renderCompletedResetEvent};
                 while (!token.IsCancellationRequested)
                 {
@@ -229,13 +225,12 @@ namespace OpenTkControl
                         RenderProcedure.SizeFrame(RecentCanvasInfo);
                     }
 
-                    DrawingDirective drawingDirective = null;
                     if (RenderProcedure.ReadyToRender)
                     {
                         try
                         {
                             OnUITask(() => RenderProcedure?.Begin()).Wait(token);
-                            drawingDirective = RenderProcedure.Render();
+                            RenderProcedure.Render();
                             fraps.Increment();
                             OnUITask(() => RenderProcedure?.End()).Wait(token);
                         }
@@ -247,34 +242,28 @@ namespace OpenTkControl
                         {
                         }
 
-                        /*OnUITask(() =>
+                        OnUITask(() =>
                         {
-                            Debug.WriteLine("render in");
-
                             var frontBuffer = RenderProcedure.GetFrontBuffer();
                             if (frontBuffer.IsAvailable)
                             {
-                                /*using (var drawingContext = drawingVisual.RenderOpen())
+                                using (var drawingContext = _drawingVisual.RenderOpen())
                                 {
                                     var imageSource = frontBuffer.ImageSource;
-                                    drawingContext.DrawImage(imageSource,
-                                        new Rect(new Size(imageSource.Width, imageSource.Height)));
-                                }#1#
-                                InvalidateVisual();
+                                    drawingContext.DrawImage(imageSource, new Rect(this.RenderSize));
+                                }
                             }
 
                             else
                             {
                                 _renderCompletedResetEvent.Set();
                             }
-                            Debug.WriteLine("render out");
-                        })*/
-                        // renderTask?.Wait(token);
+                        });
                         waiting = true;
                         WaitHandle.WaitAny(drawHandles);
                         _renderCompletedResetEvent.Reset();
                         waiting = false;
-                        // RenderProcedure.SwapBuffer();
+                        RenderProcedure.SwapBuffer();
                     }
                     else
                     {
