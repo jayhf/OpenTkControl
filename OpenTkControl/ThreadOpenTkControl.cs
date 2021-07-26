@@ -16,6 +16,8 @@ using OpenTK.Platform.Windows;
 
 namespace OpenTkControl
 {
+/*candidate approach: use rendertargetbitmap*/
+    
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance
     /// </summary>
