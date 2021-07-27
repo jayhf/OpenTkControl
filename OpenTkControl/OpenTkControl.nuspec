@@ -1,17 +1,20 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="utf-8"?>
 <package >
   <metadata>
-    <id>JayFleischer.OpenTkControl</id>
-    <version>1.0.2</version>
+    <id>$id$</id>
+    <version>0.5.0-alpha</version>
     <title>$title$</title>
-    <authors>Jay Fleischer</authors>
-    <owners>jayhf614</owners>
-    <licenseUrl>https://github.com/jayhf/OpenTkControl/blob/master/LICENSE</licenseUrl>
-    <projectUrl>https://github.com/jayhf/OpenTkControl/</projectUrl>
+    <authors>$author$</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>A faster way to use OpenTk in WPF without Forms dependencies</description>
-    <releaseNotes>Initial OpenTkControl Release</releaseNotes>
-    <copyright>Copyright 2020</copyright>
-    <tags>WPF OpenTK OpenGL Graphics C# .NET</tags>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/migeyusu/OpenTkControl</projectUrl>
+    <icon>images\lion.png</icon>
+    <description>$description$</description>
+    <releaseNotes>alpha version, only threadopentkcontrol.</releaseNotes>
+    <copyright>$copyright$</copyright>
+    <tags>WPF OpenTK</tags>
   </metadata>
+  <files>
+    <file src="lion.png" target="images\"/>
+  </files>
 </package>

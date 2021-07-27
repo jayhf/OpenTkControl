@@ -89,7 +89,7 @@ namespace OpenTkControl
         /// <summary>
         /// 依赖属性的性能较差，使用变量
         /// </summary>
-        protected IRenderProcedure RenderProcedure { get; set; }
+        protected IRenderProcedure RenderProcedure;
 
         /// <summary>
         /// True if OnLoaded has already been called
