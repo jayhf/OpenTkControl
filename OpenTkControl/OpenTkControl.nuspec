@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/migeyusu/OpenTkControl</projectUrl>
     <icon>images\lion.png</icon>
     <description>$description$</description>
-    <releaseNotes>dipose fraps</releaseNotes>
+    <releaseNotes>namespace refactor;dispose complement;user visible introduced;introduced render procedure  lifecycle;bug fixed;</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>WPF OpenTK</tags>
   </metadata>
