@@ -44,7 +44,6 @@ namespace OpenTkControl
             this._windowInfo = windowInfo;
             DXInterop.Direct3DCreate9Ex(DXInterop.DefaultSdkVersion, out var dxContextHandle);
             DxContextHandle = dxContextHandle;
-
             var deviceParameters = new PresentationParameters
             {
                 Windowed = 1,

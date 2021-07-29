@@ -12,33 +12,18 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using OpenTK.Graphics.OpenGL4;
+using OpenTK.Platform;
 using OpenTK.Platform.Windows;
 
 namespace OpenTkControl
 {
-/*candidate approach: use rendertargetbitmap*/
-
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance
     /// </summary>
-    public class ThreadOpenTkControl : OpenTkControlBase, IDisposable
+    public class ThreadOpenTkControl : OpenTkControlBase
     {
-        public static readonly DependencyProperty ThreadNameProperty = DependencyProperty.Register(
-            nameof(ThreadName), typeof(string), typeof(ThreadOpenTkControl),
-            new PropertyMetadata("OpenTk Render Thread"));
-
-
         /// <summary>
-        /// The name of the background thread that does the OpenGL rendering
-        /// </summary>
-        public string ThreadName
-        {
-            get => (string) GetValue(ThreadNameProperty);
-            set => SetValue(ThreadNameProperty, value);
-        }
-
-        /// <summary>
-        /// The Thread object for the rendering thread
+        /// The Thread object for the rendering thread， use origin thread but not task lest context switch
         /// </summary>
         private Thread _renderThread;
 
@@ -49,19 +34,27 @@ namespace OpenTkControl
 
         private DebugProc _debugProc;
 
-        private readonly Fraps _openglFraps = new Fraps();
+        private readonly Fraps _openglFraps = new Fraps() {Name = "GLFps"};
+
+        private readonly Fraps _controlFraps = new Fraps() {Name = "WindowFps"};
 
         protected CanvasInfo RecentCanvasInfo;
 
         private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
 
-        private Fraps _controlFraps = new Fraps();
+        private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
+
+        private volatile bool _renderThreadStart = false;
+
+        private readonly ManualResetEvent _renderLoopResetEvent = new ManualResetEvent(false);
 
         public ThreadOpenTkControl() : base()
         {
             IsVisibleChanged += (_, args) =>
             {
-                if ((bool) args.NewValue)
+                var newValue = (bool) args.NewValue;
+                this.IsUserVisible = newValue;
+                if (newValue)
                 {
                     CompositionTarget.Rendering += OnCompTargetRender;
                 }
@@ -70,10 +63,8 @@ namespace OpenTkControl
                     CompositionTarget.Rendering -= OnCompTargetRender;
                 }
             };
-            // IsVisibleChanged += (_, args) => { _visible = (bool) args.NewValue; };
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
         }
-
 
         private void OnCompTargetRender(object sender, EventArgs e)
         {
@@ -83,7 +74,6 @@ namespace OpenTkControl
                 return;
             }
 
-            Debug.WriteLine($"fire {DateTime.Now}");
             _lastRenderTime = currentRenderTime.Value;
             RenderTrigger = !RenderTrigger;
         }
@@ -96,7 +86,6 @@ namespace OpenTkControl
             }
         }
 
-
         private readonly DrawingVisual _drawingCopy = new DrawingVisual();
 
         /// <summary>
@@ -106,31 +95,7 @@ namespace OpenTkControl
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            Debug.WriteLine($"render {DateTime.Now}");
             drawingContext.DrawDrawing(_drawingCopy.Drawing);
-            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
-            if (frontBuffer.IsAvailable)
-            {
-                drawingContext.DrawImage(frontBuffer.ImageSource, new Rect(new Point(), this.RenderSize));
-            }*/
-
-            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
-            if (frontBuffer.IsAvailable)
-            {
-                var imageSource = frontBuffer.ImageSource;
-                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
-            }*/
-
-            /*drawingContext.DrawImage(renderTargetBitmap,
-                new Rect(new Size(renderTargetBitmap.Width, renderTargetBitmap.Width)));*/
-            // drawingContext.DrawImage(bitmap, new Rect(new Size(bitmap.Width, bitmap.Height)));
-            /*var frontBuffer = RenderProcedure.GetFrontBuffer();
-            if (frontBuffer.IsAvailable)
-            {
-                var imageSource = frontBuffer.ImageSource;
-                drawingContext.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
-            }*/
-
             if (ShowFps)
             {
                 _controlFraps.Increment();
@@ -144,46 +109,63 @@ namespace OpenTkControl
             }
         }
 
+        private IWindowInfo _windowInfo;
 
-        protected override void OnRenderProcedureChanged()
+        protected override void OpenRenderer(IWindowInfo windowInfo)
+        {
+            if (RenderProcedure != null)
+            {
+                this._windowInfo = windowInfo;
+                StartRenderThread();
+            }
+        }
+
+        protected override void CloseRenderer()
+        {
+            CloseRenderThread();
+            base.CloseRenderer();
+        }
+
+        /// <summary>
+        /// switch render procedure
+        /// </summary>
+        /// <param name="args"></param>
+        protected override void OnRenderProcedureChanged(PropertyChangedArgs<IRenderProcedure> args)
         {
             if (Dispatcher.Invoke(IsDesignMode))
                 return;
-            if (this.RenderProcedure == null)
+            if (args.OldValue != null && _renderThreadStart)
             {
-                CloseThread();
+                CloseRenderThread();
             }
 
-            if (this.RenderProcedure != null && IsLoaded)
+            if (this.RenderProcedure != null && IsRendererOpened)
             {
-                StartThread();
+                StartRenderThread();
             }
         }
 
-        protected override void OnRenderProcedureChanging()
+        protected override void OnUserVisibleChanged(PropertyChangedArgs<bool> args)
         {
-            if (_renderThreadStart)
+            if (args.NewValue)
             {
-                CloseThread();
+                _renderLoopResetEvent.Set();
             }
         }
 
-        public Task OnUITask(Action action)
+        private Task OnUITask(Action action)
         {
             return Dispatcher.InvokeAsync(action).Task;
         }
 
-        private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
-
-        private volatile bool _renderThreadStart = false;
-
         protected override void OnLoaded(object sender, RoutedEventArgs args)
         {
             base.OnLoaded(sender, args);
-            if (!_renderThreadStart && RenderProcedure != null)
-            {
-                StartThread();
-            }
+        }
+
+        protected override void OnUnloaded(object sender, RoutedEventArgs args)
+        {
+            base.OnUnloaded(sender, args);
         }
 
         /// <summary>
@@ -194,7 +176,7 @@ namespace OpenTkControl
         {
             var token = (CancellationToken) boxedToken;
             _debugProc = Callback;
-            RenderProcedure.Initialize(WindowInfo);
+            RenderProcedure.Initialize(_windowInfo);
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
             OnUITask(() =>
@@ -249,7 +231,7 @@ namespace OpenTkControl
                                 }
                             }
                         });
-                        
+
                         _isWaitingForSync = true;
                         WaitHandle.WaitAny(drawHandles);
                         _renderCompletedResetEvent.Reset();
@@ -260,17 +242,24 @@ namespace OpenTkControl
                     {
                         Thread.Sleep(30);
                     }
+
+                    if (!UserVisible)
+                    {
+                        _renderLoopResetEvent.WaitOne();
+                        _renderLoopResetEvent.Reset();
+                    }
                 }
             }
         }
 
-        public void StartThread()
+        private void StartRenderThread()
         {
             if (_renderThreadStart)
             {
                 return;
             }
 
+            _renderThreadStart = true;
             _openglFraps.Start();
             _controlFraps.Start();
             _endThreadCts = new CancellationTokenSource();
@@ -278,14 +267,17 @@ namespace OpenTkControl
             {
                 IsBackground = true,
                 Priority = ThreadPriority.Highest,
-                Name = ThreadName
             };
             _renderThread.Start(_endThreadCts.Token);
-            _renderThreadStart = true;
         }
 
-        private void CloseThread()
+        private void CloseRenderThread()
         {
+            if (!_renderThreadStart)
+            {
+                return;
+            }
+
             _renderThreadStart = false;
             try
             {
@@ -294,16 +286,31 @@ namespace OpenTkControl
             catch (Exception e)
             {
             }
+            finally
+            {
+                if (_isWaitingForSync)
+                {
+                    _renderCompletedResetEvent.Set();
+                }
 
-            _renderThread.Join();
-            _endThreadCts.Dispose();
+                if (!UserVisible)
+                {
+                    _renderLoopResetEvent.Set();
+                }
+
+                _renderThread.Join();
+                _endThreadCts.Dispose();
+            }
         }
 
-        public void Dispose()
+
+        protected override void Dispose(bool dispose)
         {
+            CloseRenderThread();
             this._controlFraps.Dispose();
             this._openglFraps.Dispose();
-            CloseThread();
+            this._renderCompletedResetEvent.Dispose();
+            this._renderLoopResetEvent.Dispose();
         }
     }
 }

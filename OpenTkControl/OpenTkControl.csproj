@@ -65,8 +65,10 @@
     <Compile Include="IWPFRenderProcedure.cs" />
     <Compile Include="OpenGLError.cs" />
     <Compile Include="CanvasInfo.cs" />
-    <Compile Include="OpenTkControlBase.xaml.cs" />
+    <Compile Include="OpenTkControlBase.cs" />
     <Compile Include="PixelSize.cs" />
+    <Compile Include="PropertyChangedArgs.cs" />
+    <Compile Include="RendererProcedureLifeCycle.cs" />
     <Compile Include="SemaphoreEvent.cs" />
     <Compile Include="ThreadOpenTkControl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

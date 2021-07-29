@@ -11,12 +11,17 @@
     <Grid>
 
         <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" />
+        <StackPanel HorizontalAlignment="Right">
+            <Button Width="100"
+                    Height="30"
+                    Content="start procedure"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    Click="ButtonBase_OnClick" />
+            <Button Content="close procedure" 
+                    Click="Close_OnClick"/>
+        </StackPanel>
 
-        <Button Width="100"
-                Height="30"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Left"
-                Click="ButtonBase_OnClick" />
         <!--<ListBox Width="300"
                  x:Name="Box"
                  Background="AntiqueWhite"
@@ -59,5 +64,6 @@
                 Minimum="0"
                 ValueChanged="Slider_OnValueChanged"
                 x:Name="Slider" />
+
     </Grid>
 </Window>

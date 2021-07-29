@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using OpenTK.Platform;
 
 namespace OpenTkControl
 {
@@ -32,18 +33,27 @@ namespace OpenTkControl
             }
         }
 
-        protected override void OnRenderProcedureChanged()
+        private IWindowInfo _windowInfo;
+
+        protected override void OpenRenderer(IWindowInfo windowInfo)
+        {
+            this._windowInfo = windowInfo;
+        }
+
+        protected override void OnRenderProcedureChanged(PropertyChangedArgs<IRenderProcedure> args)
         {
             if (RenderProcedure != null && this.IsLoaded)
             {
-                RenderProcedure.Initialize(this.WindowInfo);
+                RenderProcedure.Initialize(this._windowInfo);
                 var canvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
                 RenderProcedure.SizeFrame(canvasInfo);
             }
         }
 
-        protected override void OnRenderProcedureChanging()
+
+        protected override void OnUserVisibleChanged(PropertyChangedArgs<bool> args)
         {
+            throw new NotImplementedException();
         }
 
         protected override void OnLoaded(object sender, RoutedEventArgs args)
@@ -51,7 +61,7 @@ namespace OpenTkControl
             base.OnLoaded(sender, args);
             if (RenderProcedure != null && !RenderProcedure.IsInitialized)
             {
-                RenderProcedure.Initialize(this.WindowInfo);
+                RenderProcedure.Initialize(this._windowInfo);
                 var canvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
                 RenderProcedure.SizeFrame(canvasInfo);
             }
@@ -62,6 +72,11 @@ namespace OpenTkControl
             base.OnUnloaded(sender, routedEventArgs);
         }
 
+        protected override void Dispose(bool dispose)
+        {
+            throw new NotImplementedException();
+        }
+
 
         protected override void OnRender(DrawingContext drawingContext)
         {
@@ -69,7 +84,7 @@ namespace OpenTkControl
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
                 var drawingDirective = RenderProcedure.Render();
-                var imageSource = new BitmapImage();//drawingDirective?.;
+                var imageSource = new BitmapImage(); //drawingDirective?.;
                 if (imageSource != null)
                 {
                     if (drawingDirective.IsNeedTransform)

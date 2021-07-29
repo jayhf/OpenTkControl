@@ -13,24 +13,23 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using OpenTK.Graphics;
 using TestRenderer;
-
+using WindowState = System.Windows.WindowState;
 
 
 namespace OpenTkControlExample
 {
     public partial class MainWindow
     {
-        private const int LineCount = 10;
-        public const int PointsCount = 10000;
+        private const int LineCount = 1;
+        public const int PointsCount = 10;
 
         public const int LineLength = PointsCount * 2;
 
-        private TendencyChartRenderer renderer = new TendencyChartRenderer();
+        private readonly TendencyChartRenderer _renderer = new TendencyChartRenderer();
 
         public MainWindow()
         {
             this.InitializeComponent();
-
             var dateTime = DateTime.Now;
             var start = dateTime.Ticks;
             var random = new Random();
@@ -46,30 +45,31 @@ namespace OpenTkControlExample
                     ringBuffer[j + 1] = random.Next(0, 10000) * 0.1f;
                 }
 
-                renderer.Add(lineChartRenderer);
+                _renderer.Add(lineChartRenderer);
             }
 
-            var end = (long) renderer.LineRenderers.First().RingBuffer[LineLength - 2];
+            var end = (long) _renderer.LineRenderers.First().RingBuffer[LineLength - 2];
             Slider.Maximum = end;
             Slider.Value = end;
-            renderer.CurrentScrollRange = new ScrollRange(0, end);
-            renderer.CurrentYAxisValue = 1000;
-            renderer.BackgroundColor = Color4.Black;
+            _renderer.CurrentScrollRange = new ScrollRange(0, end);
+            _renderer.CurrentYAxisValue = 1000;
+            _renderer.BackgroundColor = Color4.Black;
             this.OpenTkControl.Renderer = new GLDXProcedure(new GLSettings())
             {
-                Renderer = renderer,
+                Renderer = _renderer,
             };
+            Loaded += MainWindow_Loaded;
         }
 
-
-        private void OpenTkControl_OnExceptionOccurred(object sender, UnhandledExceptionEventArgs e)
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            Debug.WriteLine(e.ExceptionObject);
+            
         }
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
-            this.OpenTkControl.Renderer = null;
+            this.OpenTkControl.Start(this);
+            // this.OpenTkControl.Renderer = null;
             /*foreach (var historySource in OpenTkControl.HistorySources)
             {
                 Box.Items.Add(historySource);
@@ -78,7 +78,12 @@ namespace OpenTkControlExample
 
         private void Slider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            renderer.CurrentScrollRange = new ScrollRange(0, (long) e.NewValue);
+            _renderer.CurrentScrollRange = new ScrollRange(0, (long) e.NewValue);
+        }
+
+        private void Close_OnClick(object sender, RoutedEventArgs e)
+        {
+            this.OpenTkControl.Close();
         }
     }
 }

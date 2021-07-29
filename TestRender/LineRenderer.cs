@@ -58,6 +58,17 @@ namespace TestRenderer
             GL.BindVertexArray(VertexArrayObject);
             _shader.SetColor("linecolor", LineColor);
             GL.DrawArrays(PrimitiveType.LineStrip, 0, PointCount / SampleInterval);
+            var LineCount = 1;
+            int[] indirect = new int[LineCount * 4];
+            for (int i = 0; i < LineCount; i++)
+            {
+                indirect[0 + i * 4] = PointCount;
+                indirect[1 + i * 4] = 1;
+                indirect[2 + i * 4] = PointCount * i;
+                indirect[3 + i * 4] = i;
+            }
+
+            // GL.MultiDrawArraysIndirect(PrimitiveType.LineStrip, indirect, LineCount, 0);
             GL.BindVertexArray(0);
         }
 

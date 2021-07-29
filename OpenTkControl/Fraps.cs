@@ -16,11 +16,43 @@ namespace OpenTkControl
 
         private volatile int _frameCount = 0;
 
-        public Typeface FpsTypeface { get; } = new Typeface(new FontFamily("Arial"), FontStyles.Normal,
+        private SolidColorBrush _brush = new SolidColorBrush(Colors.DeepSkyBlue);
+
+        private Typeface _fpsTypeface = new Typeface(new FontFamily("Arial"), FontStyles.Normal,
             FontWeights.Black,
             FontStretches.Normal);
 
-        public SolidColorBrush Brush { get; } = new SolidColorBrush(Colors.DeepSkyBlue);
+        private CultureInfo _cultureInfo = CultureInfo.CurrentCulture;
+
+        public CultureInfo CultureInfo
+        {
+            get => _cultureInfo;
+            set => _cultureInfo = value;
+        }
+
+        public Typeface FpsTypeface
+        {
+            get => _fpsTypeface;
+            set
+            {
+                if (value != null && !Equals(value, _fpsTypeface))
+                {
+                    _fpsTypeface = value;
+                }
+            }
+        }
+
+        public SolidColorBrush Brush
+        {
+            get => _brush;
+            set
+            {
+                if (value != null && value != _brush)
+                {
+                    _brush = value;
+                }
+            }
+        }
 
         public void Increment()
         {
@@ -38,9 +70,9 @@ namespace OpenTkControl
 
         public void DrawFps(DrawingContext drawingContext, Point point)
         {
-            drawingContext.DrawText(new FormattedText($"{Name} fps:{Fps}", CultureInfo.CurrentCulture,
+            drawingContext.DrawText(new FormattedText($"{Name} :{Fps}", _cultureInfo,
                     FlowDirection.LeftToRight,
-                    FpsTypeface, 21, Brush, 1),
+                    _fpsTypeface, 21, _brush, 1),
                 point);
         }
 
