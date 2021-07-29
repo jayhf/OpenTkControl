@@ -1,7 +1,4 @@
-﻿using System;
-using System.Windows.Media;
-
-namespace OpenTkControl
+﻿namespace OpenTkWPFHost
 {
     /// <summary>
     /// render canvas, better to operate in ui thread.

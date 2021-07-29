@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
-using OpenTkControl;
+using OpenTkWPFHost;
 
 namespace TestRenderer
 {

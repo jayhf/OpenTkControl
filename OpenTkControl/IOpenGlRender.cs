@@ -1,6 +1,6 @@
 ﻿using OpenTK.Platform;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public interface IOpenGlRender
     {

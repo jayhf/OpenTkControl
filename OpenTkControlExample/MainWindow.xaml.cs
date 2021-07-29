@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Threading;
 using System.Windows.Threading;
-using OpenTkControl;
 using OpenTK;
 using OpenTK.Graphics.OpenGL;
 using System.Drawing;
@@ -12,6 +11,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using OpenTK.Graphics;
+using OpenTkWPFHost;
 using TestRenderer;
 using WindowState = System.Windows.WindowState;
 

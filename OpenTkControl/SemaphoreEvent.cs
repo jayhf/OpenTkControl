@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public class SemaphoreEvent : IDisposable
     {

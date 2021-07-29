@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     /// <summary>
     /// The event arguments that are sent when a <see cref="GlRender"/> event occurs

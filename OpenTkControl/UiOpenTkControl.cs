@@ -1,12 +1,10 @@
 ﻿using System;
-using System.ComponentModel;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using OpenTK.Platform;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     /// <summary>
     /// A WPF control that performs OpenGL rendering on the UI thread

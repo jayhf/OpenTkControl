@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 
-namespace OpenTkControl {
+namespace OpenTkWPFHost {
     internal static class DesignTimeHelper {
 
         public static void DrawDesignTimeHelper(OpenTkControlBase control, DrawingContext drawingContext) {

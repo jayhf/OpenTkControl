@@ -1,9 +1,8 @@
 using System;
-using System.Diagnostics;
 using System.Windows.Interop;
 using System.Windows.Media;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public class DxCanvas : IRenderCanvas, IImageBuffer
     {

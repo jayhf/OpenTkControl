@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace OpenTkControl.Interop
+namespace OpenTkWPFHost.Interop
 {
     internal static class DXInterop
     {

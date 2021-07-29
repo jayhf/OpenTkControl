@@ -4,7 +4,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public class Fraps : IDisposable
     {

@@ -1,17 +1,11 @@
 using System;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Media;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
 using OpenTK.Platform.Windows;
-using Buffer = OpenTK.Graphics.OpenGL.Buffer;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public class DoubleBuffer<T>
     {

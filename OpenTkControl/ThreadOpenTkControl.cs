@@ -1,21 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.Runtime.InteropServices.ComTypes;
-using System.Security.AccessControl;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
-using OpenTK.Platform.Windows;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance

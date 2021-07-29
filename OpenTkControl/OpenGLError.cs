@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using OpenTK.Graphics.OpenGL4;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public class OpenGlErrorArgs : EventArgs
     {

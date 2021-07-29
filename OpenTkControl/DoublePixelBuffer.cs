@@ -2,7 +2,7 @@
 using System.Windows;
 using OpenTK.Graphics.OpenGL4;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public class DoublePixelBuffer
     {

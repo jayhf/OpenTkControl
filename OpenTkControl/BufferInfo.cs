@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     //maybe inefficient over 16 bytes ?
     public struct BufferInfo

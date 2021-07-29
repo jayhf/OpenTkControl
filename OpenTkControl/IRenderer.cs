@@ -1,6 +1,6 @@
 ﻿using OpenTK.Graphics;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public interface IRenderer
     {

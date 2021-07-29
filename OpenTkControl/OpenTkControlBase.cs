@@ -1,39 +1,16 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Lifetime;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using OpenTK;
-using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
-using OpenTK.Platform.Windows;
-using Buffer = System.Buffer;
-using BufferTarget = OpenTK.Graphics.OpenGL4.BufferTarget;
-using BufferUsageHint = OpenTK.Graphics.OpenGL4.BufferUsageHint;
-using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
-using FramebufferAttachment = OpenTK.Graphics.OpenGL4.FramebufferAttachment;
-using FramebufferErrorCode = OpenTK.Graphics.OpenGL4.FramebufferErrorCode;
-using FramebufferTarget = OpenTK.Graphics.OpenGL4.FramebufferTarget;
-using GL = OpenTK.Graphics.OpenGL4.GL;
-using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
-using PixelType = OpenTK.Graphics.OpenGL4.PixelType;
-using ReadBufferMode = OpenTK.Graphics.OpenGL4.ReadBufferMode;
-using RenderbufferTarget = OpenTK.Graphics.OpenGL4.RenderbufferTarget;
 using WindowState = System.Windows.WindowState;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     /// <summary>
     /// 

@@ -1,6 +1,6 @@
 using System.Windows.Media;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public interface IImageBuffer
     {

@@ -1,12 +1,11 @@
 using System;
-using System.Windows.Interop;
 using System.Windows.Media;
 using JetBrains.Annotations;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Platform.Windows;
-using OpenTkControl.Interop;
+using OpenTkWPFHost.Interop;
 
-namespace OpenTkControl {
+namespace OpenTkWPFHost {
     
     /// Class containing the DirectX Render Surface and OpenGL Framebuffer Object
     /// Instances of this class are created and deleted as required by the renderer.

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace OpenTkControl.Interop
+namespace OpenTkWPFHost.Interop
 {
     [Flags]
     internal enum CreateFlags

@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Windows.Shell;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public interface IRenderProcedure : IOpenGlRender, IDisposable
     {

@@ -1,12 +1,10 @@
 using System.Diagnostics;
 using System.Windows;
-using System.Windows.Controls;
 using JetBrains.Annotations;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
-using OpenTK.Platform;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public sealed class GLSettings
     {

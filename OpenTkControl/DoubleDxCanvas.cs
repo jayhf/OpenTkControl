@@ -1,7 +1,4 @@
-using System.Diagnostics;
-using System.Threading;
-
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public class DoubleDxCanvas : IDoubleBuffer, IRenderCanvas
     {

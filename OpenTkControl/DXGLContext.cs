@@ -1,15 +1,12 @@
 using System;
 using System.Threading;
-using System.Windows;
-using System.Windows.Interop;
 using JetBrains.Annotations;
 using OpenTK.Graphics;
 using OpenTK.Platform;
 using OpenTK.Platform.Windows;
-using OpenTkControl.Interop;
-using Window = System.Windows.Window;
+using OpenTkWPFHost.Interop;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     /// This contains the DirectX and OpenGL contexts used in this control.
     internal sealed class DxGlContext : IDisposable

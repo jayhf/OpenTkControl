@@ -1,4 +1,4 @@
-﻿namespace OpenTkControl
+﻿namespace OpenTkWPFHost
 {
     /// <summary>
     /// double buffer 
