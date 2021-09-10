@@ -86,6 +86,16 @@ namespace OpenTkWPFHost
 
         protected override void OnRender(DrawingContext drawingContext)
         {
+            /*// Transforms are applied in reverse order
+            drawingContext.PushTransform(drawingDirective
+                .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
+            drawingContext.PushTransform(drawingDirective
+                .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
+            // dpi scaled rectangle from the image
+            var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
+            drawingContext.DrawImage(imageSource, rect); // Draw the image source 
+            drawingContext.Pop(); // Remove the scale transform
+            drawingContext.Pop(); // Remove the translation transform*/
             drawingContext.DrawDrawing(_drawingCopy.Drawing);
             if (ShowFps)
             {
@@ -189,12 +199,16 @@ namespace OpenTkWPFHost
                         RenderProcedure.SizeFrame(RecentCanvasInfo);
                     }
 
+                    DrawingDirective drawingDirective;
+                    TransformGroup transformGroup;
                     if (RenderProcedure.ReadyToRender)
                     {
                         try
                         {
                             OnUITask(() => RenderProcedure?.Begin()).Wait(token);
-                            RenderProcedure.Render();
+                            drawingDirective = RenderProcedure.Render();
+                            transformGroup = drawingDirective.TransformGroup;
+                            transformGroup.Freeze();
                             if (ShowFps)
                             {
                                 _openglFraps.Increment();
@@ -215,10 +229,20 @@ namespace OpenTkWPFHost
                             var frontBuffer = RenderProcedure.GetFrontBuffer();
                             if (frontBuffer.IsAvailable)
                             {
+                                var imageSource = frontBuffer.ImageSource;
                                 using (var drawingContext = _drawingCopy.RenderOpen())
                                 {
-                                    var imageSource = frontBuffer.ImageSource;
-                                    drawingContext.DrawImage(imageSource, new Rect(this.RenderSize));
+                                    var rectangle = new Rect(this.RenderSize);
+                                    if (drawingDirective.IsNeedTransform)
+                                    {
+                                        drawingContext.PushTransform(transformGroup);
+                                        drawingContext.DrawImage(imageSource, rectangle);
+                                        drawingContext.Pop();
+                                    }
+                                    else
+                                    {
+                                        drawingContext.DrawImage(imageSource, rectangle);
+                                    }
                                 }
                             }
                         });

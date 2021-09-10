@@ -42,7 +42,9 @@ namespace OpenTkControlExample
                     var time = dateTime.AddSeconds(j);
                     var ticks = (float) (time.Ticks - start);
                     ringBuffer[j] = ticks;
-                    ringBuffer[j + 1] = random.Next(0, 10000) * 0.1f;
+                    var next = random.Next(0, 10000) * 0.1f;
+                    ringBuffer[j + 1] = next; 
+                    Debug.WriteLine(next);
                 }
 
                 _renderer.Add(lineChartRenderer);

@@ -216,7 +216,6 @@ namespace OpenTkWPFHost
 
         public DrawingDirective Render()
         {
-            
             if (!CheckRenderer())
             {
                 return null;
@@ -238,7 +237,7 @@ namespace OpenTkWPFHost
             }
 
             UpdateImage(copyLatest);
-            return new DrawingDirective(null, null, true); //允许异步
+            return new DrawingDirective(null, true); //允许异步
         }
 
         /// <summary>

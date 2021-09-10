@@ -89,14 +89,10 @@ namespace OpenTkWPFHost
                     {
                         // Transforms are applied in reverse order
                         drawingContext.PushTransform(drawingDirective
-                            .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
-                        drawingContext.PushTransform(drawingDirective
-                            .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
-                        // dpi scaled rectangle from the image
+                            .TransformGroup); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
                         var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
                         drawingContext.DrawImage(imageSource, rect); // Draw the image source 
                         drawingContext.Pop(); // Remove the scale transform
-                        drawingContext.Pop(); // Remove the translation transform
                     }
                     else
                     {

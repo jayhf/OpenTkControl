@@ -5,21 +5,21 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Platform.Windows;
 using OpenTkWPFHost.Interop;
 
-namespace OpenTkWPFHost {
-    
+namespace OpenTkWPFHost
+{
     /// Class containing the DirectX Render Surface and OpenGL Framebuffer Object
     /// Instances of this class are created and deleted as required by the renderer.
     /// Note that this does not implement the full <see cref="IDisposable"/> pattern,
     /// as OpenGL resources cannot be freed from the finalizer thread.
     /// The calling class must correctly dispose of this by calling <see cref="Dispose"/>
     /// Prior to releasing references. 
-    internal sealed class DxGLFramebuffer : IDisposable {
-
+    internal sealed class DxGLFramebuffer : IDisposable
+    {
         private DxGlContext DxGlContext { get; }
-        
+
         /// The width of this buffer in pixels
         public int FramebufferWidth { get; }
-        
+
         /// The height of this buffer in pixels
         public int FramebufferHeight { get; }
 
@@ -28,10 +28,10 @@ namespace OpenTkWPFHost {
 
         /// The height of the element in device-independent pixels
         public int Height { get; }
-        
+
         /// The DirectX Render target (framebuffer) handle.
         public IntPtr DxRenderTargetHandle { get; }
-        
+
         /// The OpenGL Framebuffer handle
         public int GLFramebufferHandle { get; }
 
@@ -40,28 +40,28 @@ namespace OpenTkWPFHost {
 
         /// The OpenGL depth render buffer handle.
         private int GLDepthRenderBufferHandle { get; }
-        
+
         /// Specific wgl_dx_interop handle that marks the framebuffer as ready for interop.
         public IntPtr DxInteropRegisteredHandle { get; }
 
         public PixelSize PixelSize => new PixelSize(FramebufferWidth, FramebufferHeight);
-        
-        public TranslateTransform TranslateTransform { get; }
-        public ScaleTransform FlipYTransform { get; }
 
-        public DxGLFramebuffer([NotNull] DxGlContext context, int width, int height, double dpiScaleX, double dpiScaleY) {
+        public TransformGroup TransformGroup { get; set; }
+
+        public DxGLFramebuffer([NotNull] DxGlContext context, int width, int height, double dpiScaleX, double dpiScaleY)
+        {
             DxGlContext = context;
             Width = width;
             Height = height;
-            FramebufferWidth = (int)Math.Ceiling(width * dpiScaleX);
-            FramebufferHeight = (int)Math.Ceiling(height * dpiScaleY);
-            
+            FramebufferWidth = (int) Math.Ceiling(width * dpiScaleX);
+            FramebufferHeight = (int) Math.Ceiling(height * dpiScaleY);
+
             var dxSharedHandle = IntPtr.Zero; // Unused windows-vista legacy sharing handle. Must always be null.
             DXInterop.CreateRenderTarget(
                 context.DxDeviceHandle,
                 FramebufferWidth,
                 FramebufferHeight,
-                Format.X8R8G8B8,// this is like A8 R8 G8 B8, but avoids issues with Gamma correction being applied twice.
+                Format.X8R8G8B8, // this is like A8 R8 G8 B8, but avoids issues with Gamma correction being applied twice.
                 MultisampleType.None,
                 0,
                 false,
@@ -78,8 +78,8 @@ namespace OpenTkWPFHost {
             var genHandle = Wgl.DXRegisterObjectNV(
                 context.GlDeviceHandle,
                 dxRenderTargetHandle,
-                (uint)GLSharedTextureHandle,
-                (uint)TextureTarget.Texture2D,
+                (uint) GLSharedTextureHandle,
+                (uint) TextureTarget.Texture2D,
                 WGL_NV_DX_interop.AccessReadWrite);
 
             DxInteropRegisteredHandle = genHandle;
@@ -93,19 +93,21 @@ namespace OpenTkWPFHost {
 
             GLDepthRenderBufferHandle = GL.GenRenderbuffer();
             GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, GLDepthRenderBufferHandle);
-            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24, FramebufferWidth, FramebufferHeight);
+            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24,
+                FramebufferWidth, FramebufferHeight);
             GL.FramebufferRenderbuffer(
                 FramebufferTarget.Framebuffer,
                 FramebufferAttachment.DepthAttachment,
                 RenderbufferTarget.Renderbuffer,
                 GLDepthRenderBufferHandle);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            TranslateTransform = new TranslateTransform(0, height);
-            FlipYTransform = new ScaleTransform(1, -1);
+            TransformGroup = new TransformGroup();
+            TransformGroup.Children.Add(new ScaleTransform(1, -1));
+            TransformGroup.Children.Add(new TranslateTransform(0, height));
         }
         
-        
-        public void Dispose() {
+        public void Dispose()
+        {
             GL.DeleteFramebuffer(GLFramebufferHandle);
             GL.DeleteRenderbuffer(GLDepthRenderBufferHandle);
             GL.DeleteTexture(GLSharedTextureHandle);

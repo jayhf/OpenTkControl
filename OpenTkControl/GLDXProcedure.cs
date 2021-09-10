@@ -180,7 +180,7 @@ namespace OpenTkWPFHost
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
             PostRender();
-            return new DrawingDirective(_framebuffers.TranslateTransform, _framebuffers.FlipYTransform);
+            return new DrawingDirective(_framebuffers.TransformGroup);
         }
 
         public void Dispose()
