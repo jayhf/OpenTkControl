@@ -10,6 +10,4 @@ namespace OpenTkWPFHost
 
         void Resize(PixelSize size);
     }
-
-    
 }
