@@ -17,8 +17,6 @@ namespace OpenTkWPFHost
          
         }
 
-        
-
         public ImageSource ImageSource => Image;
 
         public bool IsAvailable => Image != null && Image.Width > 0 && Image.Height > 0;

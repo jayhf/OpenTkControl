@@ -3,8 +3,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
+using PixelFormat = System.Windows.Media.PixelFormat;
 
 namespace OpenTkWPFHost
 {
@@ -25,9 +27,9 @@ namespace OpenTkWPFHost
 
         private DebugProc _debugProc;
 
-        private readonly Fraps _openglFraps = new Fraps() {Name = "GLFps"};
+        private readonly Fraps _openglFraps = new Fraps() { Name = "GLFps" };
 
-        private readonly Fraps _controlFraps = new Fraps() {Name = "WindowFps"};
+        private readonly Fraps _controlFraps = new Fraps() { Name = "WindowFps" };
 
         protected CanvasInfo RecentCanvasInfo;
 
@@ -43,7 +45,7 @@ namespace OpenTkWPFHost
         {
             IsVisibleChanged += (_, args) =>
             {
-                var newValue = (bool) args.NewValue;
+                var newValue = (bool)args.NewValue;
                 this.IsUserVisible = newValue;
                 if (newValue)
                 {
@@ -77,8 +79,9 @@ namespace OpenTkWPFHost
             }
         }
 
-        private readonly DrawingVisual _drawingCopy = new DrawingVisual();
+        // private readonly DrawingVisual _drawingCopy = new DrawingVisual();
 
+        private DrawingGroup drawingGroup = new DrawingGroup();
         /// <summary>
         /// d3d image maybe flicker when 
         /// </summary>
@@ -86,17 +89,7 @@ namespace OpenTkWPFHost
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            /*// Transforms are applied in reverse order
-            drawingContext.PushTransform(drawingDirective
-                .TranslateTransform); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
-            drawingContext.PushTransform(drawingDirective
-                .ScaleTransform); // Apply a scale where the Y axis is -1. This will rotate the image by 180 deg
-            // dpi scaled rectangle from the image
-            var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-            drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-            drawingContext.Pop(); // Remove the scale transform
-            drawingContext.Pop(); // Remove the translation transform*/
-            drawingContext.DrawDrawing(_drawingCopy.Drawing);
+            drawingContext.DrawDrawing(drawingGroup);
             if (ShowFps)
             {
                 _controlFraps.Increment();
@@ -175,37 +168,39 @@ namespace OpenTkWPFHost
         /// <param name="boxedToken"></param>
         private void RenderThread(object boxedToken)
         {
-            var token = (CancellationToken) boxedToken;
+            var token = (CancellationToken)boxedToken;
             _debugProc = Callback;
             RenderProcedure.Initialize(_windowInfo);
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-            OnUITask(() =>
+            OnUITask((() =>
             {
-                RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                RenderProcedure.SizeCanvas(RecentCanvasInfo);
-            }).Wait(token);
+                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+            })).Wait(token);
+            
+            RenderProcedure.SizeCanvas(RecentCanvasInfo);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
             var canvasInfo = RecentCanvasInfo;
             using (RenderProcedure)
             {
-                WaitHandle[] drawHandles = {token.WaitHandle, _renderCompletedResetEvent};
+                DrawingVisual cacheVisual = new DrawingVisual();
+                DrawingDirective drawingDirective;
+                TransformGroup transformGroup;
+                WaitHandle[] drawHandles = { token.WaitHandle, _renderCompletedResetEvent };
                 while (!token.IsCancellationRequested)
                 {
                     if (!canvasInfo.Equals(RecentCanvasInfo))
                     {
                         canvasInfo = RecentCanvasInfo;
-                        OnUITask(() => { RenderProcedure.SizeCanvas(RecentCanvasInfo); }).Wait(token);
+                        RenderProcedure.SizeCanvas(RecentCanvasInfo);
                         RenderProcedure.SizeFrame(RecentCanvasInfo);
                     }
 
-                    DrawingDirective drawingDirective;
-                    TransformGroup transformGroup;
                     if (RenderProcedure.ReadyToRender)
                     {
                         try
                         {
-                            OnUITask(() => RenderProcedure?.Begin()).Wait(token);
+                            RenderProcedure?.Begin();
                             drawingDirective = RenderProcedure.Render();
                             transformGroup = drawingDirective.TransformGroup;
                             transformGroup.Freeze();
@@ -214,7 +209,7 @@ namespace OpenTkWPFHost
                                 _openglFraps.Increment();
                             }
 
-                            OnUITask(() => RenderProcedure?.End()).Wait(token);
+                            RenderProcedure?.End();
                         }
                         catch (OperationCanceledException)
                         {
@@ -224,28 +219,36 @@ namespace OpenTkWPFHost
                         {
                         }
 
-                        OnUITask(() =>
+                        var frontBuffer = RenderProcedure.GetFrontBuffer();
+                        if (frontBuffer.IsAvailable)
                         {
-                            var frontBuffer = RenderProcedure.GetFrontBuffer();
-                            if (frontBuffer.IsAvailable)
+                            var imageSource = frontBuffer.ImageSource;
+                            using (var drawingContext = cacheVisual.RenderOpen())
                             {
-                                var imageSource = frontBuffer.ImageSource;
-                                using (var drawingContext = _drawingCopy.RenderOpen())
+                                var rectangle = RecentCanvasInfo.Rect;
+                                if (drawingDirective.IsNeedTransform)
                                 {
-                                    var rectangle = new Rect(this.RenderSize);
-                                    if (drawingDirective.IsNeedTransform)
-                                    {
-                                        drawingContext.PushTransform(transformGroup);
-                                        drawingContext.DrawImage(imageSource, rectangle);
-                                        drawingContext.Pop();
-                                    }
-                                    else
-                                    {
-                                        drawingContext.DrawImage(imageSource, rectangle);
-                                    }
+                                    drawingContext.PushTransform(transformGroup);
+                                    drawingContext.DrawImage(imageSource, rectangle);
+                                    drawingContext.Pop();
+                                }
+                                else
+                                {
+                                    drawingContext.DrawImage(imageSource, rectangle);
                                 }
                             }
-                        });
+
+                            var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth,
+                                RecentCanvasInfo.ActualHeight, RecentCanvasInfo.DpiScaleX * 96,
+                                RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
+                            renderTargetBitmap.Render(cacheVisual);
+                            renderTargetBitmap.Freeze();
+                            OnUITask((() =>
+                            {
+                                drawingGroup.Children.Clear();
+                                drawingGroup.Children.Add(new ImageDrawing(renderTargetBitmap, RecentCanvasInfo.Rect));
+                            })).Wait(token);
+                        }
 
                         _isWaitingForSync = true;
                         WaitHandle.WaitAny(drawHandles);

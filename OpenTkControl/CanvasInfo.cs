@@ -1,4 +1,6 @@
-﻿namespace OpenTkWPFHost
+﻿using System.Windows;
+
+namespace OpenTkWPFHost
 {
     public readonly struct CanvasInfo
     {
@@ -8,7 +10,10 @@
             ActualHeight = height;
             DpiScaleX = dpiScaleX;
             DpiScaleY = dpiScaleY;
+            Rect = new Rect(new Size(width, height));
         }
+
+        public Rect Rect { get; }
 
         public double DpiScaleX { get; }
 
@@ -20,7 +25,8 @@
 
         public bool Equals(CanvasInfo other)
         {
-            return DpiScaleX.Equals(other.DpiScaleX) && DpiScaleY.Equals(other.DpiScaleY) && ActualWidth == other.ActualWidth &&
+            return DpiScaleX.Equals(other.DpiScaleX) && DpiScaleY.Equals(other.DpiScaleY) &&
+                   ActualWidth == other.ActualWidth &&
                    ActualHeight == other.ActualHeight;
         }
 

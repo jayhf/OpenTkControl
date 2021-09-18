@@ -8,33 +8,16 @@ using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
-    public class BitmapCanvas:IRenderCanvas
+    public class BitmapCanvas:IRenderCanvas,IImageBuffer
     {
-        public ImageSource FrontSource { get; }
-
-        public Guid Id { get; }
-
-        public ImageSource GetSource()
-        {
-            throw new NotImplementedException();
-        }
-
         public void Create(CanvasInfo info)
         {
             throw new NotImplementedException();
         }
 
-        public bool CanRender { get; }
+        public ImageSource ImageSource { get; }
 
-        public void Begin()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void End()
-        {
-            throw new NotImplementedException();
-        }
+        public bool IsAvailable { get; }
     }
 
     public class GLBitmapProcedure : IRenderProcedure
@@ -95,9 +78,8 @@ namespace OpenTkWPFHost
             throw new NotImplementedException();
         }
 
-        public bool FrontBufferReady { get; }
-
         public bool IsInitialized { get; private set; }
+
         public bool ReadyToRender { get; }
 
         public IRenderer Renderer
@@ -121,8 +103,6 @@ namespace OpenTkWPFHost
         {
             GlSettings = glSettings;
         }
-
-        public IDoubleBuffer Buffer { get; }
 
         public void SizeCanvas(CanvasInfo size)
         {
