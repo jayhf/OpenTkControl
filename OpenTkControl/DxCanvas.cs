@@ -14,12 +14,10 @@ namespace OpenTkWPFHost
         {
             Image = new D3DImage(96.0 * info.DpiScaleX, 96.0 * info.DpiScaleY);
             // Image.IsFrontBufferAvailableChanged += Image_IsFrontBufferAvailableChanged;
-         
         }
 
         public ImageSource ImageSource => Image;
 
-        public bool IsAvailable => Image != null && Image.Width > 0 && Image.Height > 0;
-        
+        public bool IsAvailable => Image != null && Image.IsFrontBufferAvailable && Image.Width > 0 && Image.Height > 0;
     }
 }
