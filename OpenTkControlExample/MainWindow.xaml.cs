@@ -8,6 +8,7 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using OpenTK.Graphics;
@@ -56,7 +57,7 @@ namespace OpenTkControlExample
             _renderer.CurrentScrollRange = new ScrollRange(0, end);
             _renderer.CurrentYAxisValue = 1000;
             _renderer.BackgroundColor = Color4.Black;
-            this.OpenTkControl.Renderer = new GLBitmapProcedure(new GLSettings())
+            this.OpenTkControl.Renderer = new GLDXProcedure(new GLSettings())
             {
                 Renderer = _renderer,
             };

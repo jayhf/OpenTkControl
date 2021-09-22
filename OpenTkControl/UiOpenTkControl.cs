@@ -82,7 +82,7 @@ namespace OpenTkWPFHost
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
                 var drawingDirective = RenderProcedure.Render();
-                var imageSource = new BitmapImage(); //drawingDirective?.;
+                /*var imageSource = new BitmapImage(); //drawingDirective?.;
                 if (imageSource != null)
                 {
                     if (drawingDirective.IsNeedTransform)
@@ -99,7 +99,7 @@ namespace OpenTkWPFHost
                         var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
                         drawingContext.DrawImage(imageSource, rect); // Draw the image source 
                     }
-                }
+                }*/
             }
         }
 

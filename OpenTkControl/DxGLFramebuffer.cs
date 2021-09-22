@@ -104,6 +104,7 @@ namespace OpenTkWPFHost
             TransformGroup = new TransformGroup();
             TransformGroup.Children.Add(new ScaleTransform(1, -1));
             TransformGroup.Children.Add(new TranslateTransform(0, height));
+            TransformGroup.Freeze();
         }
         
         public void Dispose()

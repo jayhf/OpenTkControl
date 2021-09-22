@@ -10,6 +10,6 @@ namespace OpenTkWPFHost
 
         void SizeFrame(CanvasInfo size);
 
-        DrawingDirective Render();
+        bool Render();
     }
 }

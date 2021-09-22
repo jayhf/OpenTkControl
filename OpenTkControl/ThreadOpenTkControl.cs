@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using OpenTK.Graphics.OpenGL4;
@@ -175,36 +176,38 @@ namespace OpenTkWPFHost
             RenderProcedure.Initialize(_windowInfo);
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-            OnUITask((() => { RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this); })).Wait(token);
-
-            RenderProcedure.SizeCanvas(RecentCanvasInfo);
+            OnUITask(() =>
+            {
+                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                RenderProcedure.SizeCanvas(RecentCanvasInfo);
+            }).Wait(token);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
             var canvasInfo = RecentCanvasInfo;
             using (RenderProcedure)
             {
-                DrawingVisual cacheVisual = new DrawingVisual();
                 WaitHandle[] drawHandles = { token.WaitHandle, _renderCompletedResetEvent };
                 while (!token.IsCancellationRequested)
                 {
                     if (!canvasInfo.Equals(RecentCanvasInfo))
                     {
                         canvasInfo = RecentCanvasInfo;
-                        RenderProcedure.SizeCanvas(RecentCanvasInfo);
+                        OnUITask((() => { RenderProcedure.SizeCanvas(RecentCanvasInfo); })).Wait(token);
                         RenderProcedure.SizeFrame(RecentCanvasInfo);
                     }
 
                     if (RenderProcedure.ReadyToRender)
                     {
+                        bool renderSuccess;
                         try
                         {
-                            RenderProcedure?.Begin();
-                            RenderProcedure.Render();
+                            OnUITask((() => RenderProcedure.Begin())).Wait(token);
+                            renderSuccess = RenderProcedure.Render();
                             if (ShowFps)
                             {
                                 _openglFraps.Increment();
                             }
 
-                            RenderProcedure?.End();
+                            OnUITask((() => RenderProcedure.End())).Wait(token);
                         }
                         catch (OperationCanceledException)
                         {
@@ -214,56 +217,27 @@ namespace OpenTkWPFHost
                         {
                         }
 
-                        var frontBuffer = RenderProcedure.GetFrontBuffer();
-                        if (frontBuffer.IsAvailable)
+                        if (renderSuccess)
                         {
-                            var imageSource = frontBuffer.ImageSource;
-                            if (imageSource.CanFreeze)
+                            OnUITask((() =>
                             {
-                                var valueAsFrozen = imageSource.GetCurrentValueAsFrozen() as ImageSource;
-                                OnUITask(() =>
+                                using (var drawingContext = drawingGroup.Open())
                                 {
-                                    using (var drawingContext = drawingGroup.Open())
-                                    {
-                                        drawingContext.DrawImage(valueAsFrozen,RecentCanvasInfo.Rect);
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                using (var drawingContext = cacheVisual.RenderOpen())
-                                {
-                                    var rectangle = RecentCanvasInfo.Rect;
-                                    if (drawingDirective.IsNeedTransform)
-                                    {
-                                        drawingContext.PushTransform(transformGroup);
-                                        drawingContext.DrawImage(imageSource, rectangle);
-                                        drawingContext.Pop();
-                                    }
-                                    else
-                                    {
-                                        drawingContext.DrawImage(imageSource, rectangle);
-                                    }
+                                    RenderProcedure.FlushFrame(drawingContext);
                                 }
-                                var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth,
-                                    RecentCanvasInfo.ActualHeight, RecentCanvasInfo.DpiScaleX * 96,
-                                    RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
-                                renderTargetBitmap.Render(cacheVisual);
-                                var currentValueAsFrozen = (ImageSource)renderTargetBitmap.GetCurrentValueAsFrozen();
-                                OnUITask(() =>
-                                {
-                                    drawingGroup.Children.Clear();
-                                    drawingGroup.Children.Add(new ImageDrawing(currentValueAsFrozen,
-                                        RecentCanvasInfo.Rect));
-                                });
-
-                            }
+                            }));
                         }
 
-                        _isWaitingForSync = true;
-                        WaitHandle.WaitAny(drawHandles);
-                        _renderCompletedResetEvent.Reset();
-                        _isWaitingForSync = false;
+                        if (!RenderProcedure.CanAsync)
+                        {
+                            _isWaitingForSync = true;
+                            WaitHandle.WaitAny(drawHandles);
+                            _renderCompletedResetEvent.Reset();
+                            _isWaitingForSync = false;
+                        }
+
+
+
                         RenderProcedure.SwapBuffer();
                     }
                     else

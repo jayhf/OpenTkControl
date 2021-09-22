@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
 using OpenTK.Platform.Windows;
@@ -60,6 +61,19 @@ namespace OpenTkWPFHost
 
         private DxCanvas dxCanvas = new DxCanvas();
 
+        public void FlushFrame(DrawingContext drawingContext)
+        {
+            if (!dxCanvas.IsAvailable)
+            {
+                return;
+            }
+            var transformGroup = this._framebuffers.TransformGroup;
+            drawingContext.PushTransform(transformGroup);
+            var dxCanvasImage = this.dxCanvas.Image;
+            drawingContext.DrawImage(dxCanvasImage, new Rect(new Size(dxCanvasImage.Width, dxCanvasImage.Height)));
+            drawingContext.Pop();
+        }
+
         public bool IsInitialized { get; private set; }
 
         public bool ReadyToRender => Width != 0 && Height != 0;
@@ -83,13 +97,10 @@ namespace OpenTkWPFHost
 
         public void SwapBuffer()
         {
-            
         }
 
-        public IRenderBuffer GetFrontBuffer()
-        {
-            return dxCanvas;
-        }
+
+        public bool CanAsync { get; set; } = false;
 
         public void SizeCanvas(CanvasInfo info)
         {
@@ -115,14 +126,14 @@ namespace OpenTkWPFHost
         /// Sets up the framebuffer, directx stuff for rendering. 
         private void PreRender()
         {
-            Wgl.DXLockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffers.DxInteropRegisteredHandle});
+            Wgl.DXLockObjectsNV(_context.GlDeviceHandle, 1, new[] { _framebuffers.DxInteropRegisteredHandle });
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffers.GLFramebufferHandle);
         }
 
         /// Sets up the framebuffer and prepares stuff for usage in directx.
         private void PostRender()
         {
-            Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffers.DxInteropRegisteredHandle});
+            Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] { _framebuffers.DxInteropRegisteredHandle });
         }
 
         /// <summary>
@@ -173,14 +184,14 @@ namespace OpenTkWPFHost
             }
         }
 
-        public DrawingDirective Render()
+        public bool Render()
         {
             PreRender();
             Renderer?.Render(new GlRenderEventArgs(Width, Height, false));
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
             PostRender();
-            return new DrawingDirective(_framebuffers.TransformGroup);
+            return true;
         }
 
         public void Dispose()

@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Windows.Media;
 
 namespace OpenTkWPFHost
 {
     public interface IRenderProcedure : IOpenGlRender, IDisposable
     {
+        bool CanAsync { get; }
+
         void SizeCanvas(CanvasInfo size);
 
         void Begin();
@@ -12,7 +15,11 @@ namespace OpenTkWPFHost
 
         void SwapBuffer();
 
-        IRenderBuffer GetFrontBuffer();
+        /// <summary>
+        /// flush frame buffer
+        /// </summary>
+        /// <param name="context"></param>
+        void FlushFrame(DrawingContext context);
 
         bool IsInitialized { get; }
 

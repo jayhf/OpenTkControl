@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using OpenTK;
@@ -17,7 +18,9 @@ namespace OpenTkWPFHost
 
         public void Create(CanvasInfo info)
         {
-            Bitmap = new WriteableBitmap((int)(info.ActualWidth*info.DpiScaleX), (int)(info.ActualHeight*info.DpiScaleY), 96*info.DpiScaleX, 96*info.DpiScaleY, PixelFormats.Pbgra32, null);
+            Bitmap = new WriteableBitmap((int)(info.ActualWidth * info.DpiScaleX),
+                (int)(info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
+                PixelFormats.Pbgra32, null);
         }
 
         public ImageSource ImageSource => Bitmap;
@@ -83,9 +86,13 @@ namespace OpenTkWPFHost
             _doubleBuffer.SwapBuffer();
         }
 
-        public IRenderBuffer GetFrontBuffer()
+        public void FlushFrame(DrawingContext context)
         {
-            return _bitmapCanvas;
+            if (_bitmapCanvas.IsAvailable)
+            {
+                var imageSource = _bitmapCanvas.ImageSource;
+                context.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
+            }
         }
 
         public bool IsInitialized { get; private set; }
@@ -114,6 +121,8 @@ namespace OpenTkWPFHost
             GlSettings = glSettings;
         }
 
+        public bool CanAsync { get; set; } = true;
+
         public void SizeCanvas(CanvasInfo size)
         {
             _bitmapCanvas.Create(size);
@@ -123,15 +132,16 @@ namespace OpenTkWPFHost
         {
         }
 
+        private BufferInfo _bufferInfo;
+        
         public void End()
         {
-            var bufferInfo = _doubleBuffer.GetLatest();
-            if (bufferInfo.FrameBuffer != IntPtr.Zero)
+            if (_bufferInfo.FrameBuffer != IntPtr.Zero)
             {
-                var dirtyArea = bufferInfo.RepaintRect;
+                var dirtyArea = _bufferInfo.RepaintRect;
                 var bitmap = _bitmapCanvas.Bitmap;
                 bitmap.Lock();
-                bitmap.WritePixels(dirtyArea, bufferInfo.FrameBuffer, bufferInfo.BufferSize, bitmap.BackBufferStride);
+                bitmap.WritePixels(dirtyArea, _bufferInfo.FrameBuffer, _bufferInfo.BufferSize, bitmap.BackBufferStride);
                 bitmap.AddDirtyRect(dirtyArea);
                 bitmap.Unlock();
             }
@@ -212,11 +222,11 @@ namespace OpenTkWPFHost
             return false;
         }
 
-        public DrawingDirective Render()
+        public bool Render()
         {
             if (!CheckRenderer())
             {
-                return null;
+                return false;
             }
 
             if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
@@ -228,7 +238,8 @@ namespace OpenTkWPFHost
             if (dirtyArea.Width <= 0 || dirtyArea.Height <= 0)
                 return null;*/
             _doubleBuffer.ReadCurrent();
-            return new DrawingDirective(null, true); //允许异步
+            _bufferInfo = _doubleBuffer.GetLatest();
+            return true;
         }
 
         /// <summary>

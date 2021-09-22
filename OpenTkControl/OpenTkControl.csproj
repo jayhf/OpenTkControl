@@ -62,7 +62,7 @@
     <Compile Include="IOpenGlRender.cs" />
     <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
-    <Compile Include="IWPFRenderProcedure.cs" />
+    <Compile Include="IRenderProcedure.cs" />
     <Compile Include="OpenGLError.cs" />
     <Compile Include="CanvasInfo.cs" />
     <Compile Include="OpenTkControlBase.cs" />
