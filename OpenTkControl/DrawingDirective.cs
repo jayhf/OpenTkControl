@@ -6,7 +6,7 @@ namespace OpenTkWPFHost
     {
         public TransformGroup TransformGroup { get; }
 
-        public bool IsNeedTransform => TransformGroup != null;
+        public bool IsNeedTransform { get; }
 
         /// <summary>
         /// async drawing
@@ -17,6 +17,7 @@ namespace OpenTkWPFHost
             bool isDrawAsync = false)
         {
             TransformGroup = transformGroup;
+            IsNeedTransform = transformGroup != null;
             this.IsDrawingAsync = isDrawAsync;
         }
     }

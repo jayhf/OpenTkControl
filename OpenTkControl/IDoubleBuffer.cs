@@ -5,9 +5,9 @@
     /// </summary>
     public interface IDoubleBuffer
     {
-        IImageBuffer GetFrontBuffer();
+        IRenderBuffer GetFrontBuffer();
 
-        IImageBuffer GetBackBuffer();
+        IRenderBuffer GetBackBuffer();
 
         void SwapBuffer();
     }

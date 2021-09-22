@@ -4,7 +4,7 @@ using System.Windows.Media;
 
 namespace OpenTkWPFHost
 {
-    public class DxCanvas : IRenderCanvas, IImageBuffer
+    public class DxCanvas : IRenderCanvas, IRenderBuffer
     {
         public D3DImage Image { get; private set; }
 

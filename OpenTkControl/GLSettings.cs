@@ -15,7 +15,7 @@ namespace OpenTkWPFHost
         /// If this is set to false, the control will render without any DPI scaling.
         /// This will result in higher performance and a worse image quality on systems with >100% DPI settings, such as 'Retina' laptop screens with 4K UHD at small sizes.
         /// This setting may be useful to get extra performance on mobile platforms.
-        public bool UseDeviceDpi { get; set; } = true;
+        public bool UseDeviceDpi { get; set; } = false;
 
         /// May be null. If defined, an external context will be used, of which the caller is responsible
         /// for managing the lifetime and disposal of.

@@ -8,16 +8,30 @@ using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
-    public class BitmapCanvas:IRenderCanvas,IImageBuffer
+    public class BitmapCanvas : IRenderCanvas, IRenderBuffer
     {
+        /// <summary>
+        /// The source of the internal Image
+        /// </summary>
+        private volatile WriteableBitmap _bitmap;
+
         public void Create(CanvasInfo info)
         {
-            throw new NotImplementedException();
+            Bitmap = new WriteableBitmap((int)(info.ActualWidth*info.DpiScaleX), (int)(info.ActualHeight*info.DpiScaleY), 96*info.DpiScaleX, 96*info.DpiScaleY, PixelFormats.Pbgra32, null);
         }
 
-        public ImageSource ImageSource { get; }
+        public ImageSource ImageSource => Bitmap;
 
-        public bool IsAvailable { get; }
+        public bool IsAvailable => Bitmap != null && Bitmap.Width > 0 && Bitmap.Height > 0;
+
+        /// <summary>
+        /// The source of the internal Image
+        /// </summary>
+        public WriteableBitmap Bitmap
+        {
+            get => _bitmap;
+            set => _bitmap = value;
+        }
     }
 
     public class GLBitmapProcedure : IRenderProcedure
@@ -47,10 +61,7 @@ namespace OpenTkWPFHost
         /// </summary>
         private int _bitmapHeight;
 
-        /// <summary>
-        /// The source of the internal Image
-        /// </summary>
-        private volatile WriteableBitmap _bitmap;
+        private readonly BitmapCanvas _bitmapCanvas = new BitmapCanvas();
 
         /// <summary>
         /// The OpenGL framebuffer
@@ -67,20 +78,19 @@ namespace OpenTkWPFHost
         /// </summary>
         private int _depthBuffer;
 
-
         public void SwapBuffer()
         {
-            throw new NotImplementedException();
+            _doubleBuffer.SwapBuffer();
         }
 
-        public IImageBuffer GetFrontBuffer()
+        public IRenderBuffer GetFrontBuffer()
         {
-            throw new NotImplementedException();
+            return _bitmapCanvas;
         }
 
         public bool IsInitialized { get; private set; }
 
-        public bool ReadyToRender { get; }
+        public bool ReadyToRender => _bitmapWidth != 0 && _bitmapHeight != 0;
 
         public IRenderer Renderer
         {
@@ -106,17 +116,25 @@ namespace OpenTkWPFHost
 
         public void SizeCanvas(CanvasInfo size)
         {
-            throw new NotImplementedException();
+            _bitmapCanvas.Create(size);
         }
 
         public void Begin()
         {
-            throw new NotImplementedException();
         }
 
         public void End()
         {
-            throw new NotImplementedException();
+            var bufferInfo = _doubleBuffer.GetLatest();
+            if (bufferInfo.FrameBuffer != IntPtr.Zero)
+            {
+                var dirtyArea = bufferInfo.RepaintRect;
+                var bitmap = _bitmapCanvas.Bitmap;
+                bitmap.Lock();
+                bitmap.WritePixels(dirtyArea, bufferInfo.FrameBuffer, bufferInfo.BufferSize, bitmap.BackBufferStride);
+                bitmap.AddDirtyRect(dirtyArea);
+                bitmap.Unlock();
+            }
         }
 
         public void Initialize(IWindowInfo window)
@@ -140,8 +158,8 @@ namespace OpenTkWPFHost
         /// <param name="height">The new buffer height</param>
         private void CalculateBufferSize(CanvasInfo info, out int width, out int height)
         {
-            width = (int) (info.ActualWidth / info.DpiScaleX);
-            height = (int) (info.ActualHeight / info.DpiScaleY);
+            width = (int)(info.ActualWidth * info.DpiScaleX);
+            height = (int)(info.ActualHeight * info.DpiScaleY);
         }
 
         /// <summary>
@@ -200,23 +218,16 @@ namespace OpenTkWPFHost
             {
                 return null;
             }
+
             if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
                 _context.MakeCurrent(_windowInfo);
             var args =
                 new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, CheckNewContext());
             OnGlRender(args);
-            var dirtyArea = args.RepaintRect;
+            /*var dirtyArea = args.RepaintRect;
             if (dirtyArea.Width <= 0 || dirtyArea.Height <= 0)
-                return null;
-            _doubleBuffer.SwapBuffer();
+                return null;*/
             _doubleBuffer.ReadCurrent();
-            var copyLatest = _doubleBuffer.GetLatest();
-            if (copyLatest.FrameBuffer == IntPtr.Zero)
-            {
-                return null;
-            }
-
-            UpdateImage(copyLatest);
             return new DrawingDirective(null, true); //允许异步
         }
 
@@ -230,26 +241,6 @@ namespace OpenTkWPFHost
             _newContext = false;
             return true;
         }
-
-        /// <summary>
-        /// Updates what is currently being drawn on the screen from the back buffer.
-        /// Must be called from the UI thread
-        /// </summary>
-        /// <param name="info"></param>
-        private void UpdateImage(BufferInfo info)
-        {
-            var dirtyArea = info.RepaintRect;
-            if (info.IsResized)
-            {
-                _bitmap = new WriteableBitmap(info.Width, info.Height, 96, 96, PixelFormats.Pbgra32, null);
-            }
-
-            _bitmap.Lock();
-            _bitmap.WritePixels(dirtyArea, info.FrameBuffer, info.BufferSize, _bitmap.BackBufferStride);
-            _bitmap.AddDirtyRect(dirtyArea);
-            _bitmap.Unlock();
-        }
-
 
         /// <summary>
         /// Creates new OpenGl buffers of the specified size, including <see cref="_frameBuffer"/>, <see cref="_depthBuffer"/>,

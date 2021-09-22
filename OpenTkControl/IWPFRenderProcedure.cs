@@ -12,7 +12,7 @@ namespace OpenTkWPFHost
 
         void SwapBuffer();
 
-        IImageBuffer GetFrontBuffer();
+        IRenderBuffer GetFrontBuffer();
 
         bool IsInitialized { get; }
 

@@ -86,7 +86,7 @@ namespace OpenTkWPFHost
             
         }
 
-        public IImageBuffer GetFrontBuffer()
+        public IRenderBuffer GetFrontBuffer()
         {
             return dxCanvas;
         }

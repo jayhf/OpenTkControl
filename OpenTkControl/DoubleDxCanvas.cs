@@ -17,12 +17,12 @@ namespace OpenTkWPFHost
             return _backBuffer;
         }
 
-        public IImageBuffer GetFrontBuffer()
+        public IRenderBuffer GetFrontBuffer()
         {
             return _frontBuffer;
         }
 
-        public IImageBuffer GetBackBuffer()
+        public IRenderBuffer GetBackBuffer()
         {
             return _backBuffer;
         }

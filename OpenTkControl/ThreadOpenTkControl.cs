@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -82,6 +83,7 @@ namespace OpenTkWPFHost
         // private readonly DrawingVisual _drawingCopy = new DrawingVisual();
 
         private DrawingGroup drawingGroup = new DrawingGroup();
+
         /// <summary>
         /// d3d image maybe flicker when 
         /// </summary>
@@ -173,19 +175,14 @@ namespace OpenTkWPFHost
             RenderProcedure.Initialize(_windowInfo);
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-            OnUITask((() =>
-            {
-                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-            })).Wait(token);
-            
+            OnUITask((() => { RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this); })).Wait(token);
+
             RenderProcedure.SizeCanvas(RecentCanvasInfo);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
             var canvasInfo = RecentCanvasInfo;
             using (RenderProcedure)
             {
                 DrawingVisual cacheVisual = new DrawingVisual();
-                DrawingDirective drawingDirective;
-                TransformGroup transformGroup;
                 WaitHandle[] drawHandles = { token.WaitHandle, _renderCompletedResetEvent };
                 while (!token.IsCancellationRequested)
                 {
@@ -201,9 +198,7 @@ namespace OpenTkWPFHost
                         try
                         {
                             RenderProcedure?.Begin();
-                            drawingDirective = RenderProcedure.Render();
-                            transformGroup = drawingDirective.TransformGroup;
-                            transformGroup.Freeze();
+                            RenderProcedure.Render();
                             if (ShowFps)
                             {
                                 _openglFraps.Increment();
@@ -223,31 +218,46 @@ namespace OpenTkWPFHost
                         if (frontBuffer.IsAvailable)
                         {
                             var imageSource = frontBuffer.ImageSource;
-                            using (var drawingContext = cacheVisual.RenderOpen())
+                            if (imageSource.CanFreeze)
                             {
-                                var rectangle = RecentCanvasInfo.Rect;
-                                if (drawingDirective.IsNeedTransform)
+                                var valueAsFrozen = imageSource.GetCurrentValueAsFrozen() as ImageSource;
+                                OnUITask(() =>
                                 {
-                                    drawingContext.PushTransform(transformGroup);
-                                    drawingContext.DrawImage(imageSource, rectangle);
-                                    drawingContext.Pop();
-                                }
-                                else
-                                {
-                                    drawingContext.DrawImage(imageSource, rectangle);
-                                }
+                                    using (var drawingContext = drawingGroup.Open())
+                                    {
+                                        drawingContext.DrawImage(valueAsFrozen,RecentCanvasInfo.Rect);
+                                    }
+                                });
                             }
-
-                            var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth,
-                                RecentCanvasInfo.ActualHeight, RecentCanvasInfo.DpiScaleX * 96,
-                                RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
-                            renderTargetBitmap.Render(cacheVisual);
-                            renderTargetBitmap.Freeze();
-                            OnUITask((() =>
+                            else
                             {
-                                drawingGroup.Children.Clear();
-                                drawingGroup.Children.Add(new ImageDrawing(renderTargetBitmap, RecentCanvasInfo.Rect));
-                            })).Wait(token);
+                                using (var drawingContext = cacheVisual.RenderOpen())
+                                {
+                                    var rectangle = RecentCanvasInfo.Rect;
+                                    if (drawingDirective.IsNeedTransform)
+                                    {
+                                        drawingContext.PushTransform(transformGroup);
+                                        drawingContext.DrawImage(imageSource, rectangle);
+                                        drawingContext.Pop();
+                                    }
+                                    else
+                                    {
+                                        drawingContext.DrawImage(imageSource, rectangle);
+                                    }
+                                }
+                                var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth,
+                                    RecentCanvasInfo.ActualHeight, RecentCanvasInfo.DpiScaleX * 96,
+                                    RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
+                                renderTargetBitmap.Render(cacheVisual);
+                                var currentValueAsFrozen = (ImageSource)renderTargetBitmap.GetCurrentValueAsFrozen();
+                                OnUITask(() =>
+                                {
+                                    drawingGroup.Children.Clear();
+                                    drawingGroup.Children.Add(new ImageDrawing(currentValueAsFrozen,
+                                        RecentCanvasInfo.Rect));
+                                });
+
+                            }
                         }
 
                         _isWaitingForSync = true;

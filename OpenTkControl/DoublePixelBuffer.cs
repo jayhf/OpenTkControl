@@ -72,9 +72,7 @@ namespace OpenTkWPFHost
 
         public void SwapBuffer()
         {
-            var buffer = _copyBuffer;
-            _copyBuffer = _readBuffer;
-            _readBuffer = buffer;
+            (_copyBuffer, _readBuffer) = (_readBuffer, _copyBuffer);
             _copyBufferInfo = _readBufferInfo;
             _readBufferInfo.IsResized = false;
         }

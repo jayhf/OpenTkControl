@@ -55,7 +55,7 @@
     <Compile Include="GLDXProcedure.cs" />
     <Compile Include="GLSettings.cs" />
     <Compile Include="IDoubleBuffer.cs" />
-    <Compile Include="IImageBuffer.cs" />
+    <Compile Include="IRenderBuffer.cs" />
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />

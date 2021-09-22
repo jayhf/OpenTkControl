@@ -56,7 +56,7 @@ namespace OpenTkControlExample
             _renderer.CurrentScrollRange = new ScrollRange(0, end);
             _renderer.CurrentYAxisValue = 1000;
             _renderer.BackgroundColor = Color4.Black;
-            this.OpenTkControl.Renderer = new GLDXProcedure(new GLSettings())
+            this.OpenTkControl.Renderer = new GLBitmapProcedure(new GLSettings())
             {
                 Renderer = _renderer,
             };
