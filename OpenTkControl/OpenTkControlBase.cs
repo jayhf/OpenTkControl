@@ -278,6 +278,7 @@ namespace OpenTkWPFHost
             {
                 return;
             }
+
             this.IsRendererOpened = false;
             CloseRenderer();
         }

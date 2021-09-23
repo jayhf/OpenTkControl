@@ -112,7 +112,6 @@ namespace OpenTkWPFHost
                     settings.GraphicsContextFlags);
                 gfxCtx.LoadAll();
                 gfxCtx.MakeCurrent(_windowInfo);
-
                 _sharedContext = gfxCtx;
                 _sharedContextSettings = settings;
                 _sharedContextResources = new IDisposable[] {_windowInfo, gfxCtx};

@@ -26,5 +26,7 @@ namespace OpenTkWPFHost
         bool ReadyToRender { get; }
 
         IRenderer Renderer { get; set; }
+        
+        
     }
 }

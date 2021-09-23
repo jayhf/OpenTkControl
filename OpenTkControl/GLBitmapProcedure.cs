@@ -229,8 +229,8 @@ namespace OpenTkWPFHost
                 return false;
             }
 
-            if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
-                _context.MakeCurrent(_windowInfo);
+            /*if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
+                _context.MakeCurrent(_windowInfo);*/
             var args =
                 new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, CheckNewContext());
             OnGlRender(args);
@@ -241,6 +241,8 @@ namespace OpenTkWPFHost
             _bufferInfo = _doubleBuffer.GetLatest();
             return true;
         }
+
+        public IGraphicsContext Context => _context;
 
         /// <summary>
         /// Updates <see cref="_newContext"/>

@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
 using OpenTK.Platform.Windows;
@@ -59,17 +61,17 @@ namespace OpenTkWPFHost
 
         private volatile bool _rendererInitialized = false;
 
-        private DxCanvas dxCanvas = new DxCanvas();
+        private readonly DxCanvas _dxCanvas = new DxCanvas();
 
         public void FlushFrame(DrawingContext drawingContext)
         {
-            if (!dxCanvas.IsAvailable)
+            if (!_dxCanvas.IsAvailable)
             {
                 return;
             }
             var transformGroup = this._framebuffers.TransformGroup;
             drawingContext.PushTransform(transformGroup);
-            var dxCanvasImage = this.dxCanvas.Image;
+            var dxCanvasImage = this._dxCanvas.Image;
             drawingContext.DrawImage(dxCanvasImage, new Rect(new Size(dxCanvasImage.Width, dxCanvasImage.Height)));
             drawingContext.Pop();
         }
@@ -104,12 +106,12 @@ namespace OpenTkWPFHost
 
         public void SizeCanvas(CanvasInfo info)
         {
-            dxCanvas.Create(info);
+            _dxCanvas.Create(info);
         }
 
         public void Begin()
         {
-            var image = dxCanvas.Image;
+            var image = _dxCanvas.Image;
             image.Lock();
             image.SetBackBuffer(D3DResourceType.IDirect3DSurface9,
                 this.DxRenderTargetHandle);
@@ -117,7 +119,7 @@ namespace OpenTkWPFHost
 
         public void End()
         {
-            var image = dxCanvas.Image;
+            var image = _dxCanvas.Image;
             image.AddDirtyRect(new Int32Rect(0, 0, this.Width,
                 this.Height));
             image.Unlock();
@@ -193,6 +195,8 @@ namespace OpenTkWPFHost
             PostRender();
             return true;
         }
+
+        public IGraphicsContext Context => _context.GraphicsContext;
 
         public void Dispose()
         {

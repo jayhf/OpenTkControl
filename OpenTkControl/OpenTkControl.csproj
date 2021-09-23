@@ -49,6 +49,7 @@
     <Compile Include="DxCanvas.cs" />
     <Compile Include="DXGLContext.cs" />
     <Compile Include="DxGLFramebuffer.cs" />
+    <Compile Include="EmptyWindowInfo.cs" />
     <Compile Include="Fraps.cs" />
     <Compile Include="GLBitmapProcedure.cs" />
     <Compile Include="GlRenderEventArgs.cs" />

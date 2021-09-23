@@ -1,4 +1,5 @@
-﻿using OpenTK.Platform;
+﻿using OpenTK.Graphics;
+using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
@@ -11,5 +12,7 @@ namespace OpenTkWPFHost
         void SizeFrame(CanvasInfo size);
 
         bool Render();
+
+        IGraphicsContext Context { get; }
     }
 }
