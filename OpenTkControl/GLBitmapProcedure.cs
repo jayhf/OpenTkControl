@@ -9,7 +9,7 @@ using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
-    public class BitmapCanvas : IRenderCanvas, IRenderBuffer
+    public class BitmapCanvas : IRenderCanvas
     {
         /// <summary>
         /// The source of the internal Image
@@ -18,8 +18,8 @@ namespace OpenTkWPFHost
 
         public void Create(CanvasInfo info)
         {
-            Bitmap = new WriteableBitmap((int)(info.ActualWidth * info.DpiScaleX),
-                (int)(info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
+            Bitmap = new WriteableBitmap((int) (info.ActualWidth * info.DpiScaleX),
+                (int) (info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
                 PixelFormats.Pbgra32, null);
         }
 
@@ -57,12 +57,12 @@ namespace OpenTkWPFHost
         /// <summary>
         /// The width of <see cref="_bitmap"/> in pixels/>
         /// </summary>
-        private int _bitmapWidth;
+        private int _Width;
 
         /// <summary>
         /// The height of <see cref="_bitmap"/> in pixels/>
         /// </summary>
-        private int _bitmapHeight;
+        private int _Height;
 
         private readonly BitmapCanvas _bitmapCanvas = new BitmapCanvas();
 
@@ -81,23 +81,16 @@ namespace OpenTkWPFHost
         /// </summary>
         private int _depthBuffer;
 
-        public void SwapBuffer()
-        {
-            _doubleBuffer.SwapBuffer();
-        }
+        private readonly DoublePixelBuffer _doublePixelBuffer = new DoublePixelBuffer();
 
-        public void FlushFrame(DrawingContext context)
-        {
-            if (_bitmapCanvas.IsAvailable)
-            {
-                var imageSource = _bitmapCanvas.ImageSource;
-                context.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
-            }
-        }
+        private volatile bool _rendererInitialized = false;
+        private IRenderer _renderer;
+
+        private volatile BufferInfo _bufferInfo;
 
         public bool IsInitialized { get; private set; }
 
-        public bool ReadyToRender => _bitmapWidth != 0 && _bitmapHeight != 0;
+        public bool ReadyToRender => _Width != 0 && _Height != 0;
 
         public IRenderer Renderer
         {
@@ -109,11 +102,6 @@ namespace OpenTkWPFHost
             }
         }
 
-        private readonly DoublePixelBuffer _doubleBuffer = new DoublePixelBuffer();
-
-        private volatile bool _rendererInitialized = false;
-        private IRenderer _renderer;
-
         public GLSettings GlSettings { get; }
 
         public GLBitmapProcedure(GLSettings glSettings)
@@ -121,22 +109,17 @@ namespace OpenTkWPFHost
             GlSettings = glSettings;
         }
 
-        public bool CanAsync { get; set; } = true;
+        public IRenderCanvas Canvas => _bitmapCanvas;
 
-        public void SizeCanvas(CanvasInfo size)
-        {
-            _bitmapCanvas.Create(size);
-        }
+        public bool CanAsyncRender { get; set; } = true;
 
         public void Begin()
         {
         }
 
-        private BufferInfo _bufferInfo;
-        
         public void End()
         {
-            if (_bufferInfo.FrameBuffer != IntPtr.Zero)
+            if (_bufferInfo != null && _bufferInfo.HasValue)
             {
                 var dirtyArea = _bufferInfo.RepaintRect;
                 var bitmap = _bitmapCanvas.Bitmap;
@@ -160,6 +143,18 @@ namespace OpenTkWPFHost
             IsInitialized = true;
         }
 
+        public void SwapBuffer()
+        {
+            _doublePixelBuffer.SwapBuffer();
+        }
+
+        public void FlushFrame(DrawingContext context)
+        {
+            var imageSource = _bitmapCanvas.ImageSource;
+            context.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
+        }
+
+
         /// <summary>
         /// Determines the current buffer size based on the ActualWidth and ActualHeight of the control
         /// </summary>
@@ -168,37 +163,21 @@ namespace OpenTkWPFHost
         /// <param name="height">The new buffer height</param>
         private void CalculateBufferSize(CanvasInfo info, out int width, out int height)
         {
-            width = (int)(info.ActualWidth * info.DpiScaleX);
-            height = (int)(info.ActualHeight * info.DpiScaleY);
-        }
-
-        /// <summary>
-        /// A helper to actually invoke <see cref="GlRender"/>
-        /// </summary>
-        /// <param name="args">The render arguments</param>
-        private void OnGlRender(GlRenderEventArgs args)
-        {
-            Renderer.Render(args);
-            var error = GL.GetError();
-            if (error != ErrorCode.NoError)
-                throw new GraphicsException(error.ToString());
+            width = (int) (info.ActualWidth * info.DpiScaleX);
+            height = (int) (info.ActualHeight * info.DpiScaleY);
         }
 
         public void SizeFrame(CanvasInfo canvas)
         {
             CalculateBufferSize(canvas, out var width, out var height);
-            //Need Abs(...) > 1 to handle an edge case where the resizing the bitmap causes the height to increase in an infinite loop
-            if (Math.Abs(_bitmapWidth - width) > 1 || Math.Abs(_bitmapHeight - height) > 1)
+            _Width = width;
+            _Height = height;
+            if (CheckRenderer())
             {
-                _bitmapWidth = width;
-                _bitmapHeight = height;
-                if (CheckRenderer())
-                {
-                    Renderer.Resize(new PixelSize(width, height));
-                }
-
-                AllocateFrameBuffers(width, height);
+                Renderer.Resize(new PixelSize(width, height));
             }
+
+            AllocateFrameBuffers(width, height);
         }
 
         /// <summary>
@@ -226,19 +205,23 @@ namespace OpenTkWPFHost
         {
             if (!CheckRenderer())
             {
+                _bufferInfo = null;
                 return false;
             }
 
             /*if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
                 _context.MakeCurrent(_windowInfo);*/
             var args =
-                new GlRenderEventArgs(_bitmapWidth, _bitmapHeight, CheckNewContext());
-            OnGlRender(args);
+                new GlRenderEventArgs(_Width, _Height, CheckNewContext());
+            Renderer.Render(args);
+            var error = GL.GetError();
+            if (error != ErrorCode.NoError)
+                throw new GraphicsException(error.ToString());
             /*var dirtyArea = args.RepaintRect;
             if (dirtyArea.Width <= 0 || dirtyArea.Height <= 0)
                 return null;*/
-            _doubleBuffer.ReadCurrent();
-            _bufferInfo = _doubleBuffer.GetLatest();
+            _doublePixelBuffer.FlushCurrentFrame();
+            _bufferInfo = _doublePixelBuffer.GetReadBufferInfo();
             return true;
         }
 
@@ -286,7 +269,7 @@ namespace OpenTkWPFHost
                 throw new GraphicsErrorException("Error creating frame buffer: " + error);
             }
 
-            _doubleBuffer.Allocate(width, height);
+            _doublePixelBuffer.Allocate(width, height);
         }
 
         /// <summary>
@@ -312,7 +295,7 @@ namespace OpenTkWPFHost
                 _renderBuffer = 0;
             }
 
-            _doubleBuffer.Release();
+            _doublePixelBuffer.Release();
         }
 
 

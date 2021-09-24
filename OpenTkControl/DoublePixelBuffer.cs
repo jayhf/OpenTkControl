@@ -6,89 +6,92 @@ namespace OpenTkWPFHost
 {
     public class DoublePixelBuffer
     {
-        private int _doublePixelBuffer0, _doublePixelBuffer1;
-
         private int _width, _height;
 
-        private BufferInfo _copyBufferInfo;
+        /// <summary>
+        /// buffer which are reading
+        /// </summary>
+        private BufferInfo _readBufferInfo = new BufferInfo();
 
-        private BufferInfo _readBufferInfo;
+        /// <summary>
+        /// buffer which are writing
+        /// </summary>
+        private BufferInfo _writeBufferInfo = new BufferInfo();
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
         public void Allocate(int width, int height)
         {
             this._width = width;
             this._height = height;
-            if (_readBufferInfo.Width != width || _readBufferInfo.Height != height)
-            {
-                _readBufferInfo.IsResized = true;
-                /*_readBufferInfo.FrameBuffer = IntPtr.Zero;
-                _copyBufferInfo.FrameBuffer = IntPtr.Zero;*/
-                _readBufferInfo.RepaintRect = new Int32Rect(0, 0, _width, _height);
-            }
-            else
-            {
-                _readBufferInfo.IsResized = false;
-                return;
-            }
-
             var currentPixelBufferSize = width * height * 4;
+            _writeBufferInfo.BufferSize = currentPixelBufferSize;
+            _writeBufferInfo.RepaintRect = new Int32Rect(0, 0, width, height);
+            var writeBuffer = GL.GenBuffer();
+            _writeBufferInfo.GlBufferPointer = writeBuffer;
+            _writeBufferInfo.IsResized = true;
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBuffer);
+            GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
+                BufferUsageHint.StreamRead);
+            var readBuffer = GL.GenBuffer();
+            _readBufferInfo.GlBufferPointer = readBuffer;
             _readBufferInfo.BufferSize = currentPixelBufferSize;
-            _doublePixelBuffer0 = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, _doublePixelBuffer0);
+            _readBufferInfo.RepaintRect = new Int32Rect(0, 0, width, height);
+            _readBufferInfo.IsResized = false;
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, readBuffer);
             GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
                 BufferUsageHint.StreamRead);
-            _doublePixelBuffer1 = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, _doublePixelBuffer1);
-            GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
-                BufferUsageHint.StreamRead);
-            _readBuffer = _doublePixelBuffer0;
-            _copyBuffer = _doublePixelBuffer1;
         }
 
         public void Release()
         {
-            if (_doublePixelBuffer0 != 0)
+            var writeBuffer = _writeBufferInfo.GlBufferPointer;
+            if (writeBuffer != 0)
             {
-                GL.DeleteBuffer(_doublePixelBuffer0);
+                GL.DeleteBuffer(writeBuffer);
+                _writeBufferInfo = new BufferInfo();
             }
 
-            if (_doublePixelBuffer1 != 0)
+            var readBuffer = _readBufferInfo.GlBufferPointer;
+            if (readBuffer != 0)
             {
-                GL.DeleteBuffer(_doublePixelBuffer1);
+                GL.DeleteBuffer(readBuffer);
+                _readBufferInfo = new BufferInfo();
             }
         }
-
-        private int _readBuffer, _copyBuffer;
 
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public void ReadCurrent()
+        public void FlushCurrentFrame()
         {
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, _readBuffer);
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, _writeBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
+            _writeBufferInfo.HasValue = true;
         }
 
         public void SwapBuffer()
         {
-            (_copyBuffer, _readBuffer) = (_readBuffer, _copyBuffer);
-            _copyBufferInfo = _readBufferInfo;
-            _readBufferInfo.IsResized = false;
+            (_readBufferInfo, _writeBufferInfo) = (_writeBufferInfo, _readBufferInfo);
+            _writeBufferInfo.IsResized = false;
         }
 
-        public BufferInfo GetLatest()
+        public BufferInfo GetReadBufferInfo()
         {
-            if (_copyBufferInfo.Equals(default(BufferInfo)))
+            if (!_readBufferInfo.HasValue)
             {
                 return default;
             }
 
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, _copyBuffer);
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, _readBufferInfo.GlBufferPointer);
             var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
-            _copyBufferInfo.FrameBuffer = mapBuffer;
+            _readBufferInfo.FrameBuffer = mapBuffer;
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
-            return _copyBufferInfo;
+            return _readBufferInfo;
         }
     }
 }

@@ -2,7 +2,7 @@
 
 namespace OpenTkWPFHost
 {
-    public readonly struct CanvasInfo
+    public class CanvasInfo
     {
         public CanvasInfo(int width, int height, double dpiScaleX, double dpiScaleY)
         {

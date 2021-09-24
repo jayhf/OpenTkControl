@@ -5,6 +5,8 @@
     /// </summary>
     public interface IRenderCanvas
     {
+        bool IsAvailable { get; }
+
         void Create(CanvasInfo info);
     }   
 }

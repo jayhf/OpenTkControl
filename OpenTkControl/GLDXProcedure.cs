@@ -10,35 +10,6 @@ using OpenTK.Platform.Windows;
 
 namespace OpenTkWPFHost
 {
-    public class DoubleBuffer<T>
-    {
-        private readonly Func<T> _createFunc;
-        private T[] drawingVisual = new T[2];
-
-        public T FrontVisual { get; private set; }
-        public T BackVisual { get; private set; }
-
-        public DoubleBuffer(Func<T> createFunc)
-        {
-            _createFunc = createFunc;
-        }
-
-        public void Create()
-        {
-            drawingVisual[0] = _createFunc();
-            drawingVisual[1] = _createFunc();
-            FrontVisual = drawingVisual[0];
-            BackVisual = drawingVisual[1];
-        }
-
-        public void Swap()
-        {
-            var visual = FrontVisual;
-            FrontVisual = BackVisual;
-            BackVisual = visual;
-        }
-    }
-
     ///Renderer that uses DX_Interop for a fast-path.
     public class GLDXProcedure : IRenderProcedure
     {
@@ -63,22 +34,9 @@ namespace OpenTkWPFHost
 
         private readonly DxCanvas _dxCanvas = new DxCanvas();
 
-        public void FlushFrame(DrawingContext drawingContext)
-        {
-            if (!_dxCanvas.IsAvailable)
-            {
-                return;
-            }
-            var transformGroup = this._framebuffers.TransformGroup;
-            drawingContext.PushTransform(transformGroup);
-            var dxCanvasImage = this._dxCanvas.Image;
-            drawingContext.DrawImage(dxCanvasImage, new Rect(new Size(dxCanvasImage.Width, dxCanvasImage.Height)));
-            drawingContext.Pop();
-        }
-
         public bool IsInitialized { get; private set; }
 
-        public bool ReadyToRender => Width != 0 && Height != 0;
+        public bool ReadyToRender => !_dxCanvas.D3DImageDirty && Width != 0 && Height != 0;
 
         public IRenderer Renderer
         {
@@ -89,6 +47,9 @@ namespace OpenTkWPFHost
                 _rendererInitialized = false;
             }
         }
+
+        public IRenderCanvas Canvas => _dxCanvas;
+        public bool CanAsyncRender { get; set; } = true;
 
         public GLSettings GlSettings { get; }
 
@@ -101,12 +62,13 @@ namespace OpenTkWPFHost
         {
         }
 
-
-        public bool CanAsync { get; set; } = false;
-
-        public void SizeCanvas(CanvasInfo info)
+        public void FlushFrame(DrawingContext drawingContext)
         {
-            _dxCanvas.Create(info);
+            var transformGroup = this._framebuffers.TransformGroup;
+            drawingContext.PushTransform(transformGroup);
+            var dxCanvasImage = _dxCanvas.Image;
+            drawingContext.DrawImage(dxCanvasImage, new Rect(new Size(dxCanvasImage.Width, dxCanvasImage.Height)));
+            drawingContext.Pop();
         }
 
         public void Begin()
@@ -128,14 +90,14 @@ namespace OpenTkWPFHost
         /// Sets up the framebuffer, directx stuff for rendering. 
         private void PreRender()
         {
-            Wgl.DXLockObjectsNV(_context.GlDeviceHandle, 1, new[] { _framebuffers.DxInteropRegisteredHandle });
+            Wgl.DXLockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffers.DxInteropRegisteredHandle});
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffers.GLFramebufferHandle);
         }
 
         /// Sets up the framebuffer and prepares stuff for usage in directx.
         private void PostRender()
         {
-            Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] { _framebuffers.DxInteropRegisteredHandle });
+            Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffers.DxInteropRegisteredHandle});
         }
 
         /// <summary>
@@ -188,6 +150,10 @@ namespace OpenTkWPFHost
 
         public bool Render()
         {
+            /*if (!locked)
+            {
+                return false;
+            }*/
             PreRender();
             Renderer?.Render(new GlRenderEventArgs(Width, Height, false));
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);

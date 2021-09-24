@@ -1,8 +1,16 @@
+using System;
+using System.Windows.Interop;
+
 namespace OpenTkWPFHost
 {
-    public class DoubleDxCanvas : IDoubleBuffer, IRenderCanvas
+    /// <summary>
+    /// 由于d3dimage的机制是设置背缓冲后响应Dispatcher的提交。
+    /// 如果背缓冲未提交会阻塞锁定操作，增加cpu占用，故使用双缓冲
+    /// </summary>
+    [Obsolete("双缓冲并不适用于d3dimage")]
+    public class DoubleDxCanvas : IRenderCanvas
     {
-        private readonly DxCanvas[] _dxCanvasArray = {new DxCanvas(), new DxCanvas()};
+        private readonly DxCanvas[] _dxCanvasArray = {new DxCanvas(), new DxCanvas(), new DxCanvas()};
 
         private DxCanvas _backBuffer, _frontBuffer;
 
@@ -12,27 +20,35 @@ namespace OpenTkWPFHost
             _frontBuffer = _dxCanvasArray[1];
         }
 
-        public DxCanvas GetWriteBuffer()
+        public DxCanvas BackBuffer
         {
-            return _backBuffer;
+            get
+            {
+                var i = pointer % 2 + 1;
+                return _dxCanvasArray[i];
+            }
         }
 
-        public IRenderBuffer GetFrontBuffer()
+        public DxCanvas FrontBuffer
         {
-            return _frontBuffer;
+            get
+            {
+                var i = pointer % 2;
+                return _dxCanvasArray[i];
+            }
         }
 
-        public IRenderBuffer GetBackBuffer()
-        {
-            return _backBuffer;
-        }
+        private int pointer = 0;
 
         public void SwapBuffer()
         {
-            var mid = _backBuffer;
+            pointer++;
+            /*var mid = BackBuffer;
             _backBuffer = _frontBuffer;
-            _frontBuffer = mid;
+            _frontBuffer = mid;*/
         }
+
+        public bool IsAvailable { get; }
 
         public void Create(CanvasInfo info)
         {

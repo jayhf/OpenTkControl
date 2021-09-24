@@ -5,9 +5,12 @@ namespace OpenTkWPFHost
 {
     public interface IRenderProcedure : IOpenGlRender, IDisposable
     {
-        bool CanAsync { get; }
+        IRenderCanvas Canvas { get; }
 
-        void SizeCanvas(CanvasInfo size);
+        /// <summary>
+        /// whether can render simultaneously with ui thread.
+        /// </summary>
+        bool CanAsyncRender { get; }
 
         void Begin();
 
@@ -26,7 +29,5 @@ namespace OpenTkWPFHost
         bool ReadyToRender { get; }
 
         IRenderer Renderer { get; set; }
-        
-        
     }
 }

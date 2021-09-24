@@ -1,20 +1,9 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Threading;
-using System.Windows.Threading;
-using OpenTK;
-using OpenTK.Graphics.OpenGL;
-using System.Drawing;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using OpenTK.Graphics;
 using OpenTkWPFHost;
 using TestRenderer;
-using WindowState = System.Windows.WindowState;
 
 
 namespace OpenTkControlExample
@@ -44,8 +33,7 @@ namespace OpenTkControlExample
                     var ticks = (float) (time.Ticks - start);
                     ringBuffer[j] = ticks;
                     var next = random.Next(0, 10000) * 0.1f;
-                    ringBuffer[j + 1] = next; 
-                    Debug.WriteLine(next);
+                    ringBuffer[j + 1] = next;
                 }
 
                 _renderer.Add(lineChartRenderer);
@@ -57,7 +45,7 @@ namespace OpenTkControlExample
             _renderer.CurrentScrollRange = new ScrollRange(0, end);
             _renderer.CurrentYAxisValue = 1000;
             _renderer.BackgroundColor = Color4.Black;
-            this.OpenTkControl.Renderer = new GLDXProcedure(new GLSettings())
+            this.OpenTkControl.Renderer = new GLBitmapProcedure(new GLSettings())
             {
                 Renderer = _renderer,
             };
