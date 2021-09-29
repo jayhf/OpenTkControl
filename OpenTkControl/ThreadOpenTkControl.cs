@@ -85,18 +85,18 @@ namespace OpenTkWPFHost
 
         // private readonly DrawingVisual _drawingCopy = new DrawingVisual();
 
-        private DrawingGroup drawingGroup = new DrawingGroup();
+        private readonly DrawingVisual _drawingVisual = new DrawingVisual();
 
         /// <summary>
         /// d3d image maybe flicker when 
         /// </summary>
         private volatile bool _isWaitingForSync = false;
 
-        private TaskCompletionSource<bool> completion;
+        private TaskCompletionSource<bool> _completion;
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            drawingContext.DrawDrawing(drawingGroup);
+            drawingContext.DrawDrawing(_drawingVisual.Drawing);
             if (ShowFps)
             {
                 _controlFraps.Increment();
@@ -106,7 +106,7 @@ namespace OpenTkWPFHost
 
             if (_isWaitingForSync)
             {
-                completion.SetResult(true);
+                _completion.SetResult(true);
                 // _renderCompletedResetEvent.Set();
             }
         }
@@ -170,6 +170,14 @@ namespace OpenTkWPFHost
             base.OnUnloaded(sender, args);
         }
 
+        public BitmapSource GetCurrentGraphic()
+        {
+            var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth, RecentCanvasInfo.ActualHeight,
+                RecentCanvasInfo.DpiScaleX * 96, RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
+            renderTargetBitmap.Render(_drawingVisual);
+            return renderTargetBitmap;
+        }
+
         /// <summary>
         /// The function that the thread runs to render the control
         /// </summary>
@@ -187,6 +195,7 @@ namespace OpenTkWPFHost
                 RenderProcedure.Canvas.Create(RecentCanvasInfo);
             }).Wait(token);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
+
             var canvasInfo = RecentCanvasInfo;
             using (RenderProcedure)
             {
@@ -205,7 +214,7 @@ namespace OpenTkWPFHost
                         bool renderSuccess;
                         try
                         {
-                            OnUITask((() => RenderProcedure.Begin())).Wait(token);
+                            OnUITask(() => RenderProcedure.Begin()).Wait(token);
                             renderSuccess = RenderProcedure.Render();
                             if (ShowFps && renderSuccess)
                             {
@@ -228,7 +237,7 @@ namespace OpenTkWPFHost
                             {
                                 if (RenderProcedure.Canvas.IsAvailable)
                                 {
-                                    using (var drawingContext = drawingGroup.Open())
+                                    using (var drawingContext = _drawingVisual.RenderOpen())
                                     {
                                         RenderProcedure.FlushFrame(drawingContext);
                                     }
@@ -238,10 +247,10 @@ namespace OpenTkWPFHost
 
                         if (!RenderProcedure.CanAsyncRender)
                         {
-                            completion = new TaskCompletionSource<bool>();
+                            _completion = new TaskCompletionSource<bool>();
                             _isWaitingForSync = true;
                             RenderProcedure.Context.MakeCurrent(new EmptyWindowInfo());
-                            await completion.Task;
+                            await _completion.Task;
                             if (!RenderProcedure.Context.IsCurrent)
                             {
                                 RenderProcedure.Context.MakeCurrent(_windowInfo);

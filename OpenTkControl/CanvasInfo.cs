@@ -19,8 +19,14 @@ namespace OpenTkWPFHost
 
         public double DpiScaleY { get; }
 
+        /// <summary>
+        /// device independent
+        /// </summary>
         public int ActualWidth { get; }
 
+        /// <summary>
+        /// device independent
+        /// </summary>
         public int ActualHeight { get; }
 
         public bool Equals(CanvasInfo other)
