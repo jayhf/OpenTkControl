@@ -64,6 +64,11 @@
                 Minimum="0"
                 ValueChanged="Slider_OnValueChanged"
                 x:Name="Slider" />
+        <Button VerticalAlignment="Bottom"
+                HorizontalAlignment="Left"
+                Width="120"
+                Height="30"
+                Click="Test_OnClick"/>
 
     </Grid>
 </Window>

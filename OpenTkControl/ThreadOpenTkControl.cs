@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
@@ -22,8 +23,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// The Thread object for the rendering thread， use origin thread but not task lest context switch
         /// </summary>
-        // private Thread _renderThread;
-        private Task renderTask;
+        private Task _renderTask;
 
         /// <summary>
         /// The CTS used to stop the thread when this control is unloaded
@@ -83,9 +83,7 @@ namespace OpenTkWPFHost
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
             }
         }
-
-        // private readonly DrawingVisual _drawingCopy = new DrawingVisual();
-
+        
         private readonly DrawingVisual _drawingVisual = new DrawingVisual();
 
         /// <summary>
@@ -107,8 +105,7 @@ namespace OpenTkWPFHost
 
             if (_isWaitingForSync)
             {
-                _completion.SetResult(true);
-                // _renderCompletedResetEvent.Set();
+                _completion.TrySetResult(true);
             }
         }
 
@@ -156,9 +153,14 @@ namespace OpenTkWPFHost
             }
         }
 
-        private Task OnUITask(Action action)
+        private Task OnUITaskAsync(Action action)
         {
             return Dispatcher.InvokeAsync(action).Task;
+        }
+
+        private void OnUITask(Action action)
+        {
+            Dispatcher.Invoke(action, DispatcherPriority.Normal);
         }
 
         protected override void OnLoaded(object sender, RoutedEventArgs args)
@@ -209,12 +211,11 @@ namespace OpenTkWPFHost
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
             IRenderCanvas uiThreadCanvas = null;
-            OnUITask(() =>
+            OnUITaskAsync(() =>
             {
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
                 uiThreadCanvas = RenderProcedure.CreateCanvas(RecentCanvasInfo);
             }).Wait(token);
-            var taskRenderCanvas = RenderProcedure.CreateCanvas(RecentCanvasInfo);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
             var canvasInfo = RecentCanvasInfo;
             using (RenderProcedure)
@@ -224,7 +225,7 @@ namespace OpenTkWPFHost
                     if (!canvasInfo.Equals(RecentCanvasInfo))
                     {
                         canvasInfo = RecentCanvasInfo;
-                        OnUITask(() => { uiThreadCanvas.Allocate(canvasInfo); }).Wait(token);
+                        OnUITaskAsync(() => { uiThreadCanvas.Allocate(canvasInfo); }).Wait(token);
                         RenderProcedure.SizeFrame(canvasInfo);
                     }
 
@@ -233,6 +234,7 @@ namespace OpenTkWPFHost
                     {
                         if (_renderActionQueue.TryDequeue(out var renderProcedureTask))
                         {
+                            var taskRenderCanvas = RenderProcedure.CreateCanvas(RecentCanvasInfo);
                             taskRenderCanvas.Allocate(canvasInfo);
                             while (!taskRenderCanvas.Ready)
                             {
@@ -268,14 +270,14 @@ namespace OpenTkWPFHost
                             {
                                 try
                                 {
-                                    OnUITask(() => uiThreadCanvas.Begin()).Wait(token);
+                                    OnUITaskAsync(() => uiThreadCanvas.Begin()).Wait(token);
                                     RenderProcedure.Render(uiThreadCanvas);
                                     if (ShowFps)
                                     {
                                         _openglFraps.Increment();
                                     }
 
-                                    OnUITask(() => uiThreadCanvas.End()).Wait(token);
+                                    OnUITaskAsync(() => uiThreadCanvas.End()).Wait(token);
                                 }
                                 catch (OperationCanceledException)
                                 {
@@ -287,7 +289,7 @@ namespace OpenTkWPFHost
 
                                 if (uiThreadCanvas.IsDirty)
                                 {
-                                    OnUITask(() =>
+                                    OnUITaskAsync(() =>
                                     {
                                         using (var drawingContext = _drawingVisual.RenderOpen())
                                         {
@@ -349,7 +351,10 @@ namespace OpenTkWPFHost
             _openglFraps.Start();
             _controlFraps.Start();
             _endThreadCts = new CancellationTokenSource();
-            renderTask = Task.Run(async () => await RenderThread((object) _endThreadCts.Token));
+            _renderTask = Task.Run(async () =>
+            {
+                await RenderThread((object) _endThreadCts.Token);
+            });
             /*_renderThread = new Thread(RenderThread)
             {
                 IsBackground = true,
@@ -385,7 +390,7 @@ namespace OpenTkWPFHost
                     _renderLoopResetEvent.Set();
                 }
 
-                renderTask.Wait();
+                _renderTask.Wait();
                 // _renderThread.Join();
                 _endThreadCts.Dispose();
             }

@@ -107,7 +107,7 @@ namespace OpenTkWPFHost
         /// <param name="info"></param>
         /// <param name="width">The new buffer width</param>
         /// <param name="height">The new buffer height</param>
-        private void CalculateBufferSize(CanvasInfo info, out int width, out int height)
+        private static void CalculateBufferSize(CanvasInfo info, out int width, out int height)
         {
             width = (int) (info.ActualWidth * info.DpiScaleX);
             height = (int) (info.ActualHeight * info.DpiScaleY);

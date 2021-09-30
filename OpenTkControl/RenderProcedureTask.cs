@@ -7,21 +7,16 @@ namespace OpenTkWPFHost
 {
     internal class RenderProcedureTask
     {
-        public TaskCompletionSource<BitmapSource> BitmapCompletionSource
-        {
-            get => _bitmapCompletionSource;
-            set => _bitmapCompletionSource = value;
-        }
-
-        private TaskCompletionSource<BitmapSource> _bitmapCompletionSource = new TaskCompletionSource<BitmapSource>();
+        public TaskCompletionSource<BitmapSource> BitmapCompletionSource { get; set; }
+            = new TaskCompletionSource<BitmapSource>();
 
         private readonly Action<IRenderProcedure> _beforeAction;
         private readonly Action<IRenderProcedure> _afterAction;
 
-        public RenderProcedureTask(Action<IRenderProcedure> afterAction, Action<IRenderProcedure> beforeAction)
+        public RenderProcedureTask(Action<IRenderProcedure> beforeAction, Action<IRenderProcedure> afterAction)
         {
-            this._afterAction = afterAction;
             this._beforeAction = beforeAction;
+            this._afterAction = afterAction;
         }
 
         public void Enter(IRenderProcedure procedure)
