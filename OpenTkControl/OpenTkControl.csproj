@@ -41,6 +41,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BitmapCanvas.cs" />
     <Compile Include="DesignTimeHelper.cs" />
     <Compile Include="DoubleBuffer.cs" />
     <Compile Include="DoubleDxCanvas.cs" />
@@ -52,14 +53,13 @@
     <Compile Include="DxGLFramebuffer.cs" />
     <Compile Include="EmptyWindowInfo.cs" />
     <Compile Include="Fraps.cs" />
-    <Compile Include="GLBitmapProcedure.cs" />
+    <Compile Include="BitmapProcedure.cs" />
     <Compile Include="GlRenderEventArgs.cs" />
-    <Compile Include="GLDXProcedure.cs" />
+    <Compile Include="DXProcedure.cs" />
     <Compile Include="GLSettings.cs" />
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />
-    <Compile Include="IOpenGlRender.cs" />
     <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
     <Compile Include="IRenderProcedure.cs" />
@@ -69,6 +69,7 @@
     <Compile Include="PixelSize.cs" />
     <Compile Include="PropertyChangedArgs.cs" />
     <Compile Include="RendererProcedureLifeCycle.cs" />
+    <Compile Include="RenderProcedureTask.cs" />
     <Compile Include="SemaphoreEvent.cs" />
     <Compile Include="ThreadOpenTkControl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

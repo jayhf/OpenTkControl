@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace OpenTkWPFHost
 {
@@ -10,7 +11,7 @@ namespace OpenTkWPFHost
     [Obsolete("双缓冲并不适用于d3dimage")]
     public class DoubleDxCanvas : IRenderCanvas
     {
-        private readonly DxCanvas[] _dxCanvasArray = {new DxCanvas(), new DxCanvas(), new DxCanvas()};
+        private readonly DxCanvas[] _dxCanvasArray;// = {new DxCanvas(), new DxCanvas(), new DxCanvas()};
 
         private DxCanvas _backBuffer, _frontBuffer;
 
@@ -48,14 +49,31 @@ namespace OpenTkWPFHost
             _frontBuffer = mid;*/
         }
 
-        public bool IsAvailable { get; }
+        public bool CanAsyncRender { get; }
+        public bool IsDirty { get; }
+        public bool Ready { get; }
 
-        public void Create(CanvasInfo info)
+        public void Allocate(CanvasInfo info)
         {
             foreach (var dxCanvas in _dxCanvasArray)
             {
-                dxCanvas.Create(info);
+                dxCanvas.Allocate(info);
             }
+        }
+
+        public void Begin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void End()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void FlushFrame(DrawingContext context)
+        {
+            throw new NotImplementedException();
         }
     }
 }

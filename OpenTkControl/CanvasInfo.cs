@@ -1,4 +1,6 @@
 ﻿using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace OpenTkWPFHost
 {
@@ -28,6 +30,14 @@ namespace OpenTkWPFHost
         /// device independent
         /// </summary>
         public int ActualHeight { get; }
+
+        public bool IsEmpty => ActualWidth == 0 || ActualHeight == 0;
+
+        public RenderTargetBitmap CreateRenderTargetBitmap()
+        {
+            return new RenderTargetBitmap(this.ActualWidth, this.ActualHeight, this.DpiScaleX * 96, this.DpiScaleY * 96,
+                PixelFormats.Pbgra32);
+        }
 
         public bool Equals(CanvasInfo other)
         {

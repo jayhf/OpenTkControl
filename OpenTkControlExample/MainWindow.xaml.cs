@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Windows;
 using OpenTK.Graphics;
@@ -18,7 +21,7 @@ namespace OpenTkControlExample
         private readonly TendencyChartRenderer _renderer = new TendencyChartRenderer();
 
         public MainWindow()
-        {
+        { 
             this.InitializeComponent();
             var dateTime = DateTime.Now;
             var start = dateTime.Ticks;
@@ -45,7 +48,7 @@ namespace OpenTkControlExample
             _renderer.CurrentScrollRange = new ScrollRange(0, end);
             _renderer.CurrentYAxisValue = 1000;
             _renderer.BackgroundColor = Color4.Black;
-            this.OpenTkControl.Renderer = new GLBitmapProcedure(new GLSettings())
+            this.OpenTkControl.Renderer = new DXProcedure(new GLSettings())
             {
                 Renderer = _renderer,
             };
@@ -60,11 +63,6 @@ namespace OpenTkControlExample
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
             this.OpenTkControl.Start(this);
-            // this.OpenTkControl.Renderer = null;
-            /*foreach (var historySource in OpenTkControl.HistorySources)
-            {
-                Box.Items.Add(historySource);
-            }*/
         }
 
         private void Slider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
@@ -9,35 +6,7 @@ using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
-    public class BitmapCanvas : IRenderCanvas
-    {
-        /// <summary>
-        /// The source of the internal Image
-        /// </summary>
-        private volatile WriteableBitmap _bitmap;
-
-        public void Create(CanvasInfo info)
-        {
-            Bitmap = new WriteableBitmap((int) (info.ActualWidth * info.DpiScaleX),
-                (int) (info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
-                PixelFormats.Pbgra32, null);
-        }
-
-        public ImageSource ImageSource => Bitmap;
-
-        public bool IsAvailable => Bitmap != null && Bitmap.Width > 0 && Bitmap.Height > 0;
-
-        /// <summary>
-        /// The source of the internal Image
-        /// </summary>
-        public WriteableBitmap Bitmap
-        {
-            get => _bitmap;
-            set => _bitmap = value;
-        }
-    }
-
-    public class GLBitmapProcedure : IRenderProcedure
+    public class BitmapProcedure : IRenderProcedure
     {
         /// <summary>
         /// True if a new OpenGL context has been created since the last render call
@@ -55,19 +24,17 @@ namespace OpenTkWPFHost
         private IGraphicsContext _context;
 
         /// <summary>
-        /// The width of <see cref="_bitmap"/> in pixels/>
+        /// The width in pixels/>
         /// </summary>
-        private int _Width;
+        private int _width;
 
         /// <summary>
-        /// The height of <see cref="_bitmap"/> in pixels/>
+        /// The height in pixels/>
         /// </summary>
-        private int _Height;
-
-        private readonly BitmapCanvas _bitmapCanvas = new BitmapCanvas();
+        private int _height;
 
         /// <summary>
-        /// The OpenGL framebuffer
+        /// The OpenGL FrameBuffer
         /// </summary>
         private int _frameBuffer;
 
@@ -86,11 +53,11 @@ namespace OpenTkWPFHost
         private volatile bool _rendererInitialized = false;
         private IRenderer _renderer;
 
-        private volatile BufferInfo _bufferInfo;
-
         public bool IsInitialized { get; private set; }
 
-        public bool ReadyToRender => _Width != 0 && _Height != 0;
+        [Obsolete] public bool ReadyToRender => Renderer != null && _width != 0 && _height != 0;
+
+        public IGraphicsContext Context => _context;
 
         public IRenderer Renderer
         {
@@ -104,30 +71,16 @@ namespace OpenTkWPFHost
 
         public GLSettings GlSettings { get; }
 
-        public GLBitmapProcedure(GLSettings glSettings)
+        public BitmapProcedure(GLSettings glSettings)
         {
             GlSettings = glSettings;
         }
 
-        public IRenderCanvas Canvas => _bitmapCanvas;
-
-        public bool CanAsyncRender { get; set; } = true;
-
-        public void Begin()
+        public IRenderCanvas CreateCanvas(CanvasInfo info)
         {
-        }
-
-        public void End()
-        {
-            if (_bufferInfo != null && _bufferInfo.HasValue)
-            {
-                var dirtyArea = _bufferInfo.RepaintRect;
-                var bitmap = _bitmapCanvas.Bitmap;
-                bitmap.Lock();
-                bitmap.WritePixels(dirtyArea, _bufferInfo.FrameBuffer, _bufferInfo.BufferSize, bitmap.BackBufferStride);
-                bitmap.AddDirtyRect(dirtyArea);
-                bitmap.Unlock();
-            }
+            var bitmapCanvas = new BitmapCanvas();
+            bitmapCanvas.Allocate(info);
+            return bitmapCanvas;
         }
 
         public void Initialize(IWindowInfo window)
@@ -148,13 +101,6 @@ namespace OpenTkWPFHost
             _doublePixelBuffer.SwapBuffer();
         }
 
-        public void FlushFrame(DrawingContext context)
-        {
-            var imageSource = _bitmapCanvas.ImageSource;
-            context.DrawImage(imageSource, new Rect(new Size(imageSource.Width, imageSource.Height)));
-        }
-
-
         /// <summary>
         /// Determines the current buffer size based on the ActualWidth and ActualHeight of the control
         /// </summary>
@@ -170,8 +116,8 @@ namespace OpenTkWPFHost
         public void SizeFrame(CanvasInfo canvas)
         {
             CalculateBufferSize(canvas, out var width, out var height);
-            _Width = width;
-            _Height = height;
+            _width = width;
+            _height = height;
             if (CheckRenderer())
             {
                 Renderer.Resize(new PixelSize(width, height));
@@ -201,31 +147,22 @@ namespace OpenTkWPFHost
             return false;
         }
 
-        public bool Render()
+        public void Render(IRenderCanvas canvas)
         {
             if (!CheckRenderer())
             {
-                _bufferInfo = null;
-                return false;
+                return;
             }
 
-            /*if (!ReferenceEquals(GraphicsContext.CurrentContext, _context))
-                _context.MakeCurrent(_windowInfo);*/
             var args =
-                new GlRenderEventArgs(_Width, _Height, CheckNewContext());
+                new GlRenderEventArgs(_width, _height, CheckNewContext());
             Renderer.Render(args);
-            var error = GL.GetError();
+            /*var error = GL.GetError();
             if (error != ErrorCode.NoError)
-                throw new GraphicsException(error.ToString());
-            /*var dirtyArea = args.RepaintRect;
-            if (dirtyArea.Width <= 0 || dirtyArea.Height <= 0)
-                return null;*/
+                throw new GraphicsException(error.ToString());*/
             _doublePixelBuffer.FlushCurrentFrame();
-            _bufferInfo = _doublePixelBuffer.GetReadBufferInfo();
-            return true;
+            ((BitmapCanvas) canvas).ReadBufferInfo = _doublePixelBuffer.GetReadBufferInfo();
         }
-
-        public IGraphicsContext Context => _context;
 
         /// <summary>
         /// Updates <see cref="_newContext"/>
@@ -297,7 +234,6 @@ namespace OpenTkWPFHost
 
             _doublePixelBuffer.Release();
         }
-
 
         public void Dispose()
         {

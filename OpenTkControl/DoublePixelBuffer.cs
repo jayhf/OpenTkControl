@@ -71,7 +71,7 @@ namespace OpenTkWPFHost
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _writeBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
-            _writeBufferInfo.HasValue = true;
+            _writeBufferInfo.HasBuffer = true;
         }
 
         public void SwapBuffer()
@@ -82,7 +82,7 @@ namespace OpenTkWPFHost
 
         public BufferInfo GetReadBufferInfo()
         {
-            if (!_readBufferInfo.HasValue)
+            if (!_readBufferInfo.HasBuffer)
             {
                 return default;
             }

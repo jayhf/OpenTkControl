@@ -81,7 +81,7 @@ namespace OpenTkWPFHost
             base.OnRender(drawingContext);
             if (RenderProcedure != null && RenderProcedure.IsInitialized)
             {
-                var drawingDirective = RenderProcedure.Render();
+                RenderProcedure.Render(null);
                 /*var imageSource = new BitmapImage(); //drawingDirective?.;
                 if (imageSource != null)
                 {

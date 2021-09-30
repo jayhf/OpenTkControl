@@ -20,7 +20,7 @@ namespace OpenTkWPFHost
 
         public int GlBufferPointer;
 
-        public bool HasValue;
+        public bool HasBuffer;
 
     }
 }

@@ -1,32 +1,32 @@
 ﻿using System;
 using System.Windows.Media;
+using OpenTK.Graphics;
+using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
-    public interface IRenderProcedure : IOpenGlRender, IDisposable
+    /// <summary>
+    /// 渲染过程
+    /// </summary>
+    public interface IRenderProcedure : IDisposable
     {
-        IRenderCanvas Canvas { get; }
+        GLSettings GlSettings { get; }
 
-        /// <summary>
-        /// whether can render simultaneously with ui thread.
-        /// </summary>
-        bool CanAsyncRender { get; }
+        void Initialize(IWindowInfo window);
 
-        void Begin();
+        void SizeFrame(CanvasInfo size);
 
-        void End();
+        void Render(IRenderCanvas canvas);
+
+        IGraphicsContext Context { get; }
+
+        IRenderCanvas CreateCanvas(CanvasInfo info);
 
         void SwapBuffer();
 
-        /// <summary>
-        /// flush frame buffer
-        /// </summary>
-        /// <param name="context"></param>
-        void FlushFrame(DrawingContext context);
+        // bool ReadyToRender { get; }
 
         bool IsInitialized { get; }
-
-        bool ReadyToRender { get; }
 
         IRenderer Renderer { get; set; }
     }

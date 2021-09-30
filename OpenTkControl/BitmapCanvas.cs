@@ -1,24 +1,64 @@
 ﻿using System;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost
 {
     public class BitmapCanvas : IRenderCanvas
     {
-        public ImageSource Canvas => Bitmap;
+        private volatile BufferInfo _bufferInfo;
 
-        public WriteableBitmap Bitmap { get; private set; }
+        /// <summary>
+        /// The source of the internal Image
+        /// </summary>
+        private volatile WriteableBitmap _bitmap;
 
-        public void Create(CanvasInfo info)
+        public bool Ready { get; } = true;
+
+        public void Allocate(CanvasInfo info)
         {
-            if (info.ActualHeight == 0 || info.ActualWidth==0)
-            {
-                return;
-            }
+            _bitmap = new WriteableBitmap((int) (info.ActualWidth * info.DpiScaleX),
+                (int) (info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
+                PixelFormats.Pbgra32, null);
+        }
 
-            Bitmap = new WriteableBitmap(info.ActualWidth, info.ActualHeight, 96 * info.DpiScaleX,
-                96 * info.DpiScaleY, PixelFormats.Pbgra32, null);
+        public void Begin()
+        {
+            ReadBufferInfo = null;
+            this.IsDirty = false;
+        }
+
+        public void End()
+        {
+            if (ReadBufferInfo != null && ReadBufferInfo.HasBuffer)
+            {
+                var dirtyArea = ReadBufferInfo.RepaintRect;
+                if (!dirtyArea.IsEmpty)
+                {
+                    this.IsDirty = true;
+                    _bitmap.Lock();
+                    _bitmap.WritePixels(dirtyArea, ReadBufferInfo.FrameBuffer, ReadBufferInfo.BufferSize,
+                        _bitmap.BackBufferStride);
+                    _bitmap.AddDirtyRect(dirtyArea);
+                    _bitmap.Unlock();
+                }
+            }
+        }
+
+        public void FlushFrame(DrawingContext context)
+        {
+            context.DrawImage(_bitmap, new Rect(new Size(_bitmap.Width, _bitmap.Height)));
+        }
+
+        public bool CanAsyncRender { get; } = true;
+
+        public bool IsDirty { get; set; }
+
+        public BufferInfo ReadBufferInfo
+        {
+            get => _bufferInfo;
+            set => _bufferInfo = value;
         }
     }
 }

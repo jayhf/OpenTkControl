@@ -11,32 +11,33 @@ using OpenTK.Platform.Windows;
 namespace OpenTkWPFHost
 {
     ///Renderer that uses DX_Interop for a fast-path.
-    public class GLDXProcedure : IRenderProcedure
+    public class DXProcedure : IRenderProcedure
     {
         private DxGlContext _context;
 
-        private DxGLFramebuffer _framebuffers;
+        private DxGLFramebuffer _frameBuffer;
 
         private IRenderer _renderer;
 
-        /// The OpenGL framebuffer handle.
-        public int FrameBufferHandle => _framebuffers?.GLFramebufferHandle ?? 0;
+        internal DxGLFramebuffer FrameBuffer => _frameBuffer;
 
-        public IntPtr DxRenderTargetHandle => _framebuffers?.DxRenderTargetHandle ?? IntPtr.Zero;
+        /// The OpenGL framebuffer handle.
+        public int FrameBufferHandle => FrameBuffer?.GLFramebufferHandle ?? 0;
+
+        public IntPtr DxRenderTargetHandle => FrameBuffer?.DxRenderTargetHandle ?? IntPtr.Zero;
 
         /// The OpenGL Framebuffer width
-        public int Width => _framebuffers?.FramebufferWidth ?? 0;
+        public int Width => FrameBuffer?.FramebufferWidth ?? 0;
 
         /// The OpenGL Framebuffer height
-        public int Height => _framebuffers?.FramebufferHeight ?? 0;
+        public int Height => FrameBuffer?.FramebufferHeight ?? 0;
 
         private volatile bool _rendererInitialized = false;
-
-        private readonly DxCanvas _dxCanvas = new DxCanvas();
-
+        
         public bool IsInitialized { get; private set; }
 
-        public bool ReadyToRender => !_dxCanvas.D3DImageDirty && Width != 0 && Height != 0;
+        [Obsolete]
+        public bool ReadyToRender => Renderer != null && Width != 0 && Height != 0;
 
         public IRenderer Renderer
         {
@@ -48,12 +49,16 @@ namespace OpenTkWPFHost
             }
         }
 
-        public IRenderCanvas Canvas => _dxCanvas;
-        public bool CanAsyncRender { get; set; } = true;
+        public IRenderCanvas CreateCanvas(CanvasInfo info)
+        {
+            var dxCanvas = new DxCanvas(this);
+            dxCanvas.Allocate(info);
+            return dxCanvas;
+        }
 
         public GLSettings GlSettings { get; }
 
-        public GLDXProcedure(GLSettings glSettings)
+        public DXProcedure(GLSettings glSettings)
         {
             this.GlSettings = glSettings;
         }
@@ -62,42 +67,17 @@ namespace OpenTkWPFHost
         {
         }
 
-        public void FlushFrame(DrawingContext drawingContext)
-        {
-            var transformGroup = this._framebuffers.TransformGroup;
-            drawingContext.PushTransform(transformGroup);
-            var dxCanvasImage = _dxCanvas.Image;
-            drawingContext.DrawImage(dxCanvasImage, new Rect(new Size(dxCanvasImage.Width, dxCanvasImage.Height)));
-            drawingContext.Pop();
-        }
-
-        public void Begin()
-        {
-            var image = _dxCanvas.Image;
-            image.Lock();
-            image.SetBackBuffer(D3DResourceType.IDirect3DSurface9,
-                this.DxRenderTargetHandle);
-        }
-
-        public void End()
-        {
-            var image = _dxCanvas.Image;
-            image.AddDirtyRect(new Int32Rect(0, 0, this.Width,
-                this.Height));
-            image.Unlock();
-        }
-
         /// Sets up the framebuffer, directx stuff for rendering. 
         private void PreRender()
         {
-            Wgl.DXLockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffers.DxInteropRegisteredHandle});
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffers.GLFramebufferHandle);
+            Wgl.DXLockObjectsNV(_context.GlDeviceHandle, 1, new[] {FrameBuffer.DxInteropRegisteredHandle});
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, FrameBuffer.GLFramebufferHandle);
         }
 
         /// Sets up the framebuffer and prepares stuff for usage in directx.
         private void PostRender()
         {
-            Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {_framebuffers.DxInteropRegisteredHandle});
+            Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {FrameBuffer.DxInteropRegisteredHandle});
         }
 
         /// <summary>
@@ -132,15 +112,15 @@ namespace OpenTkWPFHost
         {
             var width = size.ActualWidth;
             var height = size.ActualHeight;
-            if (_framebuffers == null || _framebuffers.Width != width || _framebuffers.Height != height)
+            if (FrameBuffer == null || FrameBuffer.Width != width || FrameBuffer.Height != height)
             {
-                _framebuffers?.Dispose();
+                FrameBuffer?.Dispose();
                 if (width > 0 && height > 0)
                 {
-                    _framebuffers = new DxGLFramebuffer(_context, width, height, size.DpiScaleX, size.DpiScaleY);
+                    _frameBuffer = new DxGLFramebuffer(_context, width, height, size.DpiScaleX, size.DpiScaleY);
                     if (CheckRenderer())
                     {
-                        Renderer.Resize(_framebuffers.PixelSize);
+                        Renderer.Resize(FrameBuffer.PixelSize);
                     }
 
                     // GL.Viewport(0, 0, _framebuffers.FramebufferWidth, _framebuffers.FramebufferHeight);
@@ -148,25 +128,22 @@ namespace OpenTkWPFHost
             }
         }
 
-        public bool Render()
+
+        public void Render(IRenderCanvas canvas)
         {
-            /*if (!locked)
-            {
-                return false;
-            }*/
             PreRender();
-            Renderer?.Render(new GlRenderEventArgs(Width, Height, false));
+            Renderer.Render(new GlRenderEventArgs(Width, Height, false));
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
             PostRender();
-            return true;
         }
 
         public IGraphicsContext Context => _context.GraphicsContext;
 
+
         public void Dispose()
         {
-            _framebuffers?.Dispose();
+            FrameBuffer?.Dispose();
             _context?.Dispose();
         }
     }
