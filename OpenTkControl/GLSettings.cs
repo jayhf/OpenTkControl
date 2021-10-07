@@ -24,7 +24,7 @@ namespace OpenTkWPFHost
         public GraphicsContextFlags GraphicsContextFlags { get; set; } = GraphicsContextFlags.Default;
         public ContextProfileMask GraphicsProfile { get; set; }
 
-        public int MajorVersion { get; set; } = 3;
+        public int MajorVersion { get; set; } = 4;
         public int MinorVersion { get; set; } = 3;
 
         /// If we are using an external context for the control.

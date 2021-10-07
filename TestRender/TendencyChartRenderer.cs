@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
@@ -42,9 +44,9 @@ namespace TestRenderer
         public ScrollRange CurrentScrollRange { get; set; }
 
         /// <summary>
-        /// 是否自动适配Y轴
+        /// 是否自动适配Y轴顶点
         /// </summary>
-        public bool AutoYAxis { get; set; } = true;
+        public bool AutoYAxisApex { get; set; } = true;
 
         public int FrameRate { get; set; } = 0;
 
@@ -80,16 +82,26 @@ namespace TestRenderer
 
         public void Dispose()
         {
+            GL.DeleteBuffer(YAxisSSBO);
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer,0);
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
             GL.BindVertexArray(0);
             GL.UseProgram(0);
             GL.DeleteProgram(_shader.Handle);
         }
 
+        private int YAxisSSBO;
+        private int[] YAxisRaster = new int[300];
+
         public void Initialize(IGraphicsContext context)
         {
             _shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
             _shader.Use();
+            YAxisSSBO = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, YAxisSSBO);
+            GL.BufferData<int>(BufferTarget.ShaderStorageBuffer, YAxisRaster.Length, YAxisRaster,
+                BufferUsageHint.DynamicDraw);
+            GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 0, YAxisSSBO);
             foreach (var lineRenderer in LineRenderers)
             {
                 lineRenderer.Initialize(this._shader);
@@ -107,13 +119,21 @@ namespace TestRenderer
 
             var transform = Matrix4.Identity;
             transform *= Matrix4.CreateScale(2f / (this.CurrentScrollRange.End - this.CurrentScrollRange.Start),
-                2f / ((float) CurrentYAxisValue), 0f);
+                2f / ((float)CurrentYAxisValue), 0f);
             transform *= Matrix4.CreateTranslation(-1, -1, 0);
             _shader.SetMatrix4("transform", transform);
             foreach (var lineRenderer in LineRenderers)
             {
                 lineRenderer.OnRenderFrame();
             }
+            /*if (AutoYAxisApex)
+            {
+                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, YAxisSSBO);
+                IntPtr ptr = GL.MapBuffer(BufferTarget.ShaderStorageBuffer, BufferAccess.ReadOnly);
+                Marshal.Copy(ptr, YAxisRaster, 0, YAxisRaster.Length);
+                GL.UnmapBuffer(BufferTarget.ShaderStorageBuffer);
+                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
+            }*/
         }
 
         public void Resize(PixelSize size)
