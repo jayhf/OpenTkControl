@@ -55,6 +55,7 @@ namespace OpenTkControlExample
             Slider.Value = LineLength;
             _renderer.CurrentScrollRange = new ScrollRange(0, LineLength);
             _renderer.CurrentYAxisValue = MaxYAxis;
+            _renderer.ScrollRangeChanged = false;
             _renderer.BackgroundColor = Color4.Black;
             this.OpenTkControl.Renderer = new BitmapProcedure(new GLSettings())
             {
@@ -82,9 +83,10 @@ namespace OpenTkControlExample
               4. 变换渲染：在移动过程中渲染最大上下限然后裁剪，然后再按照实际值进行输出，既不会产生渲染开销，也不会产生太大的视觉效果损害
               但是依然会有很大的计算开销，应该精细的实现相关性能
               5. 网格 类似碰撞检测，使用一个网格储存点位，可以以极少的开销发现上下限，但是当点位数量巨大，比如高达100000个网格时，开销会直线上升
-              6. shader 利用shader或光栅化过程直接得到上下限
+              6. shader 利用shader计算得到上限，然后相应调整
              */
             _renderer.CurrentScrollRange = new ScrollRange(0, (long)e.NewValue);
+            _renderer.ScrollRangeChanged = true;
             /*var currentYAxisValue = _renderer.CurrentYAxisValue;
             var bitmapSource = await OpenTkControl.PushRenderTask(
                 (procedure => { _renderer.CurrentYAxisValue = MaxYAxis; }),

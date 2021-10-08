@@ -46,7 +46,7 @@ namespace OpenTkWPFHost
 
         public PixelSize PixelSize => new PixelSize(FramebufferWidth, FramebufferHeight);
 
-        public TransformGroup TransformGroup { get; set; }
+        public TransformGroup TransformGroup { get; private set; }
 
         public DxGLFramebuffer([NotNull] DxGlContext context, int width, int height, double dpiScaleX, double dpiScaleY)
         {

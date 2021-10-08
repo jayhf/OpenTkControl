@@ -39,9 +39,39 @@ namespace TestRenderer
         /// </summary>
         public Func<int, ScrollRange> ReactiveSampleIntervalFunc { get; set; }
 
-        public long CurrentYAxisValue { get; set; }
+        public long CurrentYAxisValue
+        {
+            get => _currentYAxisValue;
+            set
+            {
+                if (CurrentYAxisValue.Equals(value))
+                {
+                    return;
+                }
 
-        public ScrollRange CurrentScrollRange { get; set; }
+                _currentYAxisValue = value;
+                CalculateTransformMatrix(this.CurrentScrollRange, value);
+            }
+        }
+
+        private Matrix4 _transformMatrix4;
+
+        private volatile bool _scrollRangeChanged;
+
+        public ScrollRange CurrentScrollRange
+        {
+            get => _currentScrollRange;
+            set
+            {
+                if (_currentScrollRange.Equals(value))
+                {
+                    return;
+                }
+
+                _currentScrollRange = value;
+                CalculateTransformMatrix(value, this.CurrentYAxisValue);
+            }
+        }
 
         /// <summary>
         /// 是否自动适配Y轴顶点
@@ -50,8 +80,22 @@ namespace TestRenderer
 
         public int FrameRate { get; set; } = 0;
 
+        public bool ScrollRangeChanged
+        {
+            get => _scrollRangeChanged;
+            set => _scrollRangeChanged = value;
+        }
+
         private Shader _shader;
 
+        private void CalculateTransformMatrix(ScrollRange xRange, long yAxisApex)
+        {
+            var transform = Matrix4.Identity;
+            transform *= Matrix4.CreateScale(2f / (xRange.End - xRange.Start),
+                2f / ((float) yAxisApex), 0f);
+            transform *= Matrix4.CreateTranslation(-1, -1, 0);
+            _transformMatrix4 = transform;
+        }
 
         public void Add(LineRenderer lineRenderer)
         {
@@ -82,26 +126,28 @@ namespace TestRenderer
 
         public void Dispose()
         {
-            GL.DeleteBuffer(YAxisSSBO);
-            GL.BindBuffer(BufferTarget.ShaderStorageBuffer,0);
+            GL.DeleteBuffer(_yAxisSsbo);
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
             GL.BindVertexArray(0);
             GL.UseProgram(0);
             GL.DeleteProgram(_shader.Handle);
         }
 
-        private int YAxisSSBO;
-        private int[] YAxisRaster = new int[300];
+        private int _yAxisSsbo;
+        private readonly int[] _yAxisRaster = new int[300];
+        private ScrollRange _currentScrollRange;
+        private long _currentYAxisValue;
 
         public void Initialize(IGraphicsContext context)
         {
             _shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
             _shader.Use();
-            YAxisSSBO = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, YAxisSSBO);
-            GL.BufferData<int>(BufferTarget.ShaderStorageBuffer, YAxisRaster.Length, YAxisRaster,
+            _yAxisSsbo = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, _yAxisSsbo);
+            GL.BufferData<int>(BufferTarget.ShaderStorageBuffer, _yAxisRaster.Length * sizeof(int), _yAxisRaster,
                 BufferUsageHint.DynamicDraw);
-            GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 0, YAxisSSBO);
+            GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 0, _yAxisSsbo);
             foreach (var lineRenderer in LineRenderers)
             {
                 lineRenderer.Initialize(this._shader);
@@ -117,23 +163,52 @@ namespace TestRenderer
                 return;
             }
 
-            var transform = Matrix4.Identity;
-            transform *= Matrix4.CreateScale(2f / (this.CurrentScrollRange.End - this.CurrentScrollRange.Start),
-                2f / ((float)CurrentYAxisValue), 0f);
-            transform *= Matrix4.CreateTranslation(-1, -1, 0);
-            _shader.SetMatrix4("transform", transform);
+            _shader.SetMatrix4("transform", _transformMatrix4);
+            if (AutoYAxisApex && ScrollRangeChanged)
+            {
+                var empty = new int[300];
+                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, _yAxisSsbo);
+                GL.BufferSubData(BufferTarget.ShaderStorageBuffer, IntPtr.Zero, empty.Length * sizeof(int), empty);
+            }
+
             foreach (var lineRenderer in LineRenderers)
             {
                 lineRenderer.OnRenderFrame();
             }
-            /*if (AutoYAxisApex)
+
+            if (AutoYAxisApex && ScrollRangeChanged)
             {
-                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, YAxisSSBO);
-                IntPtr ptr = GL.MapBuffer(BufferTarget.ShaderStorageBuffer, BufferAccess.ReadOnly);
-                Marshal.Copy(ptr, YAxisRaster, 0, YAxisRaster.Length);
+                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, _yAxisSsbo);
+                var ptr = GL.MapBuffer(BufferTarget.ShaderStorageBuffer, BufferAccess.ReadOnly);
+                Marshal.Copy(ptr, _yAxisRaster, 0, _yAxisRaster.Length);
                 GL.UnmapBuffer(BufferTarget.ShaderStorageBuffer);
                 GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
-            }*/
+                int i;
+                for (i = _yAxisRaster.Length - 1; i > 0; i--)
+                {
+                    if (_yAxisRaster[i] == 1)
+                    {
+                        break;
+                    }
+                }
+
+                /*1. 当最高点依然在ssbo的299位置时，应用变换然后在下次渲染再次检查，直到最高点不在299
+                 2. 每次都检查，当差额小于3%时停止变换。
+                 */
+                /*if (CurrentYAxisValue==0)
+                {
+                    CurrentYAxisValue=
+                }*/
+                var adjustYAxisValue = (i * 1.1f) * CurrentYAxisValue / 200f;
+                if (Math.Abs(CurrentYAxisValue - adjustYAxisValue) > CurrentYAxisValue * 0.03f)
+                {
+                    CurrentYAxisValue = (long) adjustYAxisValue;
+                }
+                else
+                {
+                    ScrollRangeChanged = false;
+                }
+            }
         }
 
         public void Resize(PixelSize size)

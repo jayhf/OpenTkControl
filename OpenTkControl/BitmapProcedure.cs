@@ -55,8 +55,6 @@ namespace OpenTkWPFHost
 
         public bool IsInitialized { get; private set; }
 
-        [Obsolete] public bool ReadyToRender => Renderer != null && _width != 0 && _height != 0;
-
         public IGraphicsContext Context => _context;
 
         public IRenderer Renderer

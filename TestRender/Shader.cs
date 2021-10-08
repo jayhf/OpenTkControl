@@ -27,6 +27,8 @@ namespace TestRenderer
             //   The fragment shader is what we'll be using the most here.
 
             // Load vertex shader and compile
+
+            vertPath = Path.GetFullPath(vertPath);
             var shaderSource = File.ReadAllText(vertPath);
 
             // GL.CreateShader will create an empty shader (obviously). The ShaderType enum denotes which type of shader will be created.
@@ -39,6 +41,7 @@ namespace TestRenderer
             CompileShader(vertexShader);
 
             // We do the same for the fragment shader
+            fragPath = Path.GetFullPath(fragPath);
             shaderSource = File.ReadAllText(fragPath);
             var fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
             GL.ShaderSource(fragmentShader, shaderSource);
