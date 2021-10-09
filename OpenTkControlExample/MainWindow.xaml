@@ -20,6 +20,12 @@
                     Click="ButtonBase_OnClick" />
             <Button Content="close procedure" 
                     Click="Close_OnClick"/>
+            <Button VerticalAlignment="Bottom"
+                    HorizontalAlignment="Left"
+                    Width="120"
+                    Height="30"
+                    Content="change render continuous"
+                    Click="Test_OnClick"/>
         </StackPanel>
 
         <!--<ListBox Width="300"
@@ -64,11 +70,8 @@
                 Minimum="0"
                 ValueChanged="Slider_OnValueChanged"
                 x:Name="Slider" />
-        <Button VerticalAlignment="Bottom"
-                HorizontalAlignment="Left"
-                Width="120"
-                Height="30"
-                Click="Test_OnClick"/>
+
+
 
     </Grid>
 </Window>

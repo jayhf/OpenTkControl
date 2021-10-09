@@ -65,12 +65,6 @@ namespace OpenTkWPFHost
             set { SetValue(RenderTriggerProperty, value); }
         }
 
-        /// <summary>
-        /// default is bound to window as wpf window cannot reuse after close
-        /// </summary>
-        public static readonly DependencyProperty RendererLifeCycleProperty = DependencyProperty.Register(
-            "RendererLifeCycle", typeof(RendererProcedureLifeCycle), typeof(OpenTkControlBase),
-            new PropertyMetadata(RendererProcedureLifeCycle.BoundToWindow));
 
         public static readonly DependencyProperty IsRendererOpenedProperty = DependencyProperty.Register(
             "IsRendererOpened", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
@@ -93,16 +87,36 @@ namespace OpenTkWPFHost
             set { SetValue(RendererLifeCycleProperty, value); }
         }
 
-        public static readonly DependencyProperty IsAutoStartProperty = DependencyProperty.Register(
-            "IsAutoStart", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
+        /// <summary>
+        /// default is bound to window as wpf window cannot reuse after close
+        /// </summary>
+        public static readonly DependencyProperty RendererLifeCycleProperty = DependencyProperty.Register(
+            "RendererLifeCycle", typeof(RendererProcedureLifeCycle), typeof(OpenTkControlBase),
+            new PropertyMetadata(RendererProcedureLifeCycle.BoundToWindow));
+
+
+        public static readonly DependencyProperty IsAutoAttachProperty = DependencyProperty.Register(
+            "IsAutoAttach", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
 
         /// <summary>
         /// if set to true, will start rendering when this element is loaded.
         /// </summary>
-        public bool IsAutoStart
+        public bool IsAutoAttach
         {
-            get { return (bool) GetValue(IsAutoStartProperty); }
-            set { SetValue(IsAutoStartProperty, value); }
+            get { return (bool) GetValue(IsAutoAttachProperty); }
+            set { SetValue(IsAutoAttachProperty, value); }
+        }
+
+        public static readonly DependencyProperty IsRenderContinuouslyProperty = DependencyProperty.Register(
+            "IsRenderContinuously", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(true));
+
+        /// <summary>
+        /// whether render continuous, if not need to manually call update 
+        /// </summary>
+        public bool IsRenderContinuously
+        {
+            get { return (bool) GetValue(IsRenderContinuouslyProperty); }
+            set { SetValue(IsRenderContinuouslyProperty, value); }
         }
 
         /// <summary>
@@ -153,6 +167,8 @@ namespace OpenTkWPFHost
         /// </summary>
         private bool _alreadyLoaded;
 
+        protected volatile bool RenderContinuously;
+
         protected bool ShowFps = (bool) IsShowFpsProperty.DefaultMetadata.DefaultValue;
 
         /// <summary>
@@ -170,6 +186,17 @@ namespace OpenTkWPFHost
                     RenderProcedure = Renderer;
                     OnRenderProcedureChanged(new PropertyChangedArgs<IRenderProcedure>(oldValue, Renderer));
                 });
+            DependencyPropertyDescriptor.FromProperty(IsRenderContinuouslyProperty, typeof(OpenTkControlBase))
+                .AddValueChanged(this, ((sender, args) =>
+                {
+                    var isRenderContinuously = IsRenderContinuously;
+                    this.RenderContinuously = isRenderContinuously;
+                    if (isRenderContinuously)
+                    {
+                        CallRender();
+                    }
+                }));
+            this.RenderContinuously = (bool)IsRenderContinuouslyProperty.DefaultMetadata.DefaultValue;
             Loaded += (sender, args) =>
             {
                 if (_alreadyLoaded)
@@ -194,6 +221,11 @@ namespace OpenTkWPFHost
             });
             this.IsVisibleChanged += OpenTkControlBase_IsVisibleChanged;
         }
+
+        /// <summary>
+        /// manually call render procedure
+        /// </summary>
+        public abstract void CallRender();
 
         private void ApplyUserVisible()
         {
@@ -346,7 +378,7 @@ namespace OpenTkWPFHost
                 return;
             }
 
-            if (!IsRendererOpened && IsAutoStart)
+            if (!IsRendererOpened && IsAutoAttach)
             {
                 var window = Window.GetWindow(this);
                 if (window == null)

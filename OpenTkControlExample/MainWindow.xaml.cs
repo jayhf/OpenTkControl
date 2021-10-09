@@ -115,6 +115,8 @@ namespace OpenTkControlExample
 
         private async void Test_OnClick(object sender, RoutedEventArgs e)
         {
+            this.OpenTkControl.IsRenderContinuously = !this.OpenTkControl.IsRenderContinuously;
+            return;
             var currentYAxisValue = _renderer.CurrentYAxisValue;
             var bitmapSource = await OpenTkControl.PushRenderTask(
                 (procedure => { _renderer.CurrentYAxisValue = MaxYAxis; }),

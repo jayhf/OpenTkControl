@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ConsoleApp1
 {
@@ -8,8 +11,7 @@ namespace ConsoleApp1
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
-            var isHardwareAccelerated = Vector.IsHardwareAccelerated;
-            Console.WriteLine(isHardwareAccelerated.ToString());
+            Console.ReadLine();
         }
     }
 }

@@ -33,6 +33,11 @@ namespace OpenTkWPFHost
 
         private IWindowInfo _windowInfo;
 
+        public override void CallRender()
+        {
+            throw new NotImplementedException();
+        }
+
         protected override void OpenRenderer(IWindowInfo windowInfo)
         {
             this._windowInfo = windowInfo;

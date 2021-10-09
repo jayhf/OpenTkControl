@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
-using PixelFormat = System.Windows.Media.PixelFormat;
 
 namespace OpenTkWPFHost
 {
@@ -40,11 +36,9 @@ namespace OpenTkWPFHost
 
         private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
 
-        private readonly ManualResetEvent _renderCompletedResetEvent = new ManualResetEvent(false);
-
         private volatile bool _renderThreadStart = false;
 
-        private readonly ManualResetEvent _renderLoopResetEvent = new ManualResetEvent(false);
+        private readonly StatefulManualResetEvent _userVisibleResetEvent = new StatefulManualResetEvent();
 
         public ThreadOpenTkControl() : base()
         {
@@ -83,7 +77,7 @@ namespace OpenTkWPFHost
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
             }
         }
-        
+
         private readonly DrawingVisual _drawingVisual = new DrawingVisual();
 
         /// <summary>
@@ -120,6 +114,13 @@ namespace OpenTkWPFHost
             }
         }
 
+        private readonly StatefulManualResetEvent _manualRenderResetEvent = new StatefulManualResetEvent();
+
+        public override void CallRender()
+        {
+            _manualRenderResetEvent.TrySet();
+        }
+
         protected override void CloseRenderer()
         {
             CloseRenderThread();
@@ -149,7 +150,7 @@ namespace OpenTkWPFHost
         {
             if (args.NewValue)
             {
-                _renderLoopResetEvent.Set();
+                _userVisibleResetEvent.TrySet();
             }
         }
 
@@ -333,8 +334,12 @@ namespace OpenTkWPFHost
 
                     if (!UserVisible)
                     {
-                        _renderLoopResetEvent.WaitOne();
-                        _renderLoopResetEvent.Reset();
+                        _userVisibleResetEvent.WaitInfinity();
+                    }
+
+                    if (!RenderContinuously)
+                    {
+                        _manualRenderResetEvent.WaitInfinity();
                     }
                 }
             }
@@ -351,10 +356,7 @@ namespace OpenTkWPFHost
             _openglFraps.Start();
             _controlFraps.Start();
             _endThreadCts = new CancellationTokenSource();
-            _renderTask = Task.Run(async () =>
-            {
-                await RenderThread((object) _endThreadCts.Token);
-            });
+            _renderTask = Task.Run(async () => { await RenderThread((object) _endThreadCts.Token); });
             /*_renderThread = new Thread(RenderThread)
             {
                 IsBackground = true,
@@ -382,14 +384,15 @@ namespace OpenTkWPFHost
             {
                 if (_isWaitingForSync)
                 {
-                    _renderCompletedResetEvent.Set();
+                    _completion.TrySetResult(true);
                 }
 
                 if (!UserVisible)
                 {
-                    _renderLoopResetEvent.Set();
+                    _userVisibleResetEvent.ForceSet();
                 }
 
+                _manualRenderResetEvent.ForceSet();
                 _renderTask.Wait();
                 // _renderThread.Join();
                 _endThreadCts.Dispose();
@@ -402,8 +405,8 @@ namespace OpenTkWPFHost
             CloseRenderThread();
             this._controlFraps.Dispose();
             this._openglFraps.Dispose();
-            this._renderCompletedResetEvent.Dispose();
-            this._renderLoopResetEvent.Dispose();
+            this._userVisibleResetEvent.Dispose();
+            this._manualRenderResetEvent.Dispose();
         }
     }
 }
