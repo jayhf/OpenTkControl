@@ -25,7 +25,7 @@ namespace OpenTkControlExample
 
         public const int LineLength = PointsCount * 2;
 
-        private const long MaxYAxis = (long)((1000 + LineLength) * 0.1);
+        private const long MaxYAxis = (long) ((1000 + LineLength) * 0.1);
 
         private Color4 _lineColor = Color4.White;
 
@@ -39,7 +39,7 @@ namespace OpenTkControlExample
             var random = new Random();
             for (int i = 0; i < LineCount; i++)
             {
-                var lineChartRenderer = new LineRenderer(PointsCount) { LineColor = _lineColor };
+                var lineChartRenderer = new LineRenderer(PointsCount) {LineColor = _lineColor};
                 var ringBuffer = lineChartRenderer.RingBuffer;
                 for (int j = 0; j < LineLength; j += 2)
                 {
@@ -85,7 +85,7 @@ namespace OpenTkControlExample
               5. 网格 类似碰撞检测，使用一个网格储存点位，可以以极少的开销发现上下限，但是当点位数量巨大，比如高达100000个网格时，开销会直线上升
               6. shader 利用shader计算得到上限，然后相应调整
              */
-            _renderer.CurrentScrollRange = new ScrollRange(0, (long)e.NewValue);
+            _renderer.CurrentScrollRange = new ScrollRange(0, (long) e.NewValue);
             _renderer.ScrollRangeChanged = true;
             /*var currentYAxisValue = _renderer.CurrentYAxisValue;
             var bitmapSource = await OpenTkControl.PushRenderTask(
@@ -105,7 +105,6 @@ namespace OpenTkControlExample
 
             var height = ((double)(pixelHeight - topLine)) / (double)pixelHeight * MaxYAxis + 0;
             _renderer.CurrentYAxisValue = (long)height;*/
-
         }
 
         private void Close_OnClick(object sender, RoutedEventArgs e)
@@ -154,8 +153,8 @@ namespace OpenTkControlExample
                 return;
             }
 
-            var height = ((double)(pixelHeight - topLine)) / (double)pixelHeight * MaxYAxis + 0;
-            _renderer.CurrentYAxisValue = (long)height;
+            var height = ((double) (pixelHeight - topLine)) / (double) pixelHeight * MaxYAxis + 0;
+            _renderer.CurrentYAxisValue = (long) height;
         }
 
         private int FindTop(int[] pixels, int pixelHeight, int bufferStride, int argb)
@@ -173,6 +172,11 @@ namespace OpenTkControlExample
             }
 
             return -1;
+        }
+
+        private void FrameRate_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            OpenTkControl.MaxFrameRate = (int) e.NewValue;
         }
     }
 }

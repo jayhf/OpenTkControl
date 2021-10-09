@@ -18,14 +18,28 @@
                     VerticalAlignment="Center"
                     HorizontalAlignment="Left"
                     Click="ButtonBase_OnClick" />
-            <Button Content="close procedure" 
-                    Click="Close_OnClick"/>
+            <Button Content="close procedure"
+                    Click="Close_OnClick" />
             <Button VerticalAlignment="Bottom"
                     HorizontalAlignment="Left"
                     Width="120"
                     Height="30"
                     Content="change render continuous"
-                    Click="Test_OnClick"/>
+                    Click="Test_OnClick" />
+            <TextBlock Text="x Range:" 
+                       Foreground="White"/>
+            <Slider Width="666"
+                    Margin="0,10"
+                    Minimum="0"
+                    ValueChanged="Slider_OnValueChanged"
+                    x:Name="Slider" />
+            <TextBlock Text="frame rate:" 
+                       Foreground="White"/>
+            <Slider Margin="0,10"
+                    Maximum="200"
+                    Minimum="0"
+                    Value="0"
+                    ValueChanged="FrameRate_OnValueChanged" />
         </StackPanel>
 
         <!--<ListBox Width="300"
@@ -64,13 +78,6 @@
                                                    Width="800"/>
             </TabItem>
         </TabControl>-->
-
-        <Slider VerticalAlignment="Top"
-                Width="666"
-                Minimum="0"
-                ValueChanged="Slider_OnValueChanged"
-                x:Name="Slider" />
-
 
 
     </Grid>

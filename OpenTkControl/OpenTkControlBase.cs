@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -68,6 +69,18 @@ namespace OpenTkWPFHost
 
         public static readonly DependencyProperty IsRendererOpenedProperty = DependencyProperty.Register(
             "IsRendererOpened", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
+
+        public static readonly DependencyProperty MaxFrameRateProperty = DependencyProperty.Register(
+            "MaxFrameRate", typeof(int), typeof(OpenTkControlBase), new PropertyMetadata(-1));
+
+        /// <summary>
+        /// if lower than 0, infinity
+        /// </summary>
+        public int MaxFrameRate
+        {
+            get { return (int) GetValue(MaxFrameRateProperty); }
+            set { SetValue(MaxFrameRateProperty, value); }
+        }
 
         /// <summary>
         /// 渲染过程是否已被打开
@@ -169,6 +182,10 @@ namespace OpenTkWPFHost
 
         protected volatile bool RenderContinuously;
 
+        protected TimeSpan FrameGenerateSpan;
+
+        protected volatile bool EnableFrameRateLimit;
+
         protected bool ShowFps = (bool) IsShowFpsProperty.DefaultMetadata.DefaultValue;
 
         /// <summary>
@@ -196,7 +213,21 @@ namespace OpenTkWPFHost
                         CallRender();
                     }
                 }));
-            this.RenderContinuously = (bool)IsRenderContinuouslyProperty.DefaultMetadata.DefaultValue;
+            DependencyPropertyDescriptor.FromProperty(MaxFrameRateProperty, typeof(OpenTkControlBase))
+                .AddValueChanged(this,
+                    ((sender, args) =>
+                    {
+                        var maxFrameRate = this.MaxFrameRate;
+                        if (maxFrameRate < 1)
+                        {
+                            EnableFrameRateLimit = false;
+                            return;
+                        }
+
+                        EnableFrameRateLimit = true;
+                        FrameGenerateSpan = TimeSpan.FromMilliseconds(1000d / maxFrameRate);
+                    }));
+            this.RenderContinuously = (bool) IsRenderContinuouslyProperty.DefaultMetadata.DefaultValue;
             Loaded += (sender, args) =>
             {
                 if (_alreadyLoaded)

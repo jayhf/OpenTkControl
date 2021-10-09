@@ -34,7 +34,7 @@ namespace OpenTkWPFHost
 
         protected volatile CanvasInfo RecentCanvasInfo;
 
-        private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
+        private TimeSpan _lastWindowsRenderTime = TimeSpan.FromSeconds(-1);
 
         private volatile bool _renderThreadStart = false;
 
@@ -61,12 +61,12 @@ namespace OpenTkWPFHost
         private void OnCompTargetRender(object sender, EventArgs e)
         {
             var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
-            if (currentRenderTime == _lastRenderTime)
+            if (currentRenderTime == _lastWindowsRenderTime)
             {
                 return;
             }
 
-            _lastRenderTime = currentRenderTime.Value;
+            _lastWindowsRenderTime = currentRenderTime.Value;
             RenderTrigger = !RenderTrigger;
         }
 
@@ -219,6 +219,7 @@ namespace OpenTkWPFHost
             }).Wait(token);
             RenderProcedure.SizeFrame(RecentCanvasInfo);
             var canvasInfo = RecentCanvasInfo;
+            var lastRenderTime = DateTime.MinValue;
             using (RenderProcedure)
             {
                 while (!token.IsCancellationRequested)
@@ -340,6 +341,17 @@ namespace OpenTkWPFHost
                     if (!RenderContinuously)
                     {
                         _manualRenderResetEvent.WaitInfinity();
+                    }
+
+                    if (EnableFrameRateLimit)
+                    {
+                        var now = DateTime.Now;
+                        var renderTime = now - lastRenderTime;
+                        if (renderTime < FrameGenerateSpan)
+                        {
+                            Thread.Sleep(FrameGenerateSpan - renderTime);
+                        }
+                        lastRenderTime = now;
                     }
                 }
             }
