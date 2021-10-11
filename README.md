@@ -7,15 +7,20 @@ So I commenced combination of  [official project](https://github.com/opentk/GLWp
 
 ## Feature
 
-1. OpenTK run in separate thread, no blocking in ui thread.
+0. Solved problem flickering in intel uhd gpu on low framerate when use offical [official library](https://github.com/opentk/GLWpfControl) (As offical library use d3dimage, It's very strange that intel uhd gpu will flicing on low framerate but my gtx970 will not. I'll discuss the phenomenon below.)
+
+1. Render procedure run in separate thread, no blocking in ui thread.
 
 2. Both d3dimage and writeablebitmap approaches, high flexiblity.
 
-3. Async GL.ReadPixel and double pixel buffer object.
+3. Async GL.ReadPixel and double pixel buffer object in writeablebitmap.
 
-4. Test passed on NVIDIA GTX970 and Intel UHD630 GPU.
+4. Can render user invisible frame.
 
-5. No flickering under any framerate.
+6. Can set framerate.
 
+7. Can manually call render.
+
+8. Provider a 2d coordinate chart example.
 
 ![Mdpng](mdpng.png)
