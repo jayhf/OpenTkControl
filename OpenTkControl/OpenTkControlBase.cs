@@ -32,6 +32,22 @@ namespace OpenTkWPFHost
         public event EventHandler<OpenGlErrorArgs> OpenGlErrorReceived;
 
         /// <summary>
+        /// renderer is ready
+        /// </summary>
+        public event Action BeforeRender;
+
+        /// <summary>
+        /// after successfully render
+        /// </summary>
+        public event Action AfterRender;
+
+        /// <summary>
+        /// frame is ready to flush, before frame flush
+        /// </summary>
+        public event Action BeforeFrameFlush;
+
+
+        /// <summary>
         /// Called whenever an exception occurs during initialization, rendering or deinitialization
         /// </summary>
         public event EventHandler<UnhandledExceptionEventArgs> ExceptionOccurred;
@@ -210,12 +226,12 @@ namespace OpenTkWPFHost
                     this.RenderContinuously = isRenderContinuously;
                     if (isRenderContinuously)
                     {
-                        CallRender();
+                        ResumeRender();
                     }
                 }));
             DependencyPropertyDescriptor.FromProperty(MaxFrameRateProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this,
-                    ((sender, args) =>
+                    (sender, args) =>
                     {
                         var maxFrameRate = this.MaxFrameRate;
                         if (maxFrameRate < 1)
@@ -226,7 +242,7 @@ namespace OpenTkWPFHost
 
                         EnableFrameRateLimit = true;
                         FrameGenerateSpan = TimeSpan.FromMilliseconds(1000d / maxFrameRate);
-                    }));
+                    });
             this.RenderContinuously = (bool) IsRenderContinuouslyProperty.DefaultMetadata.DefaultValue;
             Loaded += (sender, args) =>
             {
@@ -254,9 +270,14 @@ namespace OpenTkWPFHost
         }
 
         /// <summary>
-        /// manually call render procedure
+        /// resume render procedure
         /// </summary>
-        public abstract void CallRender();
+        protected abstract void ResumeRender();
+
+        /// <summary>
+        /// manually call render loop regardless of double buffer mechanism
+        /// </summary>
+        // public abstract void CallRenderLoop();
 
         private void ApplyUserVisible()
         {
@@ -477,5 +498,20 @@ namespace OpenTkWPFHost
         }
 
         protected abstract void Dispose(bool dispose);
+
+        protected virtual void OnAfterRender()
+        {
+            AfterRender?.Invoke();
+        }
+
+        protected virtual void OnBeforeRender()
+        {
+            BeforeRender?.Invoke();
+        }
+
+        protected virtual void OnBeforeFrameFlush()
+        {
+            BeforeFrameFlush?.Invoke();
+        }
     }
 }

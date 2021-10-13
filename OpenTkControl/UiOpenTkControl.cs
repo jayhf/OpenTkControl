@@ -33,7 +33,7 @@ namespace OpenTkWPFHost
 
         private IWindowInfo _windowInfo;
 
-        public override void CallRender()
+        protected override void ResumeRender()
         {
             throw new NotImplementedException();
         }

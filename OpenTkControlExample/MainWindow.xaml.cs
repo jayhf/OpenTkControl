@@ -57,7 +57,7 @@ namespace OpenTkControlExample
             _renderer.CurrentYAxisValue = MaxYAxis;
             _renderer.ScrollRangeChanged = false;
             _renderer.BackgroundColor = Color4.Black;
-            this.OpenTkControl.Renderer = new BitmapProcedure(new GLSettings())
+            this.OpenTkControl.Renderer = new DXProcedure(new GLSettings())
             {
                 Renderer = _renderer,
             };
@@ -115,46 +115,6 @@ namespace OpenTkControlExample
         private async void Test_OnClick(object sender, RoutedEventArgs e)
         {
             this.OpenTkControl.IsRenderContinuously = !this.OpenTkControl.IsRenderContinuously;
-            return;
-            var currentYAxisValue = _renderer.CurrentYAxisValue;
-            var bitmapSource = await OpenTkControl.PushRenderTask(
-                (procedure => { _renderer.CurrentYAxisValue = MaxYAxis; }),
-                (procedure => { _renderer.CurrentYAxisValue = currentYAxisValue; }));
-
-
-            /*var writeableBitmap = new WriteableBitmap(bitmapSource);
-            var lengthx = 10 * stride / 4;
-            int[] arrayInts = new int[lengthx];
-            for (int i = 0; i < lengthx; i++)
-            {
-                arrayInts[i] = argb;
-            }
-
-            writeableBitmap.WritePixels(new Int32Rect(0, 0, stride / 4, 10), arrayInts, stride, 0);*/
-            /*using (var fileStream = new FileStream(@"C:\迅雷下载\x.png", FileMode.OpenOrCreate))
-            {
-                BitmapEncoder encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(writeableBitmap));
-                encoder.Save(fileStream);
-            }
-
-            return;*/
-
-            // int stride = bitmapSource.PixelWidth * bytesPerPixel;
-            int bytesPerPixel = ((bitmapSource.Format.BitsPerPixel + 7) / 8);
-            int stride = bitmapSource.PixelWidth * bytesPerPixel;
-            int bufferStride = stride / 4;
-            var pixelHeight = bitmapSource.PixelHeight;
-            var pixels = new int[pixelHeight * bufferStride];
-            bitmapSource.CopyPixels(pixels, stride, 0);
-            var topLine = FindTop(pixels, pixelHeight, bufferStride, lineColorINT);
-            if (topLine == 0)
-            {
-                return;
-            }
-
-            var height = ((double) (pixelHeight - topLine)) / (double) pixelHeight * MaxYAxis + 0;
-            _renderer.CurrentYAxisValue = (long) height;
         }
 
         private int FindTop(int[] pixels, int pixelHeight, int bufferStride, int argb)

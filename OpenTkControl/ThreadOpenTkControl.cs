@@ -67,7 +67,7 @@ namespace OpenTkWPFHost
             }
 
             _lastWindowsRenderTime = currentRenderTime.Value;
-            RenderTrigger = !RenderTrigger;
+            InvalidateVisual();
         }
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -76,6 +76,11 @@ namespace OpenTkWPFHost
             {
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
             }
+
+            /*if (IsRendererOpened && !RenderContinuously)
+            {
+                CallRenderLoop();
+            }*/
         }
 
         private readonly DrawingVisual _drawingVisual = new DrawingVisual();
@@ -116,10 +121,22 @@ namespace OpenTkWPFHost
 
         private readonly StatefulManualResetEvent _manualRenderResetEvent = new StatefulManualResetEvent();
 
-        public override void CallRender()
+        protected override void ResumeRender()
         {
             _manualRenderResetEvent.TrySet();
         }
+
+        /*public override void CallRenderLoop()
+        {
+            BeforeFrameFlush += RenderLoop_BeforeFrameFlush;
+            IsRenderContinuously = true;
+        }
+
+        private void RenderLoop_BeforeFrameFlush()
+        {
+            IsRenderContinuously = false;
+            BeforeFrameFlush -= RenderLoop_BeforeFrameFlush;
+        }*/
 
         protected override void CloseRenderer()
         {
@@ -161,7 +178,7 @@ namespace OpenTkWPFHost
 
         private void OnUITask(Action action)
         {
-            Dispatcher.Invoke(action, DispatcherPriority.Normal);
+            Dispatcher.Invoke(action);
         }
 
         protected override void OnLoaded(object sender, RoutedEventArgs args)
@@ -174,31 +191,13 @@ namespace OpenTkWPFHost
             base.OnUnloaded(sender, args);
         }
 
-        public BitmapSource GetCurrentImage()
+        public BitmapSource Shotcut()
         {
             var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth, RecentCanvasInfo.ActualHeight,
                 RecentCanvasInfo.DpiScaleX * 96, RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
             renderTargetBitmap.Render(_drawingVisual);
             return renderTargetBitmap;
         }
-
-        private readonly ConcurrentQueue<RenderProcedureTask> _renderActionQueue =
-            new ConcurrentQueue<RenderProcedureTask>();
-
-        /// <summary>
-        /// allow user to run a  invisible render procedure which run under a condition between frames
-        /// </summary>
-        /// <param name="beforeAction">render operation before render</param>
-        /// <param name="afterAction">render operation after render</param>
-        /// <returns></returns>
-        public Task<BitmapSource> PushRenderTask(Action<IRenderProcedure> beforeAction,
-            Action<IRenderProcedure> afterAction)
-        {
-            var renderProcedureTask = new RenderProcedureTask(beforeAction, afterAction);
-            _renderActionQueue.Enqueue(renderProcedureTask);
-            return renderProcedureTask.BitmapCompletionSource.Task;
-        }
-
 
         /// <summary>
         /// The function that the thread runs to render the control
@@ -234,93 +233,62 @@ namespace OpenTkWPFHost
                     var renderProcedureContext = RenderProcedure.Context;
                     if (RenderProcedure.Renderer != null && !RecentCanvasInfo.IsEmpty)
                     {
-                        if (_renderActionQueue.TryDequeue(out var renderProcedureTask))
+                        if (uiThreadCanvas.Ready)
                         {
-                            var taskRenderCanvas = RenderProcedure.CreateCanvas(RecentCanvasInfo);
-                            taskRenderCanvas.Allocate(canvasInfo);
-                            while (!taskRenderCanvas.Ready)
+                            try
                             {
-                                Thread.Sleep(5);
+                                OnBeforeRender();
+                                OnUITaskAsync(() => uiThreadCanvas.Begin()).Wait(token);
+                                RenderProcedure.Render(uiThreadCanvas);
+                                if (ShowFps)
+                                {
+                                    _openglFraps.Increment();
+                                }
+
+                                OnUITaskAsync(() => uiThreadCanvas.End()).Wait(token);
+                                OnAfterRender();
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                break;
+                            }
+                            finally
+                            {
                             }
 
-                            renderProcedureTask.Enter(RenderProcedure);
-                            taskRenderCanvas.Begin();
-                            RenderProcedure.Render(taskRenderCanvas);
-                            taskRenderCanvas.End();
-                            renderProcedureTask.Exit(RenderProcedure);
-                            //sequence differ from uithreadcanvas
+                            if (uiThreadCanvas.IsDirty)
+                            {
+                                OnUITask(() =>
+                                {
+                                    OnBeforeFrameFlush();
+                                    using (var drawingContext = _drawingVisual.RenderOpen())
+                                    {
+                                        uiThreadCanvas.FlushFrame(drawingContext);
+                                    }
+                                });
+
+                                if (!uiThreadCanvas.CanAsyncRender)
+                                {
+                                    //由于wpf的帧率为60，意味着等待延迟最高达16ms
+                                    _completion = new TaskCompletionSource<bool>();
+                                    _isWaitingForSync = true;
+                                    renderProcedureContext.MakeCurrent(new EmptyWindowInfo());
+                                    await _completion.Task;
+                                    if (!renderProcedureContext.IsCurrent)
+                                    {
+                                        renderProcedureContext.MakeCurrent(_windowInfo);
+                                    }
+
+                                    _isWaitingForSync = false;
+                                }
+                            }
+
+                            //read previous turn before swap buffer
                             RenderProcedure.SwapBuffer();
-                            if (ShowFps)
-                            {
-                                _openglFraps.Increment();
-                            }
-
-                            var drawingVisual = new DrawingVisual();
-                            using (var drawingContext = drawingVisual.RenderOpen())
-                            {
-                                taskRenderCanvas.FlushFrame(drawingContext);
-                            }
-
-                            var renderTargetBitmap = RecentCanvasInfo.CreateRenderTargetBitmap();
-                            renderTargetBitmap.Render(drawingVisual);
-                            renderTargetBitmap.Freeze();
-                            renderProcedureTask.BitmapCompletionSource.SetResult(renderTargetBitmap);
                         }
                         else
                         {
-                            if (uiThreadCanvas.Ready)
-                            {
-                                try
-                                {
-                                    OnUITaskAsync(() => uiThreadCanvas.Begin()).Wait(token);
-                                    RenderProcedure.Render(uiThreadCanvas);
-                                    if (ShowFps)
-                                    {
-                                        _openglFraps.Increment();
-                                    }
-
-                                    OnUITaskAsync(() => uiThreadCanvas.End()).Wait(token);
-                                }
-                                catch (OperationCanceledException)
-                                {
-                                    break;
-                                }
-                                finally
-                                {
-                                }
-
-                                if (uiThreadCanvas.IsDirty)
-                                {
-                                    OnUITaskAsync(() =>
-                                    {
-                                        using (var drawingContext = _drawingVisual.RenderOpen())
-                                        {
-                                            uiThreadCanvas.FlushFrame(drawingContext);
-                                        }
-                                    });
-                                    if (!uiThreadCanvas.CanAsyncRender)
-                                    {
-                                        //由于wpf的帧率为60，意味着等待延迟最高达16ms,使用
-                                        _completion = new TaskCompletionSource<bool>();
-                                        _isWaitingForSync = true;
-                                        renderProcedureContext.MakeCurrent(new EmptyWindowInfo());
-                                        await _completion.Task;
-                                        if (!renderProcedureContext.IsCurrent)
-                                        {
-                                            renderProcedureContext.MakeCurrent(_windowInfo);
-                                        }
-
-                                        _isWaitingForSync = false;
-                                    }
-                                }
-
-                                //read previous turn before swap buffer
-                                RenderProcedure.SwapBuffer();
-                            }
-                            else
-                            {
-                                Thread.Sleep(5);
-                            }
+                            Thread.Sleep(5);
                         }
                     }
                     else
@@ -351,6 +319,7 @@ namespace OpenTkWPFHost
                         {
                             Thread.Sleep(FrameGenerateSpan - renderTime);
                         }
+
                         lastRenderTime = now;
                     }
                 }

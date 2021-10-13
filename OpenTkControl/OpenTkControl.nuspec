@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>1.0.0</version>
+    <version>$version$</version>
     <title>$title$</title>
     <authors>$author$</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -10,12 +10,14 @@
     <projectUrl>https://github.com/migeyusu/OpenTkControl</projectUrl>
     <icon>images\lion.png</icon>
     <description>$description$</description>
-    <releaseNotes>First release! Add manual render and frame rate limit, fixed some bugs.</releaseNotes>
+    <releaseNotes>Removed rendertask, Add render event support.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>WPF OpenTK</tags>
     <dependencies>
-    <dependency id="OpenTK" version="3.3.1" />
-  </dependencies>
+      <group targetFramework=".NETFramework4.7.2">
+        <dependency id="OpenTK" version="3.3.1" />
+      </group>
+    </dependencies>
   </metadata>
   <files>
     <file src="lion.png" target="images\"/>
