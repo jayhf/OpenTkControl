@@ -20,7 +20,7 @@ namespace OpenTkWPFHost
 
         IGraphicsContext Context { get; }
 
-        IRenderCanvas CreateCanvas(CanvasInfo info);
+        IRenderCanvas CreateCanvas();
 
         void SwapBuffer();
 

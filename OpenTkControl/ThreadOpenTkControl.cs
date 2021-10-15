@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -42,19 +44,19 @@ namespace OpenTkWPFHost
 
         public ThreadOpenTkControl() : base()
         {
-            IsVisibleChanged += (_, args) =>
-            {
-                var newValue = (bool) args.NewValue;
-                this.IsUserVisible = newValue;
-                if (newValue)
-                {
-                    CompositionTarget.Rendering += OnCompTargetRender;
-                }
-                else
-                {
-                    CompositionTarget.Rendering -= OnCompTargetRender;
-                }
-            };
+            DependencyPropertyDescriptor.FromProperty(IsUserVisibleProperty, typeof(OpenTkControlBase))
+                .AddValueChanged(this,
+                    (sender, args) =>
+                    {
+                        if (this.IsUserVisible)
+                        {
+                            CompositionTarget.Rendering += OnCompTargetRender;
+                        }
+                        else
+                        {
+                            CompositionTarget.Rendering -= OnCompTargetRender;
+                        }
+                    });
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
         }
 
@@ -76,11 +78,6 @@ namespace OpenTkWPFHost
             {
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
             }
-
-            /*if (IsRendererOpened && !RenderContinuously)
-            {
-                CallRenderLoop();
-            }*/
         }
 
         private readonly DrawingVisual _drawingVisual = new DrawingVisual();
@@ -126,17 +123,6 @@ namespace OpenTkWPFHost
             _manualRenderResetEvent.TrySet();
         }
 
-        /*public override void CallRenderLoop()
-        {
-            BeforeFrameFlush += RenderLoop_BeforeFrameFlush;
-            IsRenderContinuously = true;
-        }
-
-        private void RenderLoop_BeforeFrameFlush()
-        {
-            IsRenderContinuously = false;
-            BeforeFrameFlush -= RenderLoop_BeforeFrameFlush;
-        }*/
 
         protected override void CloseRenderer()
         {
@@ -214,19 +200,27 @@ namespace OpenTkWPFHost
             OnUITaskAsync(() =>
             {
                 RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                uiThreadCanvas = RenderProcedure.CreateCanvas(RecentCanvasInfo);
+                uiThreadCanvas = RenderProcedure.CreateCanvas();
+                if (!RecentCanvasInfo.IsEmpty)
+                {
+                    uiThreadCanvas.Allocate(RecentCanvasInfo);
+                }
             }).Wait(token);
-            RenderProcedure.SizeFrame(RecentCanvasInfo);
+            if (!RecentCanvasInfo.IsEmpty)
+            {
+                RenderProcedure.SizeFrame(RecentCanvasInfo);
+            }
+
             var canvasInfo = RecentCanvasInfo;
             var lastRenderTime = DateTime.MinValue;
             using (RenderProcedure)
             {
                 while (!token.IsCancellationRequested)
                 {
-                    if (!canvasInfo.Equals(RecentCanvasInfo))
+                    if (!canvasInfo.Equals(RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
                     {
                         canvasInfo = RecentCanvasInfo;
-                        OnUITaskAsync(() => { uiThreadCanvas.Allocate(canvasInfo); }).Wait(token);
+                        OnUITaskAsync(() => { uiThreadCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
                         RenderProcedure.SizeFrame(canvasInfo);
                     }
 

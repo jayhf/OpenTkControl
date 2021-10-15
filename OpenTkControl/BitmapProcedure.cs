@@ -74,11 +74,9 @@ namespace OpenTkWPFHost
             GlSettings = glSettings;
         }
 
-        public IRenderCanvas CreateCanvas(CanvasInfo info)
+        public IRenderCanvas CreateCanvas()
         {
-            var bitmapCanvas = new BitmapCanvas();
-            bitmapCanvas.Allocate(info);
-            return bitmapCanvas;
+            return new BitmapCanvas();
         }
 
         public void Initialize(IWindowInfo window)

@@ -33,11 +33,10 @@ namespace OpenTkWPFHost
         public int Height => FrameBuffer?.FramebufferHeight ?? 0;
 
         private volatile bool _rendererInitialized = false;
-        
+
         public bool IsInitialized { get; private set; }
 
-        [Obsolete]
-        public bool ReadyToRender => Renderer != null && Width != 0 && Height != 0;
+        [Obsolete] public bool ReadyToRender => Renderer != null && Width != 0 && Height != 0;
 
         public IRenderer Renderer
         {
@@ -49,11 +48,9 @@ namespace OpenTkWPFHost
             }
         }
 
-        public IRenderCanvas CreateCanvas(CanvasInfo info)
+        public IRenderCanvas CreateCanvas()
         {
-            var dxCanvas = new DxCanvas(this);
-            dxCanvas.Allocate(info);
-            return dxCanvas;
+            return new DxCanvas(this);
         }
 
         public GLSettings GlSettings { get; }
@@ -128,7 +125,6 @@ namespace OpenTkWPFHost
             }
         }
 
-
         public void Render(IRenderCanvas canvas)
         {
             PreRender();
@@ -139,7 +135,6 @@ namespace OpenTkWPFHost
         }
 
         public IGraphicsContext Context => _context.GraphicsContext;
-
 
         public void Dispose()
         {

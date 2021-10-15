@@ -148,26 +148,20 @@ namespace OpenTkWPFHost
             set { SetValue(IsRenderContinuouslyProperty, value); }
         }
 
-        /// <summary>
-        /// indicate whether user can see the control,not dependency property
-        /// a combination of window closed/minimized, control unloaded/visibility status
-        /// </summary>
-        protected bool IsUserVisible
-        {
-            set
-            {
-                if (UserVisible == value)
-                {
-                    return;
-                }
+        public static readonly DependencyProperty IsUserVisibleProperty = DependencyProperty.Register(
+            "IsUserVisible", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
 
-                var oldValue = UserVisible;
-                UserVisible = value;
-                OnUserVisibleChanged(new PropertyChangedArgs<bool>(oldValue, value));
-            }
+        /// <summary>
+        /// a combination of window closed/minimized, control unloaded/visibility status
+        /// indicate whether user can see the control,
+        /// </summary>
+        public bool IsUserVisible
+        {
+            get { return (bool) GetValue(IsUserVisibleProperty); }
+            protected set { SetValue(IsUserVisibleProperty, value); }
         }
 
-        protected bool UserVisible = false;
+        protected volatile bool UserVisible;
 
         private WindowState _windowState;
 
@@ -220,7 +214,7 @@ namespace OpenTkWPFHost
                     OnRenderProcedureChanged(new PropertyChangedArgs<IRenderProcedure>(oldValue, Renderer));
                 });
             DependencyPropertyDescriptor.FromProperty(IsRenderContinuouslyProperty, typeof(OpenTkControlBase))
-                .AddValueChanged(this, ((sender, args) =>
+                .AddValueChanged(this, (sender, args) =>
                 {
                     var isRenderContinuously = IsRenderContinuously;
                     this.RenderContinuously = isRenderContinuously;
@@ -228,21 +222,14 @@ namespace OpenTkWPFHost
                     {
                         ResumeRender();
                     }
-                }));
+                });
             DependencyPropertyDescriptor.FromProperty(MaxFrameRateProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this,
-                    (sender, args) =>
-                    {
-                        var maxFrameRate = this.MaxFrameRate;
-                        if (maxFrameRate < 1)
-                        {
-                            EnableFrameRateLimit = false;
-                            return;
-                        }
-
-                        EnableFrameRateLimit = true;
-                        FrameGenerateSpan = TimeSpan.FromMilliseconds(1000d / maxFrameRate);
-                    });
+                    (sender, args) => { ApplyMaxFrameRate(this.MaxFrameRate); });
+            DependencyPropertyDescriptor.FromProperty(IsUserVisibleProperty, typeof(OpenTkControlBase))
+                .AddValueChanged(this,
+                    (sender, args) => { this.UserVisible = this.IsUserVisible; });
+            ApplyMaxFrameRate((int) MaxFrameRateProperty.DefaultMetadata.DefaultValue);
             this.RenderContinuously = (bool) IsRenderContinuouslyProperty.DefaultMetadata.DefaultValue;
             Loaded += (sender, args) =>
             {
@@ -269,6 +256,18 @@ namespace OpenTkWPFHost
             this.IsVisibleChanged += OpenTkControlBase_IsVisibleChanged;
         }
 
+        private void ApplyMaxFrameRate(int maxFrameRate)
+        {
+            if (maxFrameRate < 1)
+            {
+                EnableFrameRateLimit = false;
+                return;
+            }
+
+            EnableFrameRateLimit = true;
+            FrameGenerateSpan = TimeSpan.FromMilliseconds(1000d / maxFrameRate);
+        }
+
         /// <summary>
         /// resume render procedure
         /// </summary>
@@ -277,9 +276,23 @@ namespace OpenTkWPFHost
         /// <summary>
         /// manually call render loop regardless of double buffer mechanism
         /// </summary>
-        // public abstract void CallRenderLoop();
+        public void CallRenderOnce()
+        {
+            if (!RenderContinuously && IsRendererOpened && UserVisible)
+            {
+                BeforeFrameFlush += RenderLoop_BeforeFrameFlush;
+                IsRenderContinuously = true;
+            }
+        }
 
-        private void ApplyUserVisible()
+        private void RenderLoop_BeforeFrameFlush()
+        {
+            IsRenderContinuously = false;
+            BeforeFrameFlush -= RenderLoop_BeforeFrameFlush;
+        }
+
+
+        private void CheckUserVisible()
         {
             this.IsUserVisible = _windowState != WindowState.Minimized && !_isWindowClosed && _isControlVisible &&
                                  _isWindowVisible && _isWindowLoaded && _isControlLoaded;
@@ -288,25 +301,25 @@ namespace OpenTkWPFHost
         private void OpenTkControlBase_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             _isControlVisible = (bool) e.NewValue;
-            ApplyUserVisible();
+            CheckUserVisible();
         }
 
         private void HostWindow_StateChanged(object sender, EventArgs e)
         {
             _windowState = ((Window) sender).WindowState;
-            ApplyUserVisible();
+            CheckUserVisible();
         }
 
         private void HostWindow_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             _isWindowVisible = (bool) e.NewValue;
-            ApplyUserVisible();
+            CheckUserVisible();
         }
 
         private void HostWindow_Closed(object sender, EventArgs e)
         {
             _isWindowClosed = true;
-            ApplyUserVisible();
+            CheckUserVisible();
             if (RendererLifeCycle == RendererProcedureLifeCycle.BoundToWindow)
             {
                 Close();
@@ -336,7 +349,7 @@ namespace OpenTkWPFHost
             _isWindowLoaded = hostWindow.IsLoaded;
             _isControlVisible = this.IsVisible;
             _isControlLoaded = this.IsLoaded;
-            ApplyUserVisible();
+            CheckUserVisible();
             if (UserVisible)
             {
                 Debug.WriteLine("Warning! uservisible is false, rendering may not be enable.");
@@ -424,7 +437,7 @@ namespace OpenTkWPFHost
         protected virtual void OnLoaded(object sender, RoutedEventArgs args)
         {
             _isControlLoaded = true;
-            ApplyUserVisible();
+            CheckUserVisible();
             if (IsDesignMode())
             {
                 return;
@@ -450,7 +463,7 @@ namespace OpenTkWPFHost
         protected virtual void OnUnloaded(object sender, RoutedEventArgs args)
         {
             _isControlLoaded = false;
-            ApplyUserVisible();
+            CheckUserVisible();
             if (IsDesignMode())
             {
                 return;
