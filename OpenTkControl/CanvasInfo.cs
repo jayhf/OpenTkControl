@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -37,6 +38,13 @@ namespace OpenTkWPFHost
         {
             return new RenderTargetBitmap(this.ActualWidth, this.ActualHeight, this.DpiScaleX * 96, this.DpiScaleY * 96,
                 PixelFormats.Pbgra32);
+        }
+
+        public PixelSize GetPixelSize()
+        {
+            var width = (int) Math.Ceiling(this.ActualWidth * this.DpiScaleX);
+            var height = (int) Math.Ceiling(this.ActualHeight * this.DpiScaleY);
+            return new PixelSize(width, height);
         }
 
         public bool Equals(CanvasInfo other)

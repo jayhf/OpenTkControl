@@ -25,11 +25,7 @@ namespace OpenTkWPFHost
 
         private void UiOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (RenderProcedure != null && RenderProcedure.IsInitialized)
-            {
-                var canvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                RenderProcedure.SizeFrame(canvasInfo);
-            }
+
         }
 
         private IWindowInfo _windowInfo;
@@ -39,36 +35,19 @@ namespace OpenTkWPFHost
             throw new NotImplementedException();
         }
 
-        protected override void OpenRenderer(IWindowInfo windowInfo)
+        protected override void StartRenderProcedure(IWindowInfo windowInfo)
         {
             this._windowInfo = windowInfo;
-        }
-
-        protected override void OnRenderProcedureChanged(PropertyChangedArgs<IRenderProcedure> args)
-        {
-            if (RenderProcedure != null && this.IsLoaded)
-            {
-                RenderProcedure.Initialize(this._windowInfo);
-                var canvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                RenderProcedure.SizeFrame(canvasInfo);
-            }
         }
 
 
         protected override void OnUserVisibleChanged(PropertyChangedArgs<bool> args)
         {
-            throw new NotImplementedException();
         }
 
         protected override void OnLoaded(object sender, RoutedEventArgs args)
         {
             base.OnLoaded(sender, args);
-            if (RenderProcedure != null && !RenderProcedure.IsInitialized)
-            {
-                RenderProcedure.Initialize(this._windowInfo);
-                var canvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                RenderProcedure.SizeFrame(canvasInfo);
-            }
         }
 
         protected override void OnUnloaded(object sender, RoutedEventArgs routedEventArgs)
@@ -78,35 +57,13 @@ namespace OpenTkWPFHost
 
         protected override void Dispose(bool dispose)
         {
-            throw new NotImplementedException();
+            
         }
 
 
         protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
-            if (RenderProcedure != null && RenderProcedure.IsInitialized)
-            {
-                RenderProcedure.Render(null);
-                /*var imageSource = new BitmapImage(); //drawingDirective?.;
-                if (imageSource != null)
-                {
-                    if (drawingDirective.IsNeedTransform)
-                    {
-                        // Transforms are applied in reverse order
-                        drawingContext.PushTransform(drawingDirective
-                            .TransformGroup); // Apply translation to the image on the Y axis by the height. This assures that in the next step, where we apply a negative scale the image is still inside of the window
-                        var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-                        drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                        drawingContext.Pop(); // Remove the scale transform
-                    }
-                    else
-                    {
-                        var rect = new Rect(0, 0, imageSource.Width, imageSource.Height);
-                        drawingContext.DrawImage(imageSource, rect); // Draw the image source 
-                    }
-                }*/
-            }
         }
 
         /// <summary>

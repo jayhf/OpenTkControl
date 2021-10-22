@@ -30,9 +30,9 @@ namespace OpenTkWPFHost
 
         private DebugProc _debugProc;
 
-        private readonly Fraps _openglFraps = new Fraps() {Name = "GLFps"};
+        private readonly Fraps _openglFps = new Fraps() {Name = "GLFps"};
 
-        private readonly Fraps _controlFraps = new Fraps() {Name = "WindowFps"};
+        private readonly Fraps _controlFps = new Fraps() {Name = "ControlFps"};
 
         protected volatile CanvasInfo RecentCanvasInfo;
 
@@ -44,6 +44,7 @@ namespace OpenTkWPFHost
 
         public ThreadOpenTkControl() : base()
         {
+            _debugProc = Callback;
             DependencyPropertyDescriptor.FromProperty(IsUserVisibleProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this,
                     (sender, args) =>
@@ -60,6 +61,9 @@ namespace OpenTkWPFHost
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
         }
 
+
+        private volatile bool _newFrameBufferReady = false;
+
         private void OnCompTargetRender(object sender, EventArgs e)
         {
             var currentRenderTime = (e as RenderingEventArgs)?.RenderingTime;
@@ -68,15 +72,29 @@ namespace OpenTkWPFHost
                 return;
             }
 
-            _lastWindowsRenderTime = currentRenderTime.Value;
-            InvalidateVisual();
+            if (currentRenderTime.HasValue)
+            {
+                _lastWindowsRenderTime = currentRenderTime.Value;
+            }
+
+            if (_newFrameBufferReady)
+            {
+                InvalidateVisual();
+                _newFrameBufferReady = false;
+            }
         }
+
+        private volatile IRenderProcedure _renderProcedureValue;
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (RenderProcedure != null)
+            if (_renderProcedureValue != null)
             {
-                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
+                RecentCanvasInfo = _renderProcedureValue.GlSettings.CreateCanvasInfo(this);
+                if (IsRefreshWhenRenderIncontinuous && !IsRenderContinuouslyValue)
+                {
+                    CallValidRenderOnce();
+                }
             }
         }
 
@@ -94,9 +112,9 @@ namespace OpenTkWPFHost
             drawingContext.DrawDrawing(_drawingVisual.Drawing);
             if (ShowFps)
             {
-                _controlFraps.Increment();
-                _openglFraps.DrawFps(drawingContext, new Point(10, 10));
-                _controlFraps.DrawFps(drawingContext, new Point(10, 50));
+                _controlFps.Increment();
+                _openglFps.DrawFps(drawingContext, new Point(10, 10));
+                _controlFps.DrawFps(drawingContext, new Point(10, 50));
             }
 
             if (_isWaitingForSync)
@@ -107,13 +125,21 @@ namespace OpenTkWPFHost
 
         private IWindowInfo _windowInfo;
 
-        protected override void OpenRenderer(IWindowInfo windowInfo)
+        protected override void StartRenderProcedure(IWindowInfo windowInfo)
         {
-            if (RenderProcedure != null)
+            this._windowInfo = windowInfo;
+            if (_renderThreadStart)
             {
-                this._windowInfo = windowInfo;
-                StartRenderThread();
+                return;
             }
+
+            _renderThreadStart = true;
+            _openglFps.Start();
+            _controlFps.Start();
+            _endThreadCts = new CancellationTokenSource();
+            this._renderProcedureValue = this.RenderProcedure;
+            var renderer = this.Renderer;
+            _renderTask = Task.Run(async () => { await RenderThread(_endThreadCts.Token, renderer); });
         }
 
         private readonly StatefulManualResetEvent _manualRenderResetEvent = new StatefulManualResetEvent();
@@ -123,30 +149,10 @@ namespace OpenTkWPFHost
             _manualRenderResetEvent.TrySet();
         }
 
-
         protected override void CloseRenderer()
         {
             CloseRenderThread();
             base.CloseRenderer();
-        }
-
-        /// <summary>
-        /// switch render procedure
-        /// </summary>
-        /// <param name="args"></param>
-        protected override void OnRenderProcedureChanged(PropertyChangedArgs<IRenderProcedure> args)
-        {
-            if (Dispatcher.Invoke(IsDesignMode))
-                return;
-            if (args.OldValue != null && _renderThreadStart)
-            {
-                CloseRenderThread();
-            }
-
-            if (this.RenderProcedure != null && IsRendererOpened)
-            {
-                StartRenderThread();
-            }
         }
 
         protected override void OnUserVisibleChanged(PropertyChangedArgs<bool> args)
@@ -177,7 +183,7 @@ namespace OpenTkWPFHost
             base.OnUnloaded(sender, args);
         }
 
-        public BitmapSource Shotcut()
+        public BitmapSource Snapshot()
         {
             var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth, RecentCanvasInfo.ActualHeight,
                 RecentCanvasInfo.DpiScaleX * 96, RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
@@ -185,22 +191,18 @@ namespace OpenTkWPFHost
             return renderTargetBitmap;
         }
 
-        /// <summary>
-        /// The function that the thread runs to render the control
-        /// </summary>
-        /// <param name="boxedToken"></param>
-        private async Task RenderThread(object boxedToken)
+        private async Task RenderThread(CancellationToken token, IRenderer renderer)
         {
-            var token = (CancellationToken) boxedToken;
-            _debugProc = Callback;
-            RenderProcedure.Initialize(_windowInfo);
+            #region initialize
+
+            var graphicsContext = _renderProcedureValue.Initialize(_windowInfo);
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
             IRenderCanvas uiThreadCanvas = null;
             OnUITaskAsync(() =>
             {
-                RecentCanvasInfo = RenderProcedure.GlSettings.CreateCanvasInfo(this);
-                uiThreadCanvas = RenderProcedure.CreateCanvas();
+                RecentCanvasInfo = _renderProcedureValue.GlSettings.CreateCanvasInfo(this);
+                uiThreadCanvas = _renderProcedureValue.CreateCanvas();
                 if (!RecentCanvasInfo.IsEmpty)
                 {
                     uiThreadCanvas.Allocate(RecentCanvasInfo);
@@ -208,35 +210,44 @@ namespace OpenTkWPFHost
             }).Wait(token);
             if (!RecentCanvasInfo.IsEmpty)
             {
-                RenderProcedure.SizeFrame(RecentCanvasInfo);
+                _renderProcedureValue.SizeFrame(RecentCanvasInfo);
+                renderer.Initialize(graphicsContext);
+                renderer.Resize(RecentCanvasInfo.GetPixelSize());
             }
+
+            #endregion
 
             var canvasInfo = RecentCanvasInfo;
             var lastRenderTime = DateTime.MinValue;
-            using (RenderProcedure)
+            using (_renderProcedureValue)
             {
                 while (!token.IsCancellationRequested)
                 {
+                    if (!renderer.IsInitialized)
+                    {
+                        renderer.Initialize(graphicsContext);
+                    }
+
                     if (!canvasInfo.Equals(RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
                     {
                         canvasInfo = RecentCanvasInfo;
                         OnUITaskAsync(() => { uiThreadCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
-                        RenderProcedure.SizeFrame(canvasInfo);
+                        _renderProcedureValue.SizeFrame(canvasInfo);
+                        renderer.Resize(canvasInfo.GetPixelSize());
                     }
 
-                    var renderProcedureContext = RenderProcedure.Context;
-                    if (RenderProcedure.Renderer != null && !RecentCanvasInfo.IsEmpty)
+                    if (!RecentCanvasInfo.IsEmpty)
                     {
                         if (uiThreadCanvas.Ready)
                         {
                             try
                             {
                                 OnBeforeRender();
-                                OnUITaskAsync(() => uiThreadCanvas.Begin()).Wait(token);
-                                RenderProcedure.Render(uiThreadCanvas);
+                                OnUITaskAsync(() => { uiThreadCanvas.Begin(); }).Wait(token);
+                                _renderProcedureValue.Render(uiThreadCanvas, renderer);
                                 if (ShowFps)
                                 {
-                                    _openglFraps.Increment();
+                                    _openglFps.Increment();
                                 }
 
                                 OnUITaskAsync(() => uiThreadCanvas.End()).Wait(token);
@@ -255,30 +266,39 @@ namespace OpenTkWPFHost
                                 OnUITask(() =>
                                 {
                                     OnBeforeFrameFlush();
+                                    if (!IsRenderContinuouslyValue)
+                                    {
+                                        _renderProcedureValue.SwapBuffer();
+                                    }
                                     using (var drawingContext = _drawingVisual.RenderOpen())
                                     {
                                         uiThreadCanvas.FlushFrame(drawingContext);
                                     }
+
+                                    _newFrameBufferReady = true;
                                 });
 
                                 if (!uiThreadCanvas.CanAsyncRender)
                                 {
-                                    //由于wpf的帧率为60，意味着等待延迟最高达16ms
+                                    //由于wpf的最高帧率为60，意味着等待延迟最高达16ms，上下文切换的开销小于wait
                                     _completion = new TaskCompletionSource<bool>();
                                     _isWaitingForSync = true;
-                                    renderProcedureContext.MakeCurrent(new EmptyWindowInfo());
+                                    graphicsContext.MakeCurrent(new EmptyWindowInfo());
                                     await _completion.Task;
-                                    if (!renderProcedureContext.IsCurrent)
+                                    if (!graphicsContext.IsCurrent)
                                     {
-                                        renderProcedureContext.MakeCurrent(_windowInfo);
+                                        graphicsContext.MakeCurrent(_windowInfo);
                                     }
 
                                     _isWaitingForSync = false;
                                 }
                             }
 
-                            //read previous turn before swap buffer
-                            RenderProcedure.SwapBuffer();
+                            if (IsRenderContinuouslyValue)
+                            {
+                                //read previous turn before swap buffer
+                                _renderProcedureValue.SwapBuffer();
+                            }
                         }
                         else
                         {
@@ -287,11 +307,11 @@ namespace OpenTkWPFHost
                     }
                     else
                     {
-                        renderProcedureContext.MakeCurrent(new EmptyWindowInfo());
-                        await Task.Delay(1000, token);
-                        if (!renderProcedureContext.IsCurrent)
+                        graphicsContext.MakeCurrent(new EmptyWindowInfo());
+                        await Task.Delay(200, token);
+                        if (!graphicsContext.IsCurrent)
                         {
-                            renderProcedureContext.MakeCurrent(_windowInfo);
+                            graphicsContext.MakeCurrent(_windowInfo);
                         }
                     }
 
@@ -300,7 +320,7 @@ namespace OpenTkWPFHost
                         _userVisibleResetEvent.WaitInfinity();
                     }
 
-                    if (!RenderContinuously)
+                    if (!IsRenderContinuouslyValue)
                     {
                         _manualRenderResetEvent.WaitInfinity();
                     }
@@ -320,25 +340,6 @@ namespace OpenTkWPFHost
             }
         }
 
-        private void StartRenderThread()
-        {
-            if (_renderThreadStart)
-            {
-                return;
-            }
-
-            _renderThreadStart = true;
-            _openglFraps.Start();
-            _controlFraps.Start();
-            _endThreadCts = new CancellationTokenSource();
-            _renderTask = Task.Run(async () => { await RenderThread((object) _endThreadCts.Token); });
-            /*_renderThread = new Thread(RenderThread)
-            {
-                IsBackground = true,
-                Priority = ThreadPriority.Highest,
-            };
-            _renderThread.Start(_endThreadCts.Token);*/
-        }
 
         private void CloseRenderThread()
         {
@@ -378,8 +379,8 @@ namespace OpenTkWPFHost
         protected override void Dispose(bool dispose)
         {
             CloseRenderThread();
-            this._controlFraps.Dispose();
-            this._openglFraps.Dispose();
+            this._controlFps.Dispose();
+            this._openglFps.Dispose();
             this._userVisibleResetEvent.Dispose();
             this._manualRenderResetEvent.Dispose();
         }

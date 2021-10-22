@@ -139,8 +139,16 @@ namespace TestRenderer
         private ScrollRange _currentScrollRange;
         private long _currentYAxisValue;
 
+        public bool IsInitialized { get; private set; }
+
         public void Initialize(IGraphicsContext context)
         {
+            if (IsInitialized)
+            {
+                return;
+            }
+
+            IsInitialized = true;
             _shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
             _shader.Use();
             _yAxisSsbo = GL.GenBuffer();

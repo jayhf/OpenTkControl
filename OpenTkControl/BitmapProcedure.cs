@@ -50,22 +50,7 @@ namespace OpenTkWPFHost
 
         private readonly DoublePixelBuffer _doublePixelBuffer = new DoublePixelBuffer();
 
-        private volatile bool _rendererInitialized = false;
-        private IRenderer _renderer;
-
         public bool IsInitialized { get; private set; }
-
-        public IGraphicsContext Context => _context;
-
-        public IRenderer Renderer
-        {
-            get => _renderer;
-            set
-            {
-                _renderer = value;
-                _rendererInitialized = false;
-            }
-        }
 
         public GLSettings GlSettings { get; }
 
@@ -79,7 +64,7 @@ namespace OpenTkWPFHost
             return new BitmapCanvas();
         }
 
-        public void Initialize(IWindowInfo window)
+        public IGraphicsContext Initialize(IWindowInfo window)
         {
             _windowInfo = window;
             var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
@@ -88,8 +73,8 @@ namespace OpenTkWPFHost
             _newContext = true;
             _context.LoadAll();
             _context.MakeCurrent(_windowInfo);
-            CheckRenderer();
             IsInitialized = true;
+            return _context;
         }
 
         public void SwapBuffer()
@@ -114,45 +99,15 @@ namespace OpenTkWPFHost
             CalculateBufferSize(canvas, out var width, out var height);
             _width = width;
             _height = height;
-            if (CheckRenderer())
-            {
-                Renderer.Resize(new PixelSize(width, height));
-            }
-
             AllocateFrameBuffers(width, height);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns>indicate that if renderer initialize successfully or already initialized</returns>
-        private bool CheckRenderer()
+
+        public void Render(IRenderCanvas canvas, IRenderer renderer)
         {
-            if (_rendererInitialized)
-            {
-                return true;
-            }
-
-            if (Renderer != null)
-            {
-                Renderer.Initialize(_context);
-                _rendererInitialized = true;
-                return true;
-            }
-
-            return false;
-        }
-
-        public void Render(IRenderCanvas canvas)
-        {
-            if (!CheckRenderer())
-            {
-                return;
-            }
-
             var args =
                 new GlRenderEventArgs(_width, _height, CheckNewContext());
-            Renderer.Render(args);
+            renderer.Render(args);
             /*var error = GL.GetError();
             if (error != ErrorCode.NoError)
                 throw new GraphicsException(error.ToString());*/

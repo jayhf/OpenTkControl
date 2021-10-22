@@ -32,21 +32,7 @@ namespace OpenTkWPFHost
         /// The OpenGL Framebuffer height
         public int Height => FrameBuffer?.FramebufferHeight ?? 0;
 
-        private volatile bool _rendererInitialized = false;
-
         public bool IsInitialized { get; private set; }
-
-        [Obsolete] public bool ReadyToRender => Renderer != null && Width != 0 && Height != 0;
-
-        public IRenderer Renderer
-        {
-            get => _renderer;
-            set
-            {
-                _renderer = value;
-                _rendererInitialized = false;
-            }
-        }
 
         public IRenderCanvas CreateCanvas()
         {
@@ -77,32 +63,16 @@ namespace OpenTkWPFHost
             Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {FrameBuffer.DxInteropRegisteredHandle});
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns>indicate that if renderer initialize successfully or already initialized</returns>
-        private bool CheckRenderer()
+        public IGraphicsContext Initialize(IWindowInfo window)
         {
-            if (_rendererInitialized)
+            if (IsInitialized)
             {
-                return true;
+                return this._context.GraphicsContext;
             }
 
-            if (Renderer != null)
-            {
-                Renderer.Initialize(_context.GraphicsContext);
-                _rendererInitialized = true;
-                return true;
-            }
-
-            return false;
-        }
-
-        public void Initialize(IWindowInfo window)
-        {
-            _context = new DxGlContext(GlSettings, window);
-            CheckRenderer();
             IsInitialized = true;
+            _context = new DxGlContext(GlSettings, window);
+            return _context.GraphicsContext;
         }
 
         public void SizeFrame(CanvasInfo size)
@@ -115,26 +85,18 @@ namespace OpenTkWPFHost
                 if (width > 0 && height > 0)
                 {
                     _frameBuffer = new DxGLFramebuffer(_context, width, height, size.DpiScaleX, size.DpiScaleY);
-                    if (CheckRenderer())
-                    {
-                        Renderer.Resize(FrameBuffer.PixelSize);
-                    }
-
-                    // GL.Viewport(0, 0, _framebuffers.FramebufferWidth, _framebuffers.FramebufferHeight);
                 }
             }
         }
 
-        public void Render(IRenderCanvas canvas)
+        public void Render(IRenderCanvas canvas, IRenderer renderer)
         {
             PreRender();
-            Renderer.Render(new GlRenderEventArgs(Width, Height, false));
+            renderer.Render(new GlRenderEventArgs(Width, Height, false));
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.Finish();
             PostRender();
         }
-
-        public IGraphicsContext Context => _context.GraphicsContext;
 
         public void Dispose()
         {

@@ -12,22 +12,16 @@ namespace OpenTkWPFHost
     {
         GLSettings GlSettings { get; }
 
-        void Initialize(IWindowInfo window);
+        IGraphicsContext Initialize(IWindowInfo window);
 
         void SizeFrame(CanvasInfo size);
 
-        void Render(IRenderCanvas canvas);
-
-        IGraphicsContext Context { get; }
+        void Render(IRenderCanvas canvas, IRenderer renderer);
 
         IRenderCanvas CreateCanvas();
 
         void SwapBuffer();
 
-        // bool ReadyToRender { get; }
-
         bool IsInitialized { get; }
-
-        IRenderer Renderer { get; set; }
     }
 }
