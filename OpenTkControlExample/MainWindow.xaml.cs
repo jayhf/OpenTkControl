@@ -57,9 +57,7 @@ namespace OpenTkControlExample
             _renderer.CurrentYAxisValue = MaxYAxis;
             _renderer.ScrollRangeChanged = false;
             _renderer.BackgroundColor = Color4.Black;
-            this.OpenTkControl.RenderProcedure = new BitmapProcedure(new GLSettings());
             this.OpenTkControl.Renderer = _renderer;
-            this.OpenTkControl.IsRefreshWhenRenderIncontinuous = true;
             Loaded += MainWindow_Loaded;
         }
 

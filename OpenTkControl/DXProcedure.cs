@@ -17,8 +17,6 @@ namespace OpenTkWPFHost
 
         private DxGLFramebuffer _frameBuffer;
 
-        private IRenderer _renderer;
-
         internal DxGLFramebuffer FrameBuffer => _frameBuffer;
 
         /// The OpenGL framebuffer handle.
@@ -39,11 +37,9 @@ namespace OpenTkWPFHost
             return new DxCanvas(this);
         }
 
-        public GLSettings GlSettings { get; }
-
-        public DXProcedure(GLSettings glSettings)
+        public DXProcedure()
         {
-            this.GlSettings = glSettings;
+            
         }
 
         public void SwapBuffer()
@@ -63,7 +59,7 @@ namespace OpenTkWPFHost
             Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {FrameBuffer.DxInteropRegisteredHandle});
         }
 
-        public IGraphicsContext Initialize(IWindowInfo window)
+        public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)
         {
             if (IsInitialized)
             {
@@ -71,7 +67,7 @@ namespace OpenTkWPFHost
             }
 
             IsInitialized = true;
-            _context = new DxGlContext(GlSettings, window);
+            _context = new DxGlContext(settings, window);
             return _context.GraphicsContext;
         }
 

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using OpenTK;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
@@ -51,9 +52,18 @@ namespace OpenTkWPFHost
         /// </summary>
         public event EventHandler<UnhandledExceptionEventArgs> ExceptionOccurred;
 
+        public static readonly DependencyProperty GlSettingsProperty = DependencyProperty.Register(
+            "GlSettings", typeof(GLSettings), typeof(OpenTkControlBase), new PropertyMetadata(new GLSettings()));
+
+        public GLSettings GlSettings
+        {
+            get { return (GLSettings) GetValue(GlSettingsProperty); }
+            set { SetValue(GlSettingsProperty, value); }
+        }
+
         public static readonly DependencyProperty RenderProcedureProperty = DependencyProperty.Register(
             "RenderProcedure", typeof(IRenderProcedure), typeof(OpenTkControlBase),
-            new PropertyMetadata(default(IRenderProcedure)));
+            new PropertyMetadata(new DXProcedure()));
 
         /// <summary>
         /// must be set before render start
@@ -87,8 +97,9 @@ namespace OpenTkWPFHost
 
         public static readonly DependencyProperty IsShowFpsProperty =
             DependencyProperty.Register("IsShowFps", typeof(bool), typeof(OpenTkControlBase),
-                new PropertyMetadata(true));
+                new PropertyMetadata(false));
 
+        /*
         public static readonly DependencyProperty RenderTriggerProperty = DependencyProperty.Register(
             "RenderTrigger", typeof(bool), typeof(OpenTkControlBase),
             new FrameworkPropertyMetadata(default(bool), FrameworkPropertyMetadataOptions.AffectsRender));
@@ -99,6 +110,7 @@ namespace OpenTkWPFHost
             get { return (bool) GetValue(RenderTriggerProperty); }
             set { SetValue(RenderTriggerProperty, value); }
         }
+        */
 
         public static readonly DependencyProperty IsRendererOpenedProperty = DependencyProperty.Register(
             "IsRendererOpened", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
@@ -141,7 +153,7 @@ namespace OpenTkWPFHost
             new PropertyMetadata(RendererProcedureLifeCycle.BoundToWindow));
 
         public static readonly DependencyProperty IsAutoAttachProperty = DependencyProperty.Register(
-            "IsAutoAttach", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
+            "IsAutoAttach", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(false));
 
         /// <summary>
         /// if set to true, will start rendering when this element is loaded.
@@ -178,7 +190,7 @@ namespace OpenTkWPFHost
         }
 
         public static readonly DependencyProperty IsRefreshWhenRenderIncontinuousProperty = DependencyProperty.Register(
-            "IsRefreshWhenRenderIncontinuous", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
+            "IsRefreshWhenRenderIncontinuous", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(true));
 
         /// <summary>
         /// if true, resize will auto render when manually render.
@@ -356,6 +368,10 @@ namespace OpenTkWPFHost
                 throw new NotSupportedException($"Can't start render procedure as {nameof(Renderer)} is null!");
             }
 
+            if (GlSettings==null)
+            {
+                throw new NotSupportedException($"Can't start render procedure as {nameof(GlSettings)} is null!");
+            }
             if (IsRendererOpened)
             {
                 return;

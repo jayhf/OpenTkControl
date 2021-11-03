@@ -10,7 +10,11 @@
         Width="1920">
     <Grid>
 
-        <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl" />
+        <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl">
+            <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
+                <openTkWpfHost:BitmapProcedure />
+            </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
+        </openTkWpfHost:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">
             <Button Width="100"
                     Height="30"

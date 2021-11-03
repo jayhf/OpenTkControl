@@ -10,9 +10,7 @@ namespace OpenTkWPFHost
     /// </summary>
     public interface IRenderProcedure : IDisposable
     {
-        GLSettings GlSettings { get; }
-
-        IGraphicsContext Initialize(IWindowInfo window);
+        IGraphicsContext Initialize(IWindowInfo window, GLSettings settings);
 
         void SizeFrame(CanvasInfo size);
 
@@ -21,7 +19,5 @@ namespace OpenTkWPFHost
         IRenderCanvas CreateCanvas();
 
         void SwapBuffer();
-
-        bool IsInitialized { get; }
     }
 }

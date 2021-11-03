@@ -8,6 +8,12 @@ namespace OpenTkWPFHost
         
         void Initialize(IGraphicsContext context);
 
+        /// <summary>
+        /// can prevent render
+        /// </summary>
+        /// <returns></returns>
+        bool PreviewRender();
+        
         void Render(GlRenderEventArgs args);
 
         void Resize(PixelSize size);

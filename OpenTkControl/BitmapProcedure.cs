@@ -52,23 +52,20 @@ namespace OpenTkWPFHost
 
         public bool IsInitialized { get; private set; }
 
-        public GLSettings GlSettings { get; }
-
-        public BitmapProcedure(GLSettings glSettings)
+        public BitmapProcedure()
         {
-            GlSettings = glSettings;
+            
         }
-
         public IRenderCanvas CreateCanvas()
         {
             return new BitmapCanvas();
         }
 
-        public IGraphicsContext Initialize(IWindowInfo window)
+        public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)
         {
             _windowInfo = window;
             var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
-            _context = new GraphicsContext(mode, _windowInfo, GlSettings.MajorVersion, GlSettings.MinorVersion,
+            _context = new GraphicsContext(mode, _windowInfo, settings.MajorVersion, settings.MinorVersion,
                 GraphicsContextFlags.Default);
             _newContext = true;
             _context.LoadAll();

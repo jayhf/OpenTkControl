@@ -162,6 +162,11 @@ namespace TestRenderer
             }
         }
 
+        public bool PreviewRender()
+        {
+            throw new NotImplementedException();
+        }
+
         public void Render(GlRenderEventArgs args)
         {
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
