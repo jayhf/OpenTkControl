@@ -164,7 +164,7 @@ namespace TestRenderer
 
         public bool PreviewRender()
         {
-            throw new NotImplementedException();
+            return true;
         }
 
         public void Render(GlRenderEventArgs args)

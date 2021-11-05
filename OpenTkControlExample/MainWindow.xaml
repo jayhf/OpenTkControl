@@ -10,7 +10,8 @@
         Width="1920">
     <Grid>
 
-        <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl">
+        <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
+                                           IsShowFps="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
                 <openTkWpfHost:BitmapProcedure />
             </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>

@@ -1,11 +1,13 @@
-﻿using OpenTK.Graphics;
+﻿using System;
+using System.Threading;
+using OpenTK.Graphics;
 
 namespace OpenTkWPFHost
 {
     public interface IRenderer
     {
         bool IsInitialized { get; }
-        
+
         void Initialize(IGraphicsContext context);
 
         /// <summary>
@@ -13,7 +15,7 @@ namespace OpenTkWPFHost
         /// </summary>
         /// <returns></returns>
         bool PreviewRender();
-        
+
         void Render(GlRenderEventArgs args);
 
         void Resize(PixelSize size);

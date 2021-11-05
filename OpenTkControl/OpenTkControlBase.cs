@@ -41,11 +41,7 @@ namespace OpenTkWPFHost
         /// after successfully render
         /// </summary>
         public event Action AfterRender;
-
-        /// <summary>
-        /// frame is ready to flush, before frame flush
-        /// </summary>
-        public event Action BeforeFrameFlush;
+        
 
         /// <summary>
         /// Called whenever an exception occurs during initialization, rendering or deinitialization
@@ -307,15 +303,8 @@ namespace OpenTkWPFHost
         {
             if (!IsRenderContinuouslyValue && IsRendererOpened && UserVisible)
             {
-                BeforeFrameFlush += RenderLoop_BeforeFrameFlush;
-                IsRenderContinuously = true;
+                ResumeRender();
             }
-        }
-
-        private void RenderLoop_BeforeFrameFlush()
-        {
-            IsRenderContinuously = false;
-            BeforeFrameFlush -= RenderLoop_BeforeFrameFlush;
         }
 
         private void CheckUserVisible()
@@ -554,9 +543,5 @@ namespace OpenTkWPFHost
             BeforeRender?.Invoke();
         }
 
-        protected virtual void OnBeforeFrameFlush()
-        {
-            BeforeFrameFlush?.Invoke();
-        }
     }
 }

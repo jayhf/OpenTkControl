@@ -30,6 +30,9 @@ namespace OpenTkWPFHost
         /// </summary>
         public Int32Rect RepaintRect { get; set; }
 
+        //need this property？
+        // public bool IsSizeChanged { get; set; }
+
         /// <summary>
         /// Creates a <see cref="GlRenderEventArgs"/>
         /// </summary>

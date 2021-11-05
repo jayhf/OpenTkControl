@@ -15,6 +15,12 @@ using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
+    /*UI线程和opengl线程的同步方式有三种：
+     1. UI线程驱动，每次CompositionTarget发出渲染请求时会释放opengl，此方法性能较好，但是opengl的帧率无法超过wpf
+     2. opengl驱动，每次产生新的帧就发出渲染请求，当然请求速率不超过ui，缺点是当opengl的帧率较低时，ui的帧数也较低（这个实际并非缺点）
+     并且线程模型简单
+     3. 独立的渲染过程，线程同步的复杂度大幅提升，灵活性好*/
+
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance
     /// </summary>
@@ -42,7 +48,7 @@ namespace OpenTkWPFHost
 
         private volatile bool _renderThreadStart = false;
 
-        private readonly StatefulManualResetEvent _userVisibleResetEvent = new StatefulManualResetEvent();
+        private readonly EventWaiter _userVisibleResetEvent = new EventWaiter();
 
         public ThreadOpenTkControl() : base()
         {
@@ -93,6 +99,11 @@ namespace OpenTkWPFHost
             if (_renderProcedureValue != null)
             {
                 RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
+                if (!RecentCanvasInfo.IsEmpty)
+                {
+                    _sizeNotEmptyWaiter.TrySet();
+                }
+
                 if (IsRefreshWhenRenderIncontinuous && !IsRenderContinuouslyValue)
                 {
                     CallValidRenderOnce();
@@ -102,26 +113,19 @@ namespace OpenTkWPFHost
 
         private readonly DrawingVisual _drawingVisual = new DrawingVisual();
 
-        /// <summary>
-        /// d3d image maybe flicker when 
-        /// </summary>
-        private volatile bool _isWaitingForSync = false;
+        private readonly ContextWaiter _renderSyncWaiter = new ContextWaiter();
 
-        private TaskCompletionSource<bool> _completion;
+        private readonly ContextWaiter _sizeNotEmptyWaiter = new ContextWaiter();
 
         protected override void OnRender(DrawingContext drawingContext)
         {
             drawingContext.DrawDrawing(_drawingVisual.Drawing);
+            _renderSyncWaiter.TrySet();
             if (ShowFps)
             {
                 _controlFps.Increment();
                 _openglFps.DrawFps(drawingContext, new Point(10, 10));
                 _controlFps.DrawFps(drawingContext, new Point(10, 50));
-            }
-
-            if (_isWaitingForSync)
-            {
-                _completion.TrySetResult(true);
             }
         }
 
@@ -145,11 +149,11 @@ namespace OpenTkWPFHost
             _renderTask = Task.Run(async () => { await RenderThread(_endThreadCts.Token, renderer, glSettings); });
         }
 
-        private readonly StatefulManualResetEvent _manualRenderResetEvent = new StatefulManualResetEvent();
+        private readonly EventWaiter _renderContinuousWaiter = new EventWaiter();
 
         protected override void ResumeRender()
         {
-            _manualRenderResetEvent.TrySet();
+            _renderContinuousWaiter.TrySet();
         }
 
         protected override void CloseRenderer()
@@ -218,6 +222,9 @@ namespace OpenTkWPFHost
                 renderer.Resize(RecentCanvasInfo.GetPixelSize());
             }
 
+            _renderSyncWaiter.Context = graphicsContext;
+            _renderSyncWaiter.WindowInfo = _windowInfo;
+
             #endregion
 
             var canvasInfo = RecentCanvasInfo;
@@ -231,6 +238,16 @@ namespace OpenTkWPFHost
                         renderer.Initialize(graphicsContext);
                     }
 
+                    if (!UserVisible)
+                    {
+                        _userVisibleResetEvent.WaitInfinity();
+                    }
+
+                    if (!IsRenderContinuouslyValue)
+                    {
+                        _renderContinuousWaiter.WaitInfinity();
+                    }
+
                     if (!canvasInfo.Equals(RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
                     {
                         canvasInfo = RecentCanvasInfo;
@@ -239,106 +256,91 @@ namespace OpenTkWPFHost
                         renderer.Resize(canvasInfo.GetPixelSize());
                     }
 
-                    if (!RecentCanvasInfo.IsEmpty)
+                    if (RecentCanvasInfo.IsEmpty)
                     {
-                        if (uiThreadCanvas.Ready)
+                        await _sizeNotEmptyWaiter;
+                        continue;
+                    }
+
+                    if (!uiThreadCanvas.Ready)
+                    {
+                        await graphicsContext.Delay(30, _windowInfo);
+                        continue;
+                    }
+
+                    if (!renderer.PreviewRender())
+                    {
+                        await graphicsContext.Delay(30, _windowInfo);
+                        continue;
+                    }
+
+                    try
+                    {
+                        OnBeforeRender();
+                        OnUITaskAsync(() => { uiThreadCanvas.Begin(); }).Wait(token);
+                        _renderProcedureValue.Render(uiThreadCanvas, renderer);
+                        if (ShowFps)
                         {
-                            try
+                            _openglFps.Increment();
+                        }
+
+                        OnUITaskAsync(() => uiThreadCanvas.End()).Wait(token);
+                        OnAfterRender();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    finally
+                    {
+                    }
+
+                    if (uiThreadCanvas.IsDirty)
+                    {
+                        if (EnableFrameRateLimit)
+                        {
+                            var now = DateTime.Now;
+                            var renderInterval = now - lastRenderTime;
+                            if (renderInterval < FrameGenerateSpan)
                             {
-                                OnBeforeRender();
-                                OnUITaskAsync(() => { uiThreadCanvas.Begin(); }).Wait(token);
-                                _renderProcedureValue.Render(uiThreadCanvas, renderer);
-                                if (ShowFps)
+                                var interval = FrameGenerateSpan - renderInterval;
+                                if (interval.Milliseconds > 5)
                                 {
-                                    _openglFps.Increment();
+                                    await graphicsContext.Delay(interval.Milliseconds, _windowInfo);
                                 }
 
-                                OnUITaskAsync(() => uiThreadCanvas.End()).Wait(token);
-                                OnAfterRender();
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                break;
-                            }
-                            finally
-                            {
+                                Thread.Sleep(interval);
                             }
 
-                            if (uiThreadCanvas.IsDirty)
+                            lastRenderTime = now;
+                        }
+
+                        OnUITask(() =>
+                        {
+                            if (!IsRenderContinuouslyValue)
                             {
-                                OnUITask(() =>
-                                {
-                                    OnBeforeFrameFlush();
-                                    if (!IsRenderContinuouslyValue)
-                                    {
-                                        _renderProcedureValue.SwapBuffer();
-                                    }
-
-                                    using (var drawingContext = _drawingVisual.RenderOpen())
-                                    {
-                                        uiThreadCanvas.FlushFrame(drawingContext);
-                                    }
-
-                                    _newFrameBufferReady = true;
-                                });
-
-                                if (!uiThreadCanvas.CanAsyncRender)
-                                {
-                                    //由于wpf的最高帧率为60，意味着等待延迟最高达16ms，上下文切换的开销小于wait
-                                    _completion = new TaskCompletionSource<bool>();
-                                    _isWaitingForSync = true;
-                                    graphicsContext.MakeCurrent(new EmptyWindowInfo());
-                                    await _completion.Task;
-                                    if (!graphicsContext.IsCurrent)
-                                    {
-                                        graphicsContext.MakeCurrent(_windowInfo);
-                                    }
-
-                                    _isWaitingForSync = false;
-                                }
-                            }
-
-                            if (IsRenderContinuouslyValue)
-                            {
-                                //read previous turn before swap buffer
                                 _renderProcedureValue.SwapBuffer();
                             }
-                        }
-                        else
+
+                            using (var drawingContext = _drawingVisual.RenderOpen())
+                            {
+                                uiThreadCanvas.FlushFrame(drawingContext);
+                            }
+
+                            _newFrameBufferReady = true;
+                        });
+
+                        if (!uiThreadCanvas.CanAsyncRender)
                         {
-                            Thread.Sleep(5);
-                        }
-                    }
-                    else
-                    {
-                        graphicsContext.MakeCurrent(new EmptyWindowInfo());
-                        await Task.Delay(200, token);
-                        if (!graphicsContext.IsCurrent)
-                        {
-                            graphicsContext.MakeCurrent(_windowInfo);
+                            //由于wpf的最高帧率为60，意味着等待延迟最高达16ms，上下文切换的开销小于wait
+                            await _renderSyncWaiter;
                         }
                     }
 
-                    if (!UserVisible)
+                    if (IsRenderContinuouslyValue)
                     {
-                        _userVisibleResetEvent.WaitInfinity();
-                    }
-
-                    if (!IsRenderContinuouslyValue)
-                    {
-                        _manualRenderResetEvent.WaitInfinity();
-                    }
-
-                    if (EnableFrameRateLimit)
-                    {
-                        var now = DateTime.Now;
-                        var renderTime = now - lastRenderTime;
-                        if (renderTime < FrameGenerateSpan)
-                        {
-                            Thread.Sleep(FrameGenerateSpan - renderTime);
-                        }
-
-                        lastRenderTime = now;
+                        //read previous turn before swap buffer
+                        _renderProcedureValue.SwapBuffer();
                     }
                 }
             }
@@ -361,17 +363,19 @@ namespace OpenTkWPFHost
             }
             finally
             {
-                if (_isWaitingForSync)
+                _sizeNotEmptyWaiter.ForceSet();
+                _renderSyncWaiter.ForceSet();
+                /*if (_isWaitingForSync)
                 {
                     _completion.TrySetResult(true);
-                }
+                }*/
 
                 if (!UserVisible)
                 {
                     _userVisibleResetEvent.ForceSet();
                 }
 
-                _manualRenderResetEvent.ForceSet();
+                _renderContinuousWaiter.ForceSet();
                 _renderTask.Wait();
                 // _renderThread.Join();
                 _endThreadCts.Dispose();
@@ -384,7 +388,7 @@ namespace OpenTkWPFHost
             this._controlFps.Dispose();
             this._openglFps.Dispose();
             this._userVisibleResetEvent.Dispose();
-            this._manualRenderResetEvent.Dispose();
+            this._renderContinuousWaiter.Dispose();
         }
     }
 }
