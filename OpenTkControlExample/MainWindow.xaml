@@ -5,9 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:openTkWpfHost="clr-namespace:OpenTkWPFHost;assembly=OpenTkWPFHost"
         mc:Ignorable="d"
-        Title="MainWindow"
         Height="1080"
-        Width="1920">
+        Width="1920"
+        Title="MainWindow">
+
     <Grid>
 
         <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
@@ -31,15 +32,15 @@
                     Height="30"
                     Content="change render continuous"
                     Click="Test_OnClick" />
-            <TextBlock Text="x Range:" 
-                       Foreground="White"/>
+            <TextBlock Text="x Range:"
+                       Foreground="White" />
             <Slider Width="666"
                     Margin="0,10"
                     Minimum="0"
                     ValueChanged="Slider_OnValueChanged"
                     x:Name="Slider" />
-            <TextBlock Text="frame rate:" 
-                       Foreground="White"/>
+            <TextBlock Text="frame rate:"
+                       Foreground="White" />
             <Slider Margin="0,10"
                     Maximum="200"
                     Minimum="0"

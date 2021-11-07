@@ -19,7 +19,7 @@ namespace OpenTkWPFHost
      1. UI线程驱动，每次CompositionTarget发出渲染请求时会释放opengl，此方法性能较好，但是opengl的帧率无法超过wpf
      2. opengl驱动，每次产生新的帧就发出渲染请求，当然请求速率不超过ui，缺点是当opengl的帧率较低时，ui的帧数也较低（这个实际并非缺点）
      并且线程模型简单
-     3. 独立的渲染过程，线程同步的复杂度大幅提升，灵活性好*/
+     3. 独立的两个渲染线程，线程同步的复杂度大幅提升*/
 
     /// <summary>
     /// A WPF control that performs all OpenGL rendering on a thread separate from the UI thread to improve performance

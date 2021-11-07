@@ -8,8 +8,6 @@ namespace OpenTkWPFHost
     {
         public Int32Rect RepaintRect;
 
-        public bool IsResized;
-
         public int BufferSize;
 
         public IntPtr FrameBuffer;
