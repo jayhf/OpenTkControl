@@ -56,6 +56,7 @@ namespace OpenTkWPFHost
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
+            this.renderTargetBitmap = RecentCanvasInfo.CreateRenderTargetBitmap();
             if (!RecentCanvasInfo.IsEmpty)
             {
                 _sizeNotEmptyWaiter.TrySet();
@@ -67,7 +68,8 @@ namespace OpenTkWPFHost
             }
         }
 
-        private readonly DrawingVisual _drawingVisual = new DrawingVisual();
+        // private readonly DrawingVisual _drawingVisual = new DrawingVisual();
+        private RenderTargetBitmap renderTargetBitmap = new RenderTargetBitmap(0, 0, 96, 96, PixelFormats.Pbgra32);
 
         private readonly ContextWaiter _renderSyncWaiter = new ContextWaiter();
 
@@ -77,7 +79,9 @@ namespace OpenTkWPFHost
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            drawingContext.DrawDrawing(_drawingVisual.Drawing);
+            // drawingContext.DrawDrawing(_drawingVisual.Drawing);
+            drawingContext.DrawImage(renderTargetBitmap,
+                new Rect(new Size(renderTargetBitmap.PixelWidth, renderTargetBitmap.PixelHeight)));
             _renderSyncWaiter.TrySet();
             if (ShowFps)
             {
@@ -158,9 +162,9 @@ namespace OpenTkWPFHost
 
         public BitmapSource Snapshot()
         {
-            var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth, RecentCanvasInfo.ActualHeight,
+            /*var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth, RecentCanvasInfo.ActualHeight,
                 RecentCanvasInfo.DpiScaleX * 96, RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
-            renderTargetBitmap.Render(_drawingVisual);
+            renderTargetBitmap.Render(_drawingVisual);*/
             return renderTargetBitmap;
         }
 
@@ -178,6 +182,8 @@ namespace OpenTkWPFHost
                 renderer.Initialize(graphicsContext);
                 _renderSyncWaiter.Context = graphicsContext;
                 _renderSyncWaiter.WindowInfo = _windowInfo;
+                _sizeNotEmptyWaiter.Context = graphicsContext;
+                _sizeNotEmptyWaiter.WindowInfo = _windowInfo;
             }
             catch (Exception e)
             {
@@ -279,7 +285,7 @@ namespace OpenTkWPFHost
                             {
                                 renderProcedureValue.SwapBuffer();
                             }
-
+                            renderTargetBitmap.Render();
                             using (var drawingContext = _drawingVisual.RenderOpen())
                             {
                                 uiThreadCanvas.FlushFrame(drawingContext);

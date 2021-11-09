@@ -21,7 +21,7 @@ namespace OpenTkWPFHost
         /// for managing the lifetime and disposal of.
         public IGraphicsContext ContextToUse { get; set; }
 
-        public GraphicsContextFlags GraphicsContextFlags { get; set; } = GraphicsContextFlags.Default;
+        public GraphicsContextFlags GraphicsContextFlags { get; set; } = GraphicsContextFlags.Offscreen;
         public ContextProfileMask GraphicsProfile { get; set; }
 
         public int MajorVersion { get; set; } = 4;
