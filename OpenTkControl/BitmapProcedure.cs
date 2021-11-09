@@ -54,8 +54,8 @@ namespace OpenTkWPFHost
 
         public BitmapProcedure()
         {
-            
         }
+
         public IRenderCanvas CreateCanvas()
         {
             return new BitmapCanvas();
@@ -109,7 +109,11 @@ namespace OpenTkWPFHost
             if (error != ErrorCode.NoError)
                 throw new GraphicsException(error.ToString());*/
             _doublePixelBuffer.FlushCurrentFrame();
-            ((BitmapCanvas) canvas).ReadBufferInfo = _doublePixelBuffer.GetReadBufferInfo();
+            var bitmapCanvas = (BitmapCanvas) canvas;
+            if (_doublePixelBuffer.TryReadFromBufferInfo(bitmapCanvas.DisplayBuffer, out var bufferInfo))
+            {
+                bitmapCanvas.ReadBufferInfo = bufferInfo;
+            }
         }
 
         /// <summary>
@@ -188,7 +192,6 @@ namespace OpenTkWPFHost
             ReleaseFrameBuffers();
             _context.Dispose();
             _context = null;
-            _windowInfo.Dispose();
         }
     }
 }

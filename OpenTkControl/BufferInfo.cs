@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using OpenTK.Graphics.OpenGL4;
 
 namespace OpenTkWPFHost
 {
@@ -19,6 +20,5 @@ namespace OpenTkWPFHost
         public int GlBufferPointer;
 
         public bool HasBuffer;
-
     }
 }

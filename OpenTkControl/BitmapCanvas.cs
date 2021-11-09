@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -14,6 +15,8 @@ namespace OpenTkWPFHost
         /// </summary>
         private volatile WriteableBitmap _bitmap;
 
+        public IntPtr DisplayBuffer { get; set; }
+
         public bool Ready { get; } = true;
 
         private TransformGroup _transformGroup;
@@ -27,17 +30,31 @@ namespace OpenTkWPFHost
             _bitmap = new WriteableBitmap((int) (info.ActualWidth * info.DpiScaleX),
                 (int) (info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
                 PixelFormats.Pbgra32, null);
+            this.DisplayBuffer = _bitmap.BackBuffer;
         }
 
         public void Begin()
         {
             ReadBufferInfo = null;
             this.IsDirty = false;
+            _bitmap.Lock();
         }
 
         public void End()
         {
-            if (ReadBufferInfo != null && ReadBufferInfo.HasBuffer)
+            try
+            {
+                if (ReadBufferInfo != null && ReadBufferInfo.HasBuffer)
+                {
+                    this.IsDirty = true;
+                    _bitmap.AddDirtyRect(ReadBufferInfo.RepaintRect);
+                }
+            }
+            finally
+            {
+                _bitmap.Unlock();
+            }
+            /*if (ReadBufferInfo != null && ReadBufferInfo.HasBuffer)
             {
                 var dirtyArea = ReadBufferInfo.RepaintRect;
                 if (!dirtyArea.IsEmpty)
@@ -49,19 +66,20 @@ namespace OpenTkWPFHost
                     _bitmap.AddDirtyRect(dirtyArea);
                     _bitmap.Unlock();
                 }
-
                 ReadBufferInfo.HasBuffer = false;
-            }
+            
+            }*/
         }
 
         public void FlushFrame(DrawingContext context)
         {
+            
             context.PushTransform(this._transformGroup);
             context.DrawImage(_bitmap, new Rect(new Size(_bitmap.Width, _bitmap.Height)));
             context.Pop();
         }
 
-        public bool CanAsyncRender { get; } = true;
+        public bool CanAsyncFlush { get; } = true;
 
         public bool IsDirty { get; set; }
 

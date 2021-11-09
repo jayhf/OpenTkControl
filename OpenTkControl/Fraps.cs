@@ -59,7 +59,7 @@ namespace OpenTkWPFHost
             Interlocked.Increment(ref _frameCount);
         }
 
-        public void Start()
+        public Fraps()
         {
             _timer = new Timer((state =>
             {

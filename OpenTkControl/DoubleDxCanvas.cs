@@ -49,7 +49,7 @@ namespace OpenTkWPFHost
             _frontBuffer = mid;*/
         }
 
-        public bool CanAsyncRender { get; }
+        public bool CanAsyncFlush { get; }
         public bool IsDirty { get; }
         public bool Ready { get; }
 

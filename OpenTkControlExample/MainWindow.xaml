@@ -14,23 +14,21 @@
         <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-                <openTkWpfHost:BitmapProcedure />
+                <openTkWpfHost:DXProcedure />
             </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
         </openTkWpfHost:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">
-            <Button Width="100"
-                    Height="30"
-                    Content="start procedure"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Left"
+            <StackPanel.Resources>
+                <Style TargetType="{x:Type Button}">
+                    <Setter Property="Height"
+                            Value="40" />
+                </Style>
+            </StackPanel.Resources>
+            <Button Content="start procedure"
                     Click="ButtonBase_OnClick" />
             <Button Content="close procedure"
                     Click="Close_OnClick" />
-            <Button VerticalAlignment="Bottom"
-                    HorizontalAlignment="Left"
-                    Width="120"
-                    Height="30"
-                    Content="change render continuous"
+            <Button Content="change render continuous"
                     Click="Test_OnClick" />
             <TextBlock Text="x Range:"
                        Foreground="White" />

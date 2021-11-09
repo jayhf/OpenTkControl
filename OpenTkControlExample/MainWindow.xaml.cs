@@ -20,7 +20,7 @@ namespace OpenTkControlExample
 {
     public partial class MainWindow
     {
-        private const int LineCount = 1;
+        private const int LineCount = 3;
         public const int PointsCount = 1000;
 
         public const int LineLength = PointsCount * 2;

@@ -34,6 +34,8 @@ namespace OpenTkWPFHost
 
         public bool IsEmpty => ActualWidth == 0 || ActualHeight == 0;
 
+        public int BufferSize => ActualWidth * ActualHeight * 4;
+
         public RenderTargetBitmap CreateRenderTargetBitmap()
         {
             return new RenderTargetBitmap(this.ActualWidth, this.ActualHeight, this.DpiScaleX * 96, this.DpiScaleY * 96,

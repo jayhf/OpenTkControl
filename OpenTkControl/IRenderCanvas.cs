@@ -10,7 +10,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// whether can render simultaneously with ui thread.
         /// </summary>
-        bool CanAsyncRender { get; }
+        bool CanAsyncFlush { get; }
 
         /// <summary>
         /// if need to flush frame

@@ -18,7 +18,7 @@ namespace OpenTkWPFHost
 
         private readonly DXProcedure _dxProcedure;
 
-        public bool CanAsyncRender { get; set; } = false;
+        public bool CanAsyncFlush { get; set; } = false;
 
         public bool IsDirty { get; set; }
 

@@ -41,7 +41,7 @@ namespace OpenTkWPFHost
         /// after successfully render
         /// </summary>
         public event Action AfterRender;
-        
+
 
         /// <summary>
         /// Called whenever an exception occurs during initialization, rendering or deinitialization
@@ -295,7 +295,7 @@ namespace OpenTkWPFHost
         /// resume render procedure
         /// </summary>
         protected abstract void ResumeRender();
-        
+
         /// <summary>
         /// manually call render loop regardless of double buffer mechanism
         /// </summary>
@@ -357,18 +357,20 @@ namespace OpenTkWPFHost
                 throw new NotSupportedException($"Can't start render procedure as {nameof(Renderer)} is null!");
             }
 
-            if (GlSettings==null)
+            if (GlSettings == null)
             {
                 throw new NotSupportedException($"Can't start render procedure as {nameof(GlSettings)} is null!");
             }
-            if (IsRendererOpened)
-            {
-                return;
-            }
+
 
             if (hostWindow == null)
             {
-                throw new ArgumentNullException();
+                throw new ArgumentNullException("Must bind to window!");
+            }
+
+            if (IsRendererOpened)
+            {
+                return;
             }
 
             _isWindowClosed = false;
@@ -378,11 +380,6 @@ namespace OpenTkWPFHost
             _isControlVisible = this.IsVisible;
             _isControlLoaded = this.IsLoaded;
             CheckUserVisible();
-            if (UserVisible)
-            {
-                Debug.WriteLine("Warning! uservisible is false, rendering may not be enable.");
-            }
-
             var baseHandle = new WindowInteropHelper(hostWindow).Handle;
             _hwndSource = new HwndSource(0, 0, 0, 0, 0, "GLWpfControl", baseHandle);
             this._windowInfo = Utilities.CreateWindowsWindowInfo(_hwndSource.Handle);
@@ -542,6 +539,5 @@ namespace OpenTkWPFHost
         {
             BeforeRender?.Invoke();
         }
-
     }
 }
