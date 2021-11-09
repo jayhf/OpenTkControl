@@ -31,15 +31,29 @@ namespace OpenTkControlExample
 
         private int lineColorINT = Color4.White.ToArgb();
 
-        private readonly TendencyChartRenderer _renderer = new TendencyChartRenderer();
+        private TendencyChartRenderer _renderer;
 
         public MainWindow()
         {
             this.InitializeComponent();
+            GenerateRenderer();
+            Slider.Maximum = LineLength;
+            Slider.Value = LineLength;
+            Loaded += MainWindow_Loaded;
+        }
+
+        public void GenerateRenderer()
+        {
+            if (_renderer!=null)
+            {
+                _renderer.Dispose();
+            }
+
+            _renderer = new TendencyChartRenderer();
             var random = new Random();
             for (int i = 0; i < LineCount; i++)
             {
-                var lineChartRenderer = new LineRenderer(PointsCount) {LineColor = _lineColor};
+                var lineChartRenderer = new LineRenderer(PointsCount) { LineColor = _lineColor };
                 var ringBuffer = lineChartRenderer.RingBuffer;
                 for (int j = 0; j < LineLength; j += 2)
                 {
@@ -50,15 +64,19 @@ namespace OpenTkControlExample
 
                 _renderer.Add(lineChartRenderer);
             }
-
-            Slider.Maximum = LineLength;
-            Slider.Value = LineLength;
             _renderer.CurrentScrollRange = new ScrollRange(0, LineLength);
             _renderer.CurrentYAxisValue = MaxYAxis;
             _renderer.ScrollRangeChanged = false;
             _renderer.BackgroundColor = Color4.Black;
             this.OpenTkControl.Renderer = _renderer;
-            Loaded += MainWindow_Loaded;
+            this.OpenTkControl.ExceptionOccurred += OpenTkControl_ExceptionOccurred;
+            
+        }
+
+
+        private void OpenTkControl_ExceptionOccurred(object sender, UnhandledExceptionEventArgs e)
+        {
+            Debugger.Break();
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)

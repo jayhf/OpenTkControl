@@ -124,15 +124,6 @@ namespace TestRenderer
             }
         }
 
-        public void Dispose()
-        {
-            GL.DeleteBuffer(_yAxisSsbo);
-            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-            GL.BindVertexArray(0);
-            GL.UseProgram(0);
-            GL.DeleteProgram(_shader.Handle);
-        }
 
         private int _yAxisSsbo;
         private readonly int[] _yAxisRaster = new int[300];
@@ -140,6 +131,11 @@ namespace TestRenderer
         private long _currentYAxisValue;
 
         public bool IsInitialized { get; private set; }
+
+        public TendencyChartRenderer()
+        {
+
+        }
 
         public void Initialize(IGraphicsContext context)
         {
@@ -227,6 +223,31 @@ namespace TestRenderer
         public void Resize(PixelSize size)
         {
             GL.Viewport(0, 0, size.Width, size.Height);
+        }
+
+        public void Uninitialize()
+        {
+            if (!IsInitialized)
+            {
+                return;
+            }
+
+            IsInitialized = false;
+            foreach (var lineRenderer in LineRenderers)
+            {
+                lineRenderer.Dispose();
+            }
+
+            GL.DeleteBuffer(_yAxisSsbo);
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
+            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+            GL.BindVertexArray(0);
+            GL.UseProgram(0);
+            GL.DeleteProgram(_shader.Handle);
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

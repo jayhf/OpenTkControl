@@ -14,6 +14,26 @@ using WindowState = System.Windows.WindowState;
 
 namespace OpenTkWPFHost
 {
+    public enum RenderPhase
+    {
+        Inbuilt,
+        Initialize,
+        Render,
+    }
+
+    public class RenderErrorArgs : EventArgs
+    {
+        public RenderErrorArgs(RenderPhase phase, Exception exception)
+        {
+            Phase = phase;
+            Exception = exception;
+        }
+
+        public RenderPhase Phase { get; set; }
+
+        public Exception Exception { get; set; }
+    }
+
     /// <summary>
     /// 
     /// </summary>
@@ -32,6 +52,8 @@ namespace OpenTkWPFHost
 
         public event EventHandler<OpenGlErrorArgs> OpenGlErrorReceived;
 
+        public event EventHandler<RenderErrorArgs> RenderErrorReceived;
+
         /// <summary>
         /// renderer is ready
         /// </summary>
@@ -41,7 +63,6 @@ namespace OpenTkWPFHost
         /// after successfully render
         /// </summary>
         public event Action AfterRender;
-
 
         /// <summary>
         /// Called whenever an exception occurs during initialization, rendering or deinitialization
@@ -223,7 +244,7 @@ namespace OpenTkWPFHost
 
         protected volatile bool IsRenderContinuouslyValue;
 
-        protected TimeSpan FrameGenerateSpan;
+        protected volatile int FrameGenerateSpan;
 
         protected volatile bool EnableFrameRateLimit;
 
@@ -288,7 +309,7 @@ namespace OpenTkWPFHost
             }
 
             EnableFrameRateLimit = true;
-            FrameGenerateSpan = TimeSpan.FromMilliseconds(1000d / maxFrameRate);
+            FrameGenerateSpan = (int) (1000d / maxFrameRate);
         }
 
         /// <summary>
@@ -538,6 +559,11 @@ namespace OpenTkWPFHost
         protected virtual void OnBeforeRender()
         {
             BeforeRender?.Invoke();
+        }
+
+        protected virtual void OnRenderErrorReceived(RenderErrorArgs e)
+        {
+            RenderErrorReceived?.Invoke(this, e);
         }
     }
 }

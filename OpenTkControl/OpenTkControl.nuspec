@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/migeyusu/OpenTkControl</projectUrl>
     <icon>images\lion.png</icon>
     <description>$description$</description>
-    <releaseNotes>Optmized performance, now renderprocedure and renderer cannot change after start.</releaseNotes>
+    <releaseNotes>Enhanced performance, bugs fixed, add exception resort.Out of box.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>WPF OpenTK</tags>
     <dependencies>

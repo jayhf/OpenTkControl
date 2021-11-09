@@ -8,6 +8,10 @@ namespace OpenTkWPFHost
     {
         bool IsInitialized { get; }
 
+        /// <summary>
+        /// will be called automatically on render thread.
+        /// </summary>
+        /// <param name="context"></param>
         void Initialize(IGraphicsContext context);
 
         /// <summary>
@@ -21,9 +25,8 @@ namespace OpenTkWPFHost
         void Resize(PixelSize size);
 
         /// <summary>
-        /// renderer can pass render procedure
+        /// differ from disposable, will be called automatically on render thread.
         /// </summary>
-        /// <returns></returns>
-        // bool CheckPassRender();
+        void Uninitialize();
     }
 }

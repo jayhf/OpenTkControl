@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
 
@@ -36,14 +37,14 @@ namespace OpenTkWPFHost
         /// </summary>
         private CancellationTokenSource _endThreadCts;
 
-        private DebugProc _debugProc;
+        private readonly DebugProc _debugProc;
 
-        private readonly Fraps _openglFps = new Fraps() {Name = "GLFps"};
+        private readonly Fraps _glFps = new Fraps() {Name = "GLFps"};
 
         private readonly Fraps _controlFps = new Fraps() {Name = "ControlFps"};
 
         protected volatile CanvasInfo RecentCanvasInfo;
-        
+
         private readonly EventWaiter _userVisibleResetEvent = new EventWaiter();
 
         public ThreadOpenTkControl() : base()
@@ -81,7 +82,7 @@ namespace OpenTkWPFHost
             if (ShowFps)
             {
                 _controlFps.Increment();
-                _openglFps.DrawFps(drawingContext, new Point(10, 10));
+                _glFps.DrawFps(drawingContext, new Point(10, 10));
                 _controlFps.DrawFps(drawingContext, new Point(10, 50));
             }
         }
@@ -95,11 +96,23 @@ namespace OpenTkWPFHost
             var renderProcedureValue = this.RenderProcedure;
             var renderer = this.Renderer;
             var glSettings = this.GlSettings;
+            IRenderCanvas uiRenderCanvas = null;
+            try
+            {
+                RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
+                uiRenderCanvas = renderProcedureValue.CreateCanvas();
+            }
+            catch (Exception e)
+            {
+                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Inbuilt, e));
+                return;
+            }
+
             _renderTask = Task.Run(async () =>
             {
                 using (_endThreadCts)
                 {
-                    await RenderThread(_endThreadCts.Token, renderProcedureValue, renderer, glSettings);
+                    await RenderThread(_endThreadCts.Token, renderProcedureValue, renderer, uiRenderCanvas, glSettings);
                 }
             });
         }
@@ -151,49 +164,49 @@ namespace OpenTkWPFHost
             return renderTargetBitmap;
         }
 
-        private async Task RenderThread(CancellationToken token, IRenderProcedure renderProcedureValue, IRenderer renderer,
-            GLSettings settings)
+        private async Task RenderThread(CancellationToken token, IRenderProcedure renderProcedureValue,
+            IRenderer renderer, IRenderCanvas uiThreadCanvas, GLSettings settings)
         {
             #region initialize
 
-            var graphicsContext = renderProcedureValue.Initialize(_windowInfo, settings);
-            GL.Enable(EnableCap.DebugOutput);
-            GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-            IRenderCanvas uiThreadCanvas = null;
-            OnUITaskAsync(() =>
+            IGraphicsContext graphicsContext;
+            try
             {
-                RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
-                uiThreadCanvas = renderProcedureValue.CreateCanvas();
-                if (!RecentCanvasInfo.IsEmpty)
-                {
-                    uiThreadCanvas.Allocate(RecentCanvasInfo);
-                }
-            }).Wait(token);
-            if (!RecentCanvasInfo.IsEmpty)
-            {
-                renderProcedureValue.SizeFrame(RecentCanvasInfo);
+                graphicsContext = renderProcedureValue.Initialize(_windowInfo, settings);
+                GL.Enable(EnableCap.DebugOutput);
+                GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
                 renderer.Initialize(graphicsContext);
-                renderer.Resize(RecentCanvasInfo.GetPixelSize());
+                _renderSyncWaiter.Context = graphicsContext;
+                _renderSyncWaiter.WindowInfo = _windowInfo;
+            }
+            catch (Exception e)
+            {
+                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Inbuilt, e));
+                return;
             }
 
-            _renderSyncWaiter.Context = graphicsContext;
-            _renderSyncWaiter.WindowInfo = _windowInfo;
+            try
+            {
+                if (!renderer.IsInitialized)
+                {
+                    renderer.Initialize(graphicsContext);
+                }
+            }
+            catch (Exception e)
+            {
+                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Initialize, e));
+                return;
+            }
 
             #endregion
 
-            var canvasInfo = RecentCanvasInfo;
+            CanvasInfo canvasInfo = null;
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            var milliseconds = FrameGenerateSpan.Milliseconds;
             using (renderProcedureValue)
             {
                 while (!token.IsCancellationRequested)
                 {
-                    if (!renderer.IsInitialized)
-                    {
-                        renderer.Initialize(graphicsContext);
-                    }
-
                     if (!UserVisible)
                     {
                         _userVisibleResetEvent.WaitInfinity();
@@ -204,7 +217,7 @@ namespace OpenTkWPFHost
                         _renderContinuousWaiter.WaitInfinity();
                     }
 
-                    if (!canvasInfo.Equals(RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
+                    if (!Equals(canvasInfo, RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
                     {
                         canvasInfo = RecentCanvasInfo;
                         OnUITaskAsync(() => { uiThreadCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
@@ -245,6 +258,10 @@ namespace OpenTkWPFHost
                     {
                         break;
                     }
+                    catch (Exception exception)
+                    {
+                        OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Render, exception));
+                    }
                     finally
                     {
                     }
@@ -253,7 +270,7 @@ namespace OpenTkWPFHost
                     {
                         if (ShowFps)
                         {
-                            _openglFps.Increment();
+                            _glFps.Increment();
                         }
 
                         OnUITaskAsync(() =>
@@ -272,7 +289,7 @@ namespace OpenTkWPFHost
                         });
                         if (EnableFrameRateLimit)
                         {
-                            var renderMinus = milliseconds - stopwatch.ElapsedMilliseconds;
+                            var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
                             if (renderMinus > 5)
                             {
                                 await graphicsContext.Delay((int) renderMinus, _windowInfo);
@@ -298,6 +315,7 @@ namespace OpenTkWPFHost
                     }
                 }
 
+                renderer.Uninitialize();
                 stopwatch.Stop();
             }
         }
@@ -325,7 +343,7 @@ namespace OpenTkWPFHost
         protected override void Dispose(bool dispose)
         {
             this._controlFps.Dispose();
-            this._openglFps.Dispose();
+            this._glFps.Dispose();
             this._userVisibleResetEvent.Dispose();
             this._renderContinuousWaiter.Dispose();
         }
