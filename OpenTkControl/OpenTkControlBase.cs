@@ -461,6 +461,7 @@ namespace OpenTkWPFHost
             }
 
             base.OnRender(drawingContext);
+            
             /*if (!IsRendererOpened)
             {
                 UnstartedControlHelper.DrawUnstartedControlHelper(this, drawingContext);

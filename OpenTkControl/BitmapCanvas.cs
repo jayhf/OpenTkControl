@@ -13,7 +13,9 @@ namespace OpenTkWPFHost
         /// <summary>
         /// The source of the internal Image
         /// </summary>
-        private volatile WriteableBitmap _bitmap;
+        private WriteableBitmap _readBitmap;
+
+        private WriteableBitmap _writeBitmap;
 
         public IntPtr DisplayBuffer { get; set; }
 
@@ -27,17 +29,26 @@ namespace OpenTkWPFHost
             _transformGroup.Children.Add(new ScaleTransform(1, -1));
             _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
             _transformGroup.Freeze();
-            _bitmap = new WriteableBitmap((int) (info.ActualWidth * info.DpiScaleX),
+            _readBitmap = new WriteableBitmap((int) (info.ActualWidth * info.DpiScaleX),
                 (int) (info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
                 PixelFormats.Pbgra32, null);
-            this.DisplayBuffer = _bitmap.BackBuffer;
+            _writeBitmap = new WriteableBitmap((int) (info.ActualWidth * info.DpiScaleX),
+                (int) (info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
+                PixelFormats.Pbgra32, null);
+        }
+
+
+        public void Swap()
+        {
+            (_readBitmap, _writeBitmap) = (_writeBitmap, _readBitmap);
         }
 
         public void Begin()
         {
+            this.DisplayBuffer = _writeBitmap.BackBuffer;
             ReadBufferInfo = null;
             this.IsDirty = false;
-            _bitmap.Lock();
+            _writeBitmap.Lock();
         }
 
         public void End()
@@ -47,35 +58,19 @@ namespace OpenTkWPFHost
                 if (ReadBufferInfo != null && ReadBufferInfo.HasBuffer)
                 {
                     this.IsDirty = true;
-                    _bitmap.AddDirtyRect(ReadBufferInfo.RepaintRect);
+                    _writeBitmap.AddDirtyRect(ReadBufferInfo.RepaintRect);
                 }
             }
             finally
             {
-                _bitmap.Unlock();
+                _writeBitmap.Unlock();
             }
-            /*if (ReadBufferInfo != null && ReadBufferInfo.HasBuffer)
-            {
-                var dirtyArea = ReadBufferInfo.RepaintRect;
-                if (!dirtyArea.IsEmpty)
-                {
-                    this.IsDirty = true;
-                    _bitmap.Lock();
-                    _bitmap.WritePixels(dirtyArea, ReadBufferInfo.FrameBuffer, ReadBufferInfo.BufferSize,
-                        _bitmap.BackBufferStride);
-                    _bitmap.AddDirtyRect(dirtyArea);
-                    _bitmap.Unlock();
-                }
-                ReadBufferInfo.HasBuffer = false;
-            
-            }*/
         }
 
         public void FlushFrame(DrawingContext context)
         {
-            
             context.PushTransform(this._transformGroup);
-            context.DrawImage(_bitmap, new Rect(new Size(_bitmap.Width, _bitmap.Height)));
+            context.DrawImage(_readBitmap, new Rect(new Size(_readBitmap.Width, _readBitmap.Height)));
             context.Pop();
         }
 

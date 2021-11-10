@@ -8,9 +8,9 @@
         Height="1080"
         Width="1920"
         Title="MainWindow">
-
+    <!--Height="480"
+        Width="720"-->
     <Grid>
-
         <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>

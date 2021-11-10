@@ -75,5 +75,10 @@ namespace OpenTkWPFHost
         {
             throw new NotImplementedException();
         }
+
+        public void Swap()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -66,6 +66,7 @@
     <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
     <Compile Include="IRenderProcedure.cs" />
+    <Compile Include="MultiPixelBuffer.cs" />
     <Compile Include="OpenGLError.cs" />
     <Compile Include="CanvasInfo.cs" />
     <Compile Include="OpenTkControlBase.cs" />

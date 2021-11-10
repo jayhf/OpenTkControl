@@ -89,6 +89,11 @@ namespace OpenTkWPFHost
             drawingContext.Pop();
         }
 
+        public void Swap()
+        {
+            
+        }
+
         public bool D3DImageDirty
         {
             get { return (bool) _fieldInfo.GetValue(this._image); }

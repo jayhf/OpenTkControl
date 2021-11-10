@@ -56,7 +56,6 @@ namespace OpenTkWPFHost
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
-            this.renderTargetBitmap = RecentCanvasInfo.CreateRenderTargetBitmap();
             if (!RecentCanvasInfo.IsEmpty)
             {
                 _sizeNotEmptyWaiter.TrySet();
@@ -68,8 +67,8 @@ namespace OpenTkWPFHost
             }
         }
 
-        // private readonly DrawingVisual _drawingVisual = new DrawingVisual();
-        private RenderTargetBitmap renderTargetBitmap = new RenderTargetBitmap(0, 0, 96, 96, PixelFormats.Pbgra32);
+
+        private readonly DrawingGroup _drawingGroup = new DrawingGroup();
 
         private readonly ContextWaiter _renderSyncWaiter = new ContextWaiter();
 
@@ -79,9 +78,7 @@ namespace OpenTkWPFHost
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            // drawingContext.DrawDrawing(_drawingVisual.Drawing);
-            drawingContext.DrawImage(renderTargetBitmap,
-                new Rect(new Size(renderTargetBitmap.PixelWidth, renderTargetBitmap.PixelHeight)));
+            drawingContext.DrawDrawing(_drawingGroup);
             _renderSyncWaiter.TrySet();
             if (ShowFps)
             {
@@ -162,10 +159,15 @@ namespace OpenTkWPFHost
 
         public BitmapSource Snapshot()
         {
-            /*var renderTargetBitmap = new RenderTargetBitmap(RecentCanvasInfo.ActualWidth, RecentCanvasInfo.ActualHeight,
-                RecentCanvasInfo.DpiScaleX * 96, RecentCanvasInfo.DpiScaleY * 96, PixelFormats.Pbgra32);
-            renderTargetBitmap.Render(_drawingVisual);*/
-            return renderTargetBitmap;
+            var targetBitmap = RecentCanvasInfo.CreateRenderTargetBitmap();
+            var drawingVisual = new DrawingVisual();
+            using (var drawingContext = drawingVisual.RenderOpen())
+            {
+                drawingContext.DrawDrawing(_drawingGroup);
+            }
+
+            targetBitmap.Render(drawingVisual);
+            return targetBitmap;
         }
 
         private async Task RenderThread(CancellationToken token, IRenderProcedure renderProcedureValue,
@@ -256,6 +258,7 @@ namespace OpenTkWPFHost
                     {
                         OnBeforeRender();
                         OnUITaskAsync(() => { uiThreadCanvas.Begin(); }).Wait(token);
+/*当缩放窗体时，如果canvas锁定了bitmap，而onrender被调用时又会需要渲染bitmap，会产生死锁，但不会影响d3dimage*/
                         renderProcedureValue.Render(uiThreadCanvas, renderer);
                         OnUITaskAsync(() => uiThreadCanvas.End()).Wait(token);
                         OnAfterRender();
@@ -284,9 +287,10 @@ namespace OpenTkWPFHost
                             if (!IsRenderContinuouslyValue)
                             {
                                 renderProcedureValue.SwapBuffer();
+                                uiThreadCanvas.Swap();
                             }
-                            renderTargetBitmap.Render();
-                            using (var drawingContext = _drawingVisual.RenderOpen())
+
+                            using (var drawingContext = _drawingGroup.Open())
                             {
                                 uiThreadCanvas.FlushFrame(drawingContext);
                             }
@@ -307,17 +311,19 @@ namespace OpenTkWPFHost
 
                             stopwatch.Restart();
                         }
-                        /*if (!uiThreadCanvas.CanAsyncFlush)
+
+                        if (!uiThreadCanvas.CanAsyncFlush)
                         {
                             //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，上下文切换的开销小于wait
                             await _renderSyncWaiter;
-                        }*/
+                        }
                     }
 
                     if (IsRenderContinuouslyValue)
                     {
                         //read previous turn before swap buffer
                         renderProcedureValue.SwapBuffer();
+                        uiThreadCanvas.Swap();
                     }
                 }
 

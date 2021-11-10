@@ -16,11 +16,12 @@ namespace OpenTkWPFHost
         /// if need to flush frame
         /// </summary>
         bool IsDirty { get; }
+
         /// <summary>
         /// indicate whether ready to render
         /// </summary>
         bool Ready { get; }
-        
+
         void Allocate(CanvasInfo info);
 
         void Begin();
@@ -32,5 +33,10 @@ namespace OpenTkWPFHost
         /// </summary>
         /// <param name="context"></param>
         void FlushFrame(DrawingContext context);
+
+        /// <summary>
+        /// it's imperative to use double buffer in canvas 
+        /// </summary>
+        void Swap();
     }
 }
