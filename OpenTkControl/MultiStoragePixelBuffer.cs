@@ -113,7 +113,7 @@ namespace OpenTkWPFHost
                 return false;
             }
 
-            // var bufferSize = (long) bufferInfo.BufferSize;
+            var bufferSize = (long) bufferInfo.BufferSize;
             var fence = bufferInfo.Fence;
             if (fence != IntPtr.Zero)
             {
@@ -130,10 +130,10 @@ namespace OpenTkWPFHost
                 GL.DeleteSync(fence);
             }
 
-            /*unsafe
+            unsafe
             {
                 System.Buffer.MemoryCopy(bufferInfo.ClientIntPtr.ToPointer(), ptr.ToPointer(), bufferSize, bufferSize);
-            }*/
+            }
 
 
             /*GL.BindBuffer(BufferTarget.PixelPackBuffer, bufferInfo.GlBufferPointer);

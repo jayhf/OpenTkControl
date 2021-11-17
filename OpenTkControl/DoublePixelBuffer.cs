@@ -89,9 +89,6 @@ namespace OpenTkWPFHost
             }
 
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _readBufferInfo.GlBufferPointer);
-            /*GL.BufferData(BufferTarget.PixelPackBuffer, _readBufferInfo.BufferSize,IntPtr.Zero, 
-                BufferUsageHint.DynamicRead);
-            //通过强制刷新管线，该指令有助于提升性能，但画面会闪烁 */
             //getbuffer的性能优于mapbuffer（intel uhd630）
             GL.GetBufferSubData(BufferTarget.PixelPackBuffer, IntPtr.Zero, _readBufferInfo.BufferSize, ptr);
             /*var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);

@@ -8,7 +8,6 @@ namespace OpenTkWPFHost
 {
     public class BitmapProcedure : IRenderProcedure
     {
-        
         /// <summary>
         /// Information about the current window
         /// </summary>
@@ -34,7 +33,7 @@ namespace OpenTkWPFHost
         /// </summary>
         private int _depthBuffer;
 
-        private readonly IPixelBuffer _doublePixelBuffer = new MultiStoragePixelBuffer();
+        private readonly IPixelBuffer _doublePixelBuffer = new DoublePixelBuffer();
 
         public bool IsInitialized { get; private set; }
 
@@ -42,10 +41,21 @@ namespace OpenTkWPFHost
         {
         }
 
+        public void PreRender()
+        {
+        }
+
+        public void PostRender()
+        {
+            // GL.Finish();
+            _doublePixelBuffer.FlushCurrentFrame();
+             //从结果（intel uhd630）来看，不适用该指令会导致帧率大幅下降
+        }
+
         public void BindCanvas(IRenderCanvas canvas)
         {
             var bitmapCanvas = (BitmapCanvas)canvas;
-            if (_doublePixelBuffer.TryReadFromBufferInfo(IntPtr.Zero, out var bufferInfo))
+            if (_doublePixelBuffer.TryReadFromBufferInfo(bitmapCanvas.DisplayBuffer, out var bufferInfo))
             {
                 bitmapCanvas.ReadBufferInfo = bufferInfo;
             }
@@ -89,18 +99,6 @@ namespace OpenTkWPFHost
         {
             CalculateBufferSize(canvas, out var width, out var height);
             AllocateFrameBuffers(width, height);
-        }
-
-        public void PreRender()
-        {
-
-        }
-
-        public void PostRender()
-        {
-
-            _doublePixelBuffer.FlushCurrentFrame();
-            // GL.Flush();//从结果（intel uhd630）来看，不适用该指令会导致帧率大幅下降
         }
 
         /// <summary>
