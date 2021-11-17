@@ -150,7 +150,7 @@ namespace OpenTkWPFHost
         public bool IsRendererOpened
         {
             get { return (bool) GetValue(IsRendererOpenedProperty); }
-            set { SetValue(IsRendererOpenedProperty, value); }
+            protected set { SetValue(IsRendererOpenedProperty, value); }
         }
 
         /// <summary>
@@ -322,7 +322,7 @@ namespace OpenTkWPFHost
         /// </summary>
         public void CallValidRenderOnce()
         {
-            if (!IsRenderContinuouslyValue && IsRendererOpened && UserVisible)
+            if (IsRefreshWhenRenderIncontinuous && !IsRenderContinuouslyValue && IsRendererOpened && UserVisible)
             {
                 ResumeRender();
             }
@@ -461,7 +461,7 @@ namespace OpenTkWPFHost
             }
 
             base.OnRender(drawingContext);
-            
+
             /*if (!IsRendererOpened)
             {
                 UnstartedControlHelper.DrawUnstartedControlHelper(this, drawingContext);

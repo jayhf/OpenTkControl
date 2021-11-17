@@ -6,7 +6,7 @@ using System.Windows.Media;
 
 namespace OpenTkWPFHost
 {
-    public class Fraps : IDisposable
+    public class FpsCounter : IDisposable
     {
         public string Name { get; set; }
 
@@ -59,7 +59,7 @@ namespace OpenTkWPFHost
             Interlocked.Increment(ref _frameCount);
         }
 
-        public Fraps()
+        public FpsCounter()
         {
             _timer = new Timer((state =>
             {

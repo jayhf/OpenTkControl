@@ -61,12 +61,12 @@ namespace OpenTkWPFHost
             }
         }
 
-        public void Begin()
+        public void Prepare()
         {
             throw new NotImplementedException();
         }
 
-        public void End()
+        public void Flush()
         {
             throw new NotImplementedException();
         }

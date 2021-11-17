@@ -8,10 +8,6 @@ namespace OpenTkWPFHost
 {
     public sealed class GLSettings
     {
-        /// If the render event is fired continuously whenever required.
-        /// Disable this if you want manual control over when the rendered surface is updated.
-        public bool RenderContinuously { get; set; } = true;
-
         /// If this is set to false, the control will render without any DPI scaling.
         /// This will result in higher performance and a worse image quality on systems with >100% DPI settings, such as 'Retina' laptop screens with 4K UHD at small sizes.
         /// This setting may be useful to get extra performance on mobile platforms.
@@ -22,9 +18,11 @@ namespace OpenTkWPFHost
         public IGraphicsContext ContextToUse { get; set; }
 
         public GraphicsContextFlags GraphicsContextFlags { get; set; } = GraphicsContextFlags.Offscreen;
-        public ContextProfileMask GraphicsProfile { get; set; }
+
+        public ContextProfileMask GraphicsProfile { get; set; } = ContextProfileMask.ContextCoreProfileBit;
 
         public int MajorVersion { get; set; } = 4;
+
         public int MinorVersion { get; set; } = 3;
 
         /// If we are using an external context for the control.
@@ -40,7 +38,6 @@ namespace OpenTkWPFHost
                 GraphicsProfile = GraphicsProfile,
                 MajorVersion = MajorVersion,
                 MinorVersion = MinorVersion,
-                RenderContinuously = RenderContinuously,
                 UseDeviceDpi = UseDeviceDpi
             };
             return c;
@@ -86,7 +83,8 @@ namespace OpenTkWPFHost
             // this can be null in the case of not having any visual on screen, such as a tabbed view.
             if (presentationSource != null)
             {
-                Debug.Assert(presentationSource.CompositionTarget != null, "presentationSource.CompositionTarget != null");
+                Debug.Assert(presentationSource.CompositionTarget != null,
+                    "presentationSource.CompositionTarget != null");
                 var transformToDevice = presentationSource.CompositionTarget.TransformToDevice;
                 dpiScaleX = transformToDevice.M11;
                 dpiScaleY = transformToDevice.M22;

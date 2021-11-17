@@ -6,7 +6,7 @@ using Buffer = OpenTK.Graphics.OpenGL4.Buffer;
 
 namespace OpenTkWPFHost
 {
-    public class DoublePixelBuffer
+    public class DoublePixelBuffer: IPixelBuffer
     {
         private int _width, _height;
 
@@ -32,19 +32,19 @@ namespace OpenTkWPFHost
             var repaintRect = new Int32Rect(0, 0, width, height);
             var currentPixelBufferSize = width * height * 4;
             _writeBufferInfo.BufferSize = currentPixelBufferSize;
-            _writeBufferInfo.RepaintRect = repaintRect;
+            _writeBufferInfo.RepaintPixelRect = repaintRect;
             var writeBuffer = GL.GenBuffer();
             _writeBufferInfo.GlBufferPointer = writeBuffer;
             GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBuffer);
             GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
-                BufferUsageHint.StreamRead);
+                BufferUsageHint.StreamDraw);
             var readBuffer = GL.GenBuffer();
             _readBufferInfo.GlBufferPointer = readBuffer;
             _readBufferInfo.BufferSize = currentPixelBufferSize;
-            _readBufferInfo.RepaintRect = repaintRect;
+            _readBufferInfo.RepaintPixelRect = repaintRect;
             GL.BindBuffer(BufferTarget.PixelPackBuffer, readBuffer);
             GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
-                BufferUsageHint.StreamRead);
+                BufferUsageHint.StaticDraw);
         }
 
         public void Release()
@@ -79,27 +79,28 @@ namespace OpenTkWPFHost
         {
             (_readBufferInfo, _writeBufferInfo) = (_writeBufferInfo, _readBufferInfo);
         }
-        
+
         public bool TryReadFromBufferInfo(IntPtr ptr, out BufferInfo bufferInfo)
         {
+            bufferInfo = _readBufferInfo;
             if (!_readBufferInfo.HasBuffer)
             {
-                bufferInfo = default;
                 return false;
             }
+
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _readBufferInfo.GlBufferPointer);
-            /*GL.BufferData(BufferTarget.PixelPackBuffer, _readBufferInfo.BufferSize, IntPtr.Zero,
-                BufferUsageHint.StreamRead); */ //增加该指令有助于提升性能，但画面会闪烁
-            var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
-            _readBufferInfo.FrameBuffer = mapBuffer;
+            /*GL.BufferData(BufferTarget.PixelPackBuffer, _readBufferInfo.BufferSize,IntPtr.Zero, 
+                BufferUsageHint.DynamicRead);
+            //通过强制刷新管线，该指令有助于提升性能，但画面会闪烁 */
+            //getbuffer的性能优于mapbuffer（intel uhd630）
+            GL.GetBufferSubData(BufferTarget.PixelPackBuffer, IntPtr.Zero, _readBufferInfo.BufferSize, ptr);
+            /*var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
             var bufferSize = (long) _readBufferInfo.BufferSize;
             unsafe
             {
                 System.Buffer.MemoryCopy(mapBuffer.ToPointer(), ptr.ToPointer(), bufferSize, bufferSize);
             }
-
-            bufferInfo = _readBufferInfo;
-            GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
+            GL.UnmapBuffer(BufferTarget.PixelPackBuffer);*/
             return true;
         }
     }

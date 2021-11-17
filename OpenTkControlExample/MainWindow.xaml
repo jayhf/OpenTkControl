@@ -12,9 +12,11 @@
         Width="720"-->
     <Grid>
         <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
-                                           IsShowFps="True">
+                                           IsShowFps="True"
+                                           
+                                           IsRenderContinuously="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-                <openTkWpfHost:DXProcedure />
+                <openTkWpfHost:BitmapProcedure />
             </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
         </openTkWpfHost:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">

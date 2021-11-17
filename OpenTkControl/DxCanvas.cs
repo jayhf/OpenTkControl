@@ -16,29 +16,37 @@ namespace OpenTkWPFHost
 
         private FieldInfo _fieldInfo;
 
-        private readonly DXProcedure _dxProcedure;
-
         public bool CanAsyncFlush { get; set; } = false;
+
+        public IntPtr FrameBuffer { get; set; }
 
         public bool IsDirty { get; set; }
 
         private bool _isFrontBufferAvailable;
 
+        private TransformGroup _transformGroup;
+
         public bool Ready => _isFrontBufferAvailable && !this.D3DImageDirty;
 
-        public DxCanvas(DXProcedure dxProcedure)
+        private CanvasInfo _canvasInfo;
+
+        public DxCanvas()
         {
-            this._dxProcedure = dxProcedure;
         }
 
         public void Allocate(CanvasInfo info)
         {
+            _transformGroup = new TransformGroup();
+            _transformGroup.Children.Add(new ScaleTransform(1, -1));
+            _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
+            _transformGroup.Freeze();
             if (info.DpiScaleX.Equals(_dpiScaleX)
                 && info.DpiScaleY.Equals(_dpiScaleY))
             {
                 return;
             }
 
+            _canvasInfo = info;
             this._dpiScaleX = info.DpiScaleX;
             this._dpiScaleY = info.DpiScaleY;
             if (_image != null)
@@ -47,8 +55,8 @@ namespace OpenTkWPFHost
             }
 
             _image = new D3DImage(96.0 * info.DpiScaleX, 96.0 * info.DpiScaleY);
-            this._isFrontBufferAvailable = _image.IsFrontBufferAvailable;
             _image.IsFrontBufferAvailableChanged += _image_IsFrontBufferAvailableChanged;
+            this._isFrontBufferAvailable = _image.IsFrontBufferAvailable;
             var bindFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                             | BindingFlags.Static;
             _fieldInfo = typeof(D3DImage).GetField("_isDirty", bindFlags);
@@ -59,39 +67,34 @@ namespace OpenTkWPFHost
             this._isFrontBufferAvailable = (bool) e.NewValue;
         }
 
-        public void Begin()
+        public void Prepare()
         {
-            IsDirty = true;
-            _image.Lock();
-            _image.SetBackBuffer(D3DResourceType.IDirect3DSurface9,
-                _dxProcedure.DxRenderTargetHandle);
+            IsDirty = false;
         }
 
-        public void End()
+        public void Flush()
         {
-            var frameBuffer = _dxProcedure.FrameBuffer;
-            var preDirtRect = new Int32Rect(0, 0, frameBuffer.Width,
-                frameBuffer.Height);
-            if (!preDirtRect.IsEmpty)
+            var preDirtRect = new Int32Rect(0, 0, _canvasInfo.ActualWidth,
+                _canvasInfo.ActualHeight);
+            if (this.FrameBuffer != IntPtr.Zero && !preDirtRect.IsEmpty)
             {
-                IsDirty = true;
+                _image.Lock();
+                _image.SetBackBuffer(D3DResourceType.IDirect3DSurface9, this.FrameBuffer);
                 _image.AddDirtyRect(preDirtRect);
+                _image.Unlock();
+                IsDirty = true;
             }
-
-            _image.Unlock();
         }
 
         public void FlushFrame(DrawingContext drawingContext)
         {
-            var transformGroup = this._dxProcedure.FrameBuffer.TransformGroup;
-            drawingContext.PushTransform(transformGroup);
+            drawingContext.PushTransform(_transformGroup);
             drawingContext.DrawImage(_image, new Rect(new Size(_image.Width, _image.Height)));
             drawingContext.Pop();
         }
 
         public void Swap()
         {
-            
         }
 
         public bool D3DImageDirty

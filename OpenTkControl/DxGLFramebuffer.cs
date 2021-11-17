@@ -45,9 +45,7 @@ namespace OpenTkWPFHost
         public IntPtr DxInteropRegisteredHandle { get; }
 
         public PixelSize PixelSize => new PixelSize(FramebufferWidth, FramebufferHeight);
-
-        public TransformGroup TransformGroup { get; private set; }
-
+        
         public DxGLFramebuffer([NotNull] DxGlContext context, int width, int height, double dpiScaleX, double dpiScaleY)
         {
             DxGlContext = context;
@@ -69,7 +67,6 @@ namespace OpenTkWPFHost
                 ref dxSharedHandle);
 
             DxRenderTargetHandle = dxRenderTargetHandle;
-
             Wgl.DXSetResourceShareHandleNV(dxRenderTargetHandle, dxSharedHandle);
 
             GLFramebufferHandle = GL.GenFramebuffer();
@@ -101,10 +98,6 @@ namespace OpenTkWPFHost
                 RenderbufferTarget.Renderbuffer,
                 GLDepthRenderBufferHandle);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            TransformGroup = new TransformGroup();
-            TransformGroup.Children.Add(new ScaleTransform(1, -1));
-            TransformGroup.Children.Add(new TranslateTransform(0, height));
-            TransformGroup.Freeze();
         }
         
         public void Dispose()

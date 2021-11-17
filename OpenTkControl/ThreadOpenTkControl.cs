@@ -39,11 +39,11 @@ namespace OpenTkWPFHost
 
         private readonly DebugProc _debugProc;
 
-        private readonly Fraps _glFps = new Fraps() {Name = "GLFps"};
+        private readonly FpsCounter _glFps = new FpsCounter() {Name = "GLFps"};
 
-        private readonly Fraps _controlFps = new Fraps() {Name = "ControlFps"};
+        private readonly FpsCounter _controlFps = new FpsCounter() {Name = "ControlFps"};
 
-        protected volatile CanvasInfo RecentCanvasInfo;
+        protected volatile CanvasInfo RecentCanvasInfo = new CanvasInfo(0, 0, 96, 96);
 
         private readonly EventWaiter _userVisibleResetEvent = new EventWaiter();
 
@@ -61,10 +61,7 @@ namespace OpenTkWPFHost
                 _sizeNotEmptyWaiter.TrySet();
             }
 
-            if (IsRefreshWhenRenderIncontinuous && !IsRenderContinuouslyValue)
-            {
-                CallValidRenderOnce();
-            }
+            CallValidRenderOnce();
         }
 
 
@@ -209,18 +206,21 @@ namespace OpenTkWPFHost
             #endregion
 
             CanvasInfo canvasInfo = null;
+            GlRenderEventArgs renderEventArgs = null;
+            bool renderContinuously;
             var stopwatch = new Stopwatch();
             stopwatch.Start();
             using (renderProcedureValue)
             {
                 while (!token.IsCancellationRequested)
                 {
+                    renderContinuously = IsRenderContinuouslyValue;
                     if (!UserVisible)
                     {
                         _userVisibleResetEvent.WaitInfinity();
                     }
 
-                    if (!IsRenderContinuouslyValue)
+                    if (!renderContinuously)
                     {
                         _renderContinuousWaiter.WaitInfinity();
                     }
@@ -228,6 +228,7 @@ namespace OpenTkWPFHost
                     if (!Equals(canvasInfo, RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
                     {
                         canvasInfo = RecentCanvasInfo;
+                        renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
                         OnUITaskAsync(() => { uiThreadCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
                         renderProcedureValue.SizeFrame(canvasInfo);
                         renderer.Resize(canvasInfo.GetPixelSize());
@@ -257,10 +258,17 @@ namespace OpenTkWPFHost
                     try
                     {
                         OnBeforeRender();
-                        OnUITaskAsync(() => { uiThreadCanvas.Begin(); }).Wait(token);
-/*当缩放窗体时，如果canvas锁定了bitmap，而onrender被调用时又会需要渲染bitmap，会产生死锁，但不会影响d3dimage*/
-                        renderProcedureValue.Render(uiThreadCanvas, renderer);
-                        OnUITaskAsync(() => uiThreadCanvas.End()).Wait(token);
+                        uiThreadCanvas.Prepare();
+                        renderProcedureValue.PreRender();
+                        renderer.Render(renderEventArgs);
+                        if (!renderContinuously)
+                        {
+                            renderProcedureValue.SwapBuffer();
+                        }
+
+                        renderProcedureValue.PostRender();
+                        renderProcedureValue.BindCanvas(uiThreadCanvas);
+                        OnUITaskAsync(() => uiThreadCanvas.Flush()).Wait(token);
                         OnAfterRender();
                     }
                     catch (OperationCanceledException)
@@ -284,12 +292,6 @@ namespace OpenTkWPFHost
 
                         OnUITaskAsync(() =>
                         {
-                            if (!IsRenderContinuouslyValue)
-                            {
-                                renderProcedureValue.SwapBuffer();
-                                uiThreadCanvas.Swap();
-                            }
-
                             using (var drawingContext = _drawingGroup.Open())
                             {
                                 uiThreadCanvas.FlushFrame(drawingContext);
@@ -297,6 +299,12 @@ namespace OpenTkWPFHost
 
                             InvalidateVisual();
                         });
+                        if (!uiThreadCanvas.CanAsyncFlush)
+                        {
+                            //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，上下文切换的开销小于wait
+                            await _renderSyncWaiter;
+                        }
+
                         if (EnableFrameRateLimit)
                         {
                             var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
@@ -311,20 +319,14 @@ namespace OpenTkWPFHost
 
                             stopwatch.Restart();
                         }
-
-                        if (!uiThreadCanvas.CanAsyncFlush)
-                        {
-                            //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，上下文切换的开销小于wait
-                            await _renderSyncWaiter;
-                        }
                     }
 
-                    if (IsRenderContinuouslyValue)
+                    if (renderContinuously)
                     {
                         //read previous turn before swap buffer
                         renderProcedureValue.SwapBuffer();
-                        uiThreadCanvas.Swap();
                     }
+                    
                 }
 
                 renderer.Uninitialize();

@@ -24,19 +24,15 @@ namespace OpenTkWPFHost
 
         void Allocate(CanvasInfo info);
 
-        void Begin();
+        void Prepare();
 
-        void End();
+        void Flush();
 
         /// <summary>
         /// flush frame buffer
         /// </summary>
         /// <param name="context"></param>
         void FlushFrame(DrawingContext context);
-
-        /// <summary>
-        /// it's imperative to use double buffer in canvas 
-        /// </summary>
-        void Swap();
+        
     }
 }

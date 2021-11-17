@@ -8,11 +8,7 @@ namespace OpenTkWPFHost
 {
     public class BitmapProcedure : IRenderProcedure
     {
-        /// <summary>
-        /// True if a new OpenGL context has been created since the last render call
-        /// </summary>
-        private bool _newContext;
-
+        
         /// <summary>
         /// Information about the current window
         /// </summary>
@@ -22,16 +18,6 @@ namespace OpenTkWPFHost
         /// An OpenTK graphics context
         /// </summary>
         private IGraphicsContext _context;
-
-        /// <summary>
-        /// The width in pixels/>
-        /// </summary>
-        private int _width;
-
-        /// <summary>
-        /// The height in pixels/>
-        /// </summary>
-        private int _height;
 
         /// <summary>
         /// The OpenGL FrameBuffer
@@ -48,12 +34,21 @@ namespace OpenTkWPFHost
         /// </summary>
         private int _depthBuffer;
 
-        private readonly DoublePixelBuffer _doublePixelBuffer = new DoublePixelBuffer();
+        private readonly IPixelBuffer _doublePixelBuffer = new MultiStoragePixelBuffer();
 
         public bool IsInitialized { get; private set; }
 
         public BitmapProcedure()
         {
+        }
+
+        public void BindCanvas(IRenderCanvas canvas)
+        {
+            var bitmapCanvas = (BitmapCanvas)canvas;
+            if (_doublePixelBuffer.TryReadFromBufferInfo(IntPtr.Zero, out var bufferInfo))
+            {
+                bitmapCanvas.ReadBufferInfo = bufferInfo;
+            }
         }
 
         public IRenderCanvas CreateCanvas()
@@ -67,7 +62,6 @@ namespace OpenTkWPFHost
             var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
             _context = new GraphicsContext(mode, _windowInfo, settings.MajorVersion, settings.MinorVersion,
                 GraphicsContextFlags.Default);
-            _newContext = true;
             _context.LoadAll();
             _context.MakeCurrent(_windowInfo);
             IsInitialized = true;
@@ -87,44 +81,26 @@ namespace OpenTkWPFHost
         /// <param name="height">The new buffer height</param>
         private static void CalculateBufferSize(CanvasInfo info, out int width, out int height)
         {
-            width = (int) (info.ActualWidth * info.DpiScaleX);
-            height = (int) (info.ActualHeight * info.DpiScaleY);
+            width = (int)Math.Ceiling(info.ActualWidth * info.DpiScaleX);
+            height = (int)Math.Ceiling(info.ActualHeight * info.DpiScaleY);
         }
 
         public void SizeFrame(CanvasInfo canvas)
         {
             CalculateBufferSize(canvas, out var width, out var height);
-            _width = width;
-            _height = height;
             AllocateFrameBuffers(width, height);
         }
 
-
-        public void Render(IRenderCanvas canvas, IRenderer renderer)
+        public void PreRender()
         {
-            var args =
-                new GlRenderEventArgs(_width, _height, CheckNewContext());
-            renderer.Render(args);
-            /*var error = GL.GetError();
-            if (error != ErrorCode.NoError)
-                throw new GraphicsException(error.ToString());*/
-            _doublePixelBuffer.FlushCurrentFrame();
-            var bitmapCanvas = (BitmapCanvas) canvas;
-            if (_doublePixelBuffer.TryReadFromBufferInfo(bitmapCanvas.DisplayBuffer, out var bufferInfo))
-            {
-                bitmapCanvas.ReadBufferInfo = bufferInfo;
-            }
+
         }
 
-        /// <summary>
-        /// Updates <see cref="_newContext"/>
-        /// </summary>
-        /// <returns>True if there is a new context</returns>
-        private bool CheckNewContext()
+        public void PostRender()
         {
-            if (!_newContext) return false;
-            _newContext = false;
-            return true;
+
+            _doublePixelBuffer.FlushCurrentFrame();
+            // GL.Flush();//从结果（intel uhd630）来看，不适用该指令会导致帧率大幅下降
         }
 
         /// <summary>

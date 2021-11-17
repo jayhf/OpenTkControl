@@ -14,7 +14,11 @@ namespace OpenTkWPFHost
 
         void SizeFrame(CanvasInfo size);
 
-        void Render(IRenderCanvas canvas, IRenderer renderer);
+        void PreRender();
+
+        void PostRender();
+
+        void BindCanvas(IRenderCanvas canvas);
 
         IRenderCanvas CreateCanvas();
 

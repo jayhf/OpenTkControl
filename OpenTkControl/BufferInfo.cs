@@ -7,18 +7,22 @@ namespace OpenTkWPFHost
     //maybe inefficient over 16 bytes ?
     public class BufferInfo
     {
-        public Int32Rect RepaintRect;
+        public Int32Rect RepaintPixelRect;
 
         public int BufferSize;
 
-        public IntPtr FrameBuffer;
+        public int PixelWidth => RepaintPixelRect.Width;
 
-        public int Width => RepaintRect.Width;
-
-        public int Height => RepaintRect.Height;
+        public int PixelHeight => RepaintPixelRect.Height;
 
         public int GlBufferPointer;
 
         public bool HasBuffer;
+
+        public int Stride => PixelWidth * 4;
+
+        public IntPtr ClientIntPtr { get; set; }
+
+        public IntPtr Fence { get; set; }
     }
 }
