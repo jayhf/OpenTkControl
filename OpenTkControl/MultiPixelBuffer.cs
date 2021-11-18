@@ -46,6 +46,10 @@ namespace OpenTkWPFHost
         /// <param name="height"></param>
         public void Allocate(int width, int height)
         {
+            if (_allocated)
+            {
+                return;
+            }
             _allocated = true;
             var repaintRect = new Int32Rect(0, 0, width, height);
             var currentPixelBufferSize = width * height * 4;
@@ -130,6 +134,11 @@ namespace OpenTkWPFHost
             bufferInfo = readBufferInfo;
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
             return true;
+        }
+
+        public void Dispose()
+        {
+            Release();
         }
     }
 }

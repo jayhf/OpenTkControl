@@ -290,7 +290,7 @@ namespace OpenTkWPFHost
                     {
                     }
 
-                    if (true)
+                    if (uiThreadCanvas.IsDirty)
                     {
                         OnUITaskAsync(() =>
                         {

@@ -2,7 +2,7 @@
 
 namespace OpenTkWPFHost
 {
-    public interface IPixelBuffer
+    public interface IPixelBuffer:IDisposable
     {
         /// <summary>
         /// 
@@ -17,6 +17,7 @@ namespace OpenTkWPFHost
         void FlushCurrentFrame();
 
         void SwapBuffer();
+
         bool TryReadFromBufferInfo(IntPtr ptr, out BufferInfo bufferInfo);
 
         void Release();

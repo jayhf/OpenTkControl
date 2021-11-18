@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Interop;
+using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
+using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
@@ -11,6 +13,7 @@ namespace OpenTkWPFHost
     /// </summary>
     public class MultiStoragePixelBuffer : IPixelBuffer
     {
+
         public MultiStoragePixelBuffer(uint bufferCount)
         {
             if (bufferCount < 1)
@@ -19,10 +22,7 @@ namespace OpenTkWPFHost
             }
 
             _bufferInfos = new BufferInfo[bufferCount];
-            Task.Run((() =>
-            {
-                
-            }));
+
         }
 
         public MultiStoragePixelBuffer() : this(3)
@@ -47,6 +47,24 @@ namespace OpenTkWPFHost
                                                 BufferStorageFlags.MapPersistentBit |
                                                 BufferStorageFlags.MapCoherentBit;
 
+        private IGraphicsContext graphicsContext;
+
+        private CancellationTokenSource tokenSource = new CancellationTokenSource();
+
+        public void Attach(GLSettings glSettings, IGraphicsContext context, IWindowInfo info)
+        {
+            var tokenSourceToken = tokenSource.Token;
+            Task.Run(() =>
+            {
+                graphicsContext = new GraphicsContext(glSettings.GraphicsMode, info, context, glSettings.MajorVersion,
+                    glSettings.MinorVersion, glSettings.GraphicsContextFlags);
+                while (!tokenSourceToken.IsCancellationRequested)
+                {
+                    
+                }
+            }, tokenSourceToken);
+        }
+
         /// <summary>
         /// 
         /// </summary>
@@ -54,6 +72,10 @@ namespace OpenTkWPFHost
         /// <param name="height"></param>
         public void Allocate(int width, int height)
         {
+            if (_allocated)
+            {
+                return;
+            }
             _allocated = true;
             var repaintRect = new Int32Rect(0, 0, width, height);
             var currentPixelBufferSize = width * height * 4;
@@ -93,6 +115,7 @@ namespace OpenTkWPFHost
             for (int i = 0; i < _bufferInfos.Length; i++)
             {
                 var bufferInfo = _bufferInfos[i];
+                bufferInfo.HasBuffer = false;
                 var writeBuffer = bufferInfo.GlBufferPointer;
                 if (writeBuffer != 0)
                 {
@@ -106,6 +129,7 @@ namespace OpenTkWPFHost
         /// </summary>
         public void FlushCurrentFrame()
         {
+            // GL.Flush();
             var writeBufferIndex = _currentWriteBufferIndex % 3;
             var writeBufferInfo = _bufferInfos[writeBufferIndex];
             GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBufferInfo.GlBufferPointer);
@@ -130,7 +154,7 @@ namespace OpenTkWPFHost
                 return false;
             }
 
-            var bufferSize = (long) bufferInfo.BufferSize;
+            var bufferSize = (long)bufferInfo.BufferSize;
             var fence = bufferInfo.Fence;
             if (fence != IntPtr.Zero)
             {
@@ -144,6 +168,12 @@ namespace OpenTkWPFHost
             }
 
             return true;
+        }
+
+        public void Dispose()
+        {
+            this.Release();
+
         }
     }
 }

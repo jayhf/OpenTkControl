@@ -15,7 +15,7 @@
                                            IsShowFps="True"
                                            IsRenderContinuously="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-                <openTkWpfHost:DXProcedure />
+                <openTkWpfHost:BitmapProcedure />
             </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
         </openTkWpfHost:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">

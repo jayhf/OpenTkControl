@@ -17,7 +17,7 @@ namespace OpenTkWPFHost
 
         public int GlBufferPointer;
 
-        public bool HasBuffer;
+        public  bool HasBuffer;
 
         public int Stride => PixelWidth * 4;
 

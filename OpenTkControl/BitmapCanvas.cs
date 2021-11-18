@@ -59,6 +59,7 @@ namespace OpenTkWPFHost
                 }
                 finally
                 {
+                    ReadBufferInfo.HasBuffer = false;
                     _bitmap.Unlock();
                 }
             }

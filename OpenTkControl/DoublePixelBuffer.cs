@@ -110,5 +110,10 @@ namespace OpenTkWPFHost
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer);*/
             return true;
         }
+
+        public void Dispose()
+        {
+            Release();
+        }
     }
 }

@@ -73,5 +73,10 @@ namespace OpenTkWPFHost
                 _bufferInfo = new BufferInfo();
             }
         }
+
+        public void Dispose()
+        {
+            Release();
+        }
     }
 }
