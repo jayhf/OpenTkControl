@@ -1,13 +1,8 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Numerics;
 using System.Threading;
-using System.Threading.Tasks;
 using OpenTK;
 using OpenTK.Graphics;
-using OpenTK.Graphics.OpenGL4;
 using OpenTK.Input;
-using OpenTK.Platform.Windows;
 using OpenTkWPFHost;
 using TestRenderer;
 

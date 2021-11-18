@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -13,6 +14,7 @@ using System.Windows.Threading;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
+using Point = System.Windows.Point;
 
 namespace OpenTkWPFHost
 {
@@ -39,9 +41,9 @@ namespace OpenTkWPFHost
 
         private readonly DebugProc _debugProc;
 
-        private readonly FpsCounter _glFps = new FpsCounter() {Name = "GLFps"};
+        private readonly FpsCounter _glFps = new FpsCounter() {Title = "GLFps"};
 
-        private readonly FpsCounter _controlFps = new FpsCounter() {Name = "ControlFps"};
+        private readonly FpsCounter _controlFps = new FpsCounter() {Title = "ControlFps"};
 
         protected volatile CanvasInfo RecentCanvasInfo = new CanvasInfo(0, 0, 96, 96);
 
@@ -85,6 +87,7 @@ namespace OpenTkWPFHost
         }
 
         private IWindowInfo _windowInfo;
+
 
         protected override void StartRenderProcedure(IWindowInfo windowInfo)
         {
@@ -259,7 +262,7 @@ namespace OpenTkWPFHost
                         uiThreadCanvas.Prepare();
                         renderProcedureValue.PreRender();
                         renderer.Render(renderEventArgs);
-                        // graphicsContext.SwapBuffers(); //swap?
+                        graphicsContext.SwapBuffers(); //swap?
                         if (ShowFps)
                         {
                             _glFps.Increment();
@@ -287,7 +290,7 @@ namespace OpenTkWPFHost
                     {
                     }
 
-                    if (uiThreadCanvas.IsDirty)
+                    if (true)
                     {
                         OnUITaskAsync(() =>
                         {
@@ -296,7 +299,7 @@ namespace OpenTkWPFHost
                                 uiThreadCanvas.FlushFrame(drawingContext);
                             }
 
-                            InvalidateVisual();
+                            this.InvalidateVisual();
                         });
                         if (!uiThreadCanvas.CanAsyncFlush)
                         {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using OpenTK.Graphics.OpenGL4;
@@ -18,6 +19,10 @@ namespace OpenTkWPFHost
             }
 
             _bufferInfos = new BufferInfo[bufferCount];
+            Task.Run((() =>
+            {
+                
+            }));
         }
 
         public MultiStoragePixelBuffer() : this(3)
@@ -107,6 +112,7 @@ namespace OpenTkWPFHost
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
             writeBufferInfo.Fence = GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, WaitSyncFlags.None);
+            GL.Flush();
             writeBufferInfo.HasBuffer = true;
         }
 
@@ -129,15 +135,6 @@ namespace OpenTkWPFHost
             if (fence != IntPtr.Zero)
             {
                 GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
-                /*while (true)
-                {
-                    var clientWaitSync = GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 1);
-                    if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
-                        clientWaitSync == WaitSyncStatus.ConditionSatisfied)
-                    {
-                        break;
-                    }
-                }*/
                 GL.DeleteSync(fence);
             }
 

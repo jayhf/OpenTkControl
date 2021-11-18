@@ -8,7 +8,7 @@ namespace OpenTkWPFHost
 {
     public class FpsCounter : IDisposable
     {
-        public string Name { get; set; }
+        public string Title { get; set; }
 
         public int Fps { get; private set; }
 
@@ -16,7 +16,9 @@ namespace OpenTkWPFHost
 
         private volatile int _frameCount = 0;
 
-        private SolidColorBrush _brush = new SolidColorBrush(Colors.DeepSkyBlue);
+        private Color _brushColor;
+
+        private SolidColorBrush brush;
 
         private Typeface _fpsTypeface = new Typeface(new FontFamily("Arial"), FontStyles.Normal,
             FontWeights.Black,
@@ -42,15 +44,19 @@ namespace OpenTkWPFHost
             }
         }
 
-        public SolidColorBrush Brush
+        public Color Color
         {
-            get => _brush;
+            get => _brushColor;
             set
             {
-                if (value != null && value != _brush)
+                if (value == this._brushColor)
                 {
-                    _brush = value;
+                    return;
                 }
+
+                _brushColor = value;
+                brush = new SolidColorBrush(value);
+                brush.Freeze();
             }
         }
 
@@ -61,6 +67,7 @@ namespace OpenTkWPFHost
 
         public FpsCounter()
         {
+            this.Color = Colors.MediumPurple;
             _timer = new Timer((state =>
             {
                 Fps = _frameCount;
@@ -70,10 +77,10 @@ namespace OpenTkWPFHost
 
         public void DrawFps(DrawingContext drawingContext, Point point)
         {
-            drawingContext.DrawText(new FormattedText($"{Name} :{Fps}", _cultureInfo,
-                    FlowDirection.LeftToRight,
-                    _fpsTypeface, 21, _brush, 1),
-                point);
+            var formattedText = new FormattedText($"{Title} :{Fps}", _cultureInfo,
+                FlowDirection.LeftToRight,
+                _fpsTypeface, 21, brush, 1);
+            drawingContext.DrawText(formattedText, point);
         }
 
         public void Dispose()

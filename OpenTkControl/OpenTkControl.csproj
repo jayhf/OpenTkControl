@@ -82,8 +82,10 @@
     <Compile Include="RenderProcedureTask.cs" />
     <Compile Include="SemaphoreEvent.cs" />
     <Compile Include="EventWaiter.cs" />
+    <Compile Include="SolitaryPixelBuffer.cs" />
     <Compile Include="StatefulWaiter.cs" />
     <Compile Include="SyncMode.cs" />
+    <Compile Include="TestFramework.cs" />
     <Compile Include="ThreadOpenTkControl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UiOpenTkControl.cs" />

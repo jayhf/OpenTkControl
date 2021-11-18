@@ -86,31 +86,16 @@ namespace OpenTkWPFHost
             set { SetValue(RendererProperty, value); }
         }
 
-        public bool IsShowFps
-        {
-            get { return (bool) GetValue(IsShowFpsProperty); }
-            set { SetValue(IsShowFpsProperty, value); }
-        }
 
         public static readonly DependencyProperty IsShowFpsProperty =
             DependencyProperty.Register("IsShowFps", typeof(bool), typeof(OpenTkControlBase),
                 new PropertyMetadata(false));
 
-        /*
-        public static readonly DependencyProperty RenderTriggerProperty = DependencyProperty.Register(
-            "RenderTrigger", typeof(bool), typeof(OpenTkControlBase),
-            new FrameworkPropertyMetadata(default(bool), FrameworkPropertyMetadataOptions.AffectsRender));
-
-        [Obsolete("use invalidate")]
-        protected bool RenderTrigger
+        public bool IsShowFps
         {
-            get { return (bool) GetValue(RenderTriggerProperty); }
-            set { SetValue(RenderTriggerProperty, value); }
+            get { return (bool) GetValue(IsShowFpsProperty); }
+            set { SetValue(IsShowFpsProperty, value); }
         }
-        */
-
-        public static readonly DependencyProperty IsRendererOpenedProperty = DependencyProperty.Register(
-            "IsRendererOpened", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
 
         public static readonly DependencyProperty MaxFrameRateProperty = DependencyProperty.Register(
             "MaxFrameRate", typeof(int), typeof(OpenTkControlBase), new PropertyMetadata(-1));
@@ -123,6 +108,10 @@ namespace OpenTkWPFHost
             get { return (int) GetValue(MaxFrameRateProperty); }
             set { SetValue(MaxFrameRateProperty, value); }
         }
+
+        public static readonly DependencyProperty IsRendererOpenedProperty = DependencyProperty.Register(
+            "IsRendererOpened", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
+
 
         /// <summary>
         /// 渲染过程是否已被打开

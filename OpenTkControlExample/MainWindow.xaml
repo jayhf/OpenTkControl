@@ -15,7 +15,7 @@
                                            IsShowFps="True"
                                            IsRenderContinuously="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-                <openTkWpfHost:BitmapProcedure />
+                <openTkWpfHost:DXProcedure />
             </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
         </openTkWpfHost:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">
@@ -51,6 +51,10 @@
                     ValueChanged="FrameRate_OnValueChanged" />
         </StackPanel>
 
+        <!--<openTkWpfHost:TestFrameworkElement Width="300"
+                                     Height="300"
+                                     VerticalAlignment="Bottom"
+                                     HorizontalAlignment="Left"/>-->
         <!--<ListBox Width="300"
                  x:Name="Box"
                  Background="AntiqueWhite"
