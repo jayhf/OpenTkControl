@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using JetBrains.Annotations;
+using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 
@@ -20,6 +21,10 @@ namespace OpenTkWPFHost
         public GraphicsContextFlags GraphicsContextFlags { get; set; } = GraphicsContextFlags.Offscreen;
 
         public ContextProfileMask GraphicsProfile { get; set; } = ContextProfileMask.ContextCoreProfileBit;
+
+        public SyncMode SyncMode { get; set; } = SyncMode.On;
+
+        public GraphicsMode GraphicsMode { get; set; } = GraphicsMode.Default;
 
         public int MajorVersion { get; set; } = 4;
 

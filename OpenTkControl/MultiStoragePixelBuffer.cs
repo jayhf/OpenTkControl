@@ -5,9 +5,26 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace OpenTkWPFHost
 {
+    /// <summary>
+    /// highest performance, but possibly cause stuck on low end cpu (2 physical core)
+    /// </summary>
     public class MultiStoragePixelBuffer : IPixelBuffer
     {
-        private readonly BufferInfo[] _bufferInfos = new BufferInfo[3];
+        public MultiStoragePixelBuffer(uint bufferCount)
+        {
+            if (bufferCount < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bufferCount));
+            }
+
+            _bufferInfos = new BufferInfo[bufferCount];
+        }
+
+        public MultiStoragePixelBuffer() : this(3)
+        {
+        }
+
+        private readonly BufferInfo[] _bufferInfos;
 
         private int _width, _height;
 
@@ -18,12 +35,12 @@ namespace OpenTkWPFHost
 
         private bool _allocated = false;
 
-        const BufferAccessMask mapPersistentBit = BufferAccessMask.MapWriteBit | BufferAccessMask.MapCoherentBit |
-                                                  BufferAccessMask.MapPersistentBit;
+        const BufferAccessMask AccessMask = BufferAccessMask.MapWriteBit | BufferAccessMask.MapCoherentBit |
+                                            BufferAccessMask.MapPersistentBit;
 
-        const BufferStorageFlags flags = BufferStorageFlags.MapWriteBit |
-                                         BufferStorageFlags.MapPersistentBit |
-                                         BufferStorageFlags.MapCoherentBit;
+        const BufferStorageFlags StorageFlags = BufferStorageFlags.MapWriteBit |
+                                                BufferStorageFlags.MapPersistentBit |
+                                                BufferStorageFlags.MapCoherentBit;
 
         /// <summary>
         /// 
@@ -45,9 +62,9 @@ namespace OpenTkWPFHost
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBuffer);
                 /*GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
                     BufferUsageHint.StreamRead);*/
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero, flags);
+                GL.BufferStorage(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero, StorageFlags);
                 var mapBufferRange = GL.MapBufferRange(BufferTarget.PixelPackBuffer, IntPtr.Zero,
-                    currentPixelBufferSize, mapPersistentBit);
+                    currentPixelBufferSize, AccessMask);
                 _bufferInfos[i] = new BufferInfo
                 {
                     BufferSize = currentPixelBufferSize,
@@ -89,12 +106,6 @@ namespace OpenTkWPFHost
             GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
-            /*var fence = writeBufferInfo.Fence;
-            if (fence != IntPtr.Zero)
-            {
-                GL.DeleteSync(fence);
-            }*/
-
             writeBufferInfo.Fence = GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, WaitSyncFlags.None);
             writeBufferInfo.HasBuffer = true;
         }
@@ -135,16 +146,6 @@ namespace OpenTkWPFHost
                 System.Buffer.MemoryCopy(bufferInfo.ClientIntPtr.ToPointer(), ptr.ToPointer(), bufferSize, bufferSize);
             }
 
-
-            /*GL.BindBuffer(BufferTarget.PixelPackBuffer, bufferInfo.GlBufferPointer);
-            var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
-            var bufferSize = (long) bufferInfo.BufferSize;
-            unsafe
-            {
-                System.Buffer.MemoryCopy(mapBuffer.ToPointer(), ptr.ToPointer(), bufferSize, bufferSize);
-            }
-
-            GL.UnmapBuffer(BufferTarget.PixelPackBuffer);*/
             return true;
         }
     }

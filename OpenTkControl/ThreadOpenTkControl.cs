@@ -64,7 +64,6 @@ namespace OpenTkWPFHost
             CallValidRenderOnce();
         }
 
-
         private readonly DrawingGroup _drawingGroup = new DrawingGroup();
 
         private readonly ContextWaiter _renderSyncWaiter = new ContextWaiter();
@@ -207,14 +206,13 @@ namespace OpenTkWPFHost
 
             CanvasInfo canvasInfo = null;
             GlRenderEventArgs renderEventArgs = null;
-            bool renderContinuously;
             var stopwatch = new Stopwatch();
             stopwatch.Start();
             using (renderProcedureValue)
             {
                 while (!token.IsCancellationRequested)
                 {
-                    renderContinuously = IsRenderContinuouslyValue;
+                    var renderContinuously = IsRenderContinuouslyValue;
                     if (!UserVisible)
                     {
                         _userVisibleResetEvent.WaitInfinity();
@@ -261,6 +259,12 @@ namespace OpenTkWPFHost
                         uiThreadCanvas.Prepare();
                         renderProcedureValue.PreRender();
                         renderer.Render(renderEventArgs);
+                        // graphicsContext.SwapBuffers(); //swap?
+                        if (ShowFps)
+                        {
+                            _glFps.Increment();
+                        }
+
                         if (!renderContinuously)
                         {
                             renderProcedureValue.SwapBuffer();
@@ -285,11 +289,6 @@ namespace OpenTkWPFHost
 
                     if (uiThreadCanvas.IsDirty)
                     {
-                        if (ShowFps)
-                        {
-                            _glFps.Increment();
-                        }
-
                         OnUITaskAsync(() =>
                         {
                             using (var drawingContext = _drawingGroup.Open())
@@ -301,7 +300,7 @@ namespace OpenTkWPFHost
                         });
                         if (!uiThreadCanvas.CanAsyncFlush)
                         {
-                            //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，上下文切换的开销小于wait
+                            //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，此时上下文切换的开销小于wait
                             await _renderSyncWaiter;
                         }
 
@@ -326,7 +325,6 @@ namespace OpenTkWPFHost
                         //read previous turn before swap buffer
                         renderProcedureValue.SwapBuffer();
                     }
-                    
                 }
 
                 renderer.Uninitialize();

@@ -14,26 +14,6 @@ using WindowState = System.Windows.WindowState;
 
 namespace OpenTkWPFHost
 {
-    public enum RenderPhase
-    {
-        Inbuilt,
-        Initialize,
-        Render,
-    }
-
-    public class RenderErrorArgs : EventArgs
-    {
-        public RenderErrorArgs(RenderPhase phase, Exception exception)
-        {
-            Phase = phase;
-            Exception = exception;
-        }
-
-        public RenderPhase Phase { get; set; }
-
-        public Exception Exception { get; set; }
-    }
-
     /// <summary>
     /// 
     /// </summary>
@@ -156,17 +136,17 @@ namespace OpenTkWPFHost
         /// <summary>
         /// control renderer lifecycle
         /// </summary>
-        public RendererProcedureLifeCycle RendererLifeCycle
+        public RendererProcedureLifeCycle RendererProcedureLifeCycle
         {
-            get { return (RendererProcedureLifeCycle) GetValue(RendererLifeCycleProperty); }
-            set { SetValue(RendererLifeCycleProperty, value); }
+            get { return (RendererProcedureLifeCycle) GetValue(RendererProcedureLifeCycleProperty); }
+            set { SetValue(RendererProcedureLifeCycleProperty, value); }
         }
 
         /// <summary>
         /// default is bound to window as wpf window cannot reuse after close
         /// </summary>
-        public static readonly DependencyProperty RendererLifeCycleProperty = DependencyProperty.Register(
-            "RendererLifeCycle", typeof(RendererProcedureLifeCycle), typeof(OpenTkControlBase),
+        public static readonly DependencyProperty RendererProcedureLifeCycleProperty = DependencyProperty.Register(
+            "RendererProcedureLifeCycle", typeof(RendererProcedureLifeCycle), typeof(OpenTkControlBase),
             new PropertyMetadata(RendererProcedureLifeCycle.BoundToWindow));
 
         public static readonly DependencyProperty IsAutoAttachProperty = DependencyProperty.Register(
@@ -292,7 +272,7 @@ namespace OpenTkWPFHost
             };
             Application.Current.Exit += (sender, args) =>
             {
-                if (RendererLifeCycle == RendererProcedureLifeCycle.BoundToApplication)
+                if (RendererProcedureLifeCycle == RendererProcedureLifeCycle.BoundToApplication)
                 {
                     Close();
                 }
@@ -356,7 +336,7 @@ namespace OpenTkWPFHost
         {
             _isWindowClosed = true;
             CheckUserVisible();
-            if (RendererLifeCycle == RendererProcedureLifeCycle.BoundToWindow)
+            if (RendererProcedureLifeCycle == RendererProcedureLifeCycle.BoundToWindow)
             {
                 Close();
             }
@@ -510,7 +490,7 @@ namespace OpenTkWPFHost
                 return;
             }
 
-            if (RendererLifeCycle == RendererProcedureLifeCycle.Self)
+            if (RendererProcedureLifeCycle == RendererProcedureLifeCycle.Self)
             {
                 this.Close();
             }

@@ -13,6 +13,8 @@ namespace OpenTkWPFHost
 
         private DxGLFramebuffer _frameBuffer;
 
+        public bool EnableFlush { get; set; } = true;
+
         /// The OpenGL framebuffer handle.
         public int FrameBufferHandle => _frameBuffer?.GLFramebufferHandle ?? 0;
 
@@ -22,7 +24,7 @@ namespace OpenTkWPFHost
 
         public void BindCanvas(IRenderCanvas canvas)
         {
-            ((DxCanvas)canvas).FrameBuffer = this.DxRenderTargetHandle;
+            ((DxCanvas) canvas).FrameBuffer = this.DxRenderTargetHandle;
         }
 
         public IRenderCanvas CreateCanvas()
@@ -49,8 +51,11 @@ namespace OpenTkWPFHost
         public void PostRender()
         {
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            GL.Finish();
             Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {_frameBuffer.DxInteropRegisteredHandle});
+            if (EnableFlush)
+            {
+                GL.Flush();
+            }
         }
 
         public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)

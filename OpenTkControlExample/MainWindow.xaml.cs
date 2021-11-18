@@ -20,57 +20,23 @@ namespace OpenTkControlExample
 {
     public partial class MainWindow
     {
-        private const int LineCount = 1;
-        public const int PointsCount = 1000;
+        private TestRendererCase testRendererCase = new TestRendererCase();
 
-        public const int LineLength = PointsCount * 2;
-
-        private const long MaxYAxis = (long) ((1000 + LineLength) * 0.1);
-
-        private Color4 _lineColor = Color4.White;
-
-        private int lineColorINT = Color4.White.ToArgb();
-
-        private TendencyChartRenderer _renderer;
 
         public MainWindow()
         {
             this.InitializeComponent();
             GenerateRenderer();
-            Slider.Maximum = LineLength;
-            Slider.Value = LineLength;
+            var lineLength = TestRendererCase.LineLength;
+            Slider.Maximum = lineLength;
+            Slider.Value = lineLength;
             Loaded += MainWindow_Loaded;
+            this.OpenTkControl.Renderer = testRendererCase.Renderer;
+            this.OpenTkControl.ExceptionOccurred += OpenTkControl_ExceptionOccurred;
         }
 
         public void GenerateRenderer()
         {
-            if (_renderer!=null)
-            {
-                _renderer.Dispose();
-            }
-
-            _renderer = new TendencyChartRenderer();
-            var random = new Random();
-            for (int i = 0; i < LineCount; i++)
-            {
-                var lineChartRenderer = new LineRenderer(PointsCount) { LineColor = _lineColor };
-                var ringBuffer = lineChartRenderer.RingBuffer;
-                for (int j = 0; j < LineLength; j += 2)
-                {
-                    ringBuffer[j] = j;
-                    var next = random.Next(j, 1000 + j) * 0.1f;
-                    ringBuffer[j + 1] = next;
-                }
-
-                _renderer.Add(lineChartRenderer);
-            }
-            _renderer.CurrentScrollRange = new ScrollRange(0, LineLength);
-            _renderer.CurrentYAxisValue = MaxYAxis;
-            _renderer.ScrollRangeChanged = false;
-            _renderer.BackgroundColor = Color4.Black;
-            this.OpenTkControl.Renderer = _renderer;
-            this.OpenTkControl.ExceptionOccurred += OpenTkControl_ExceptionOccurred;
-            
         }
 
 
@@ -100,8 +66,9 @@ namespace OpenTkControlExample
               5. 网格 类似碰撞检测，使用一个网格储存点位，可以以极少的开销发现上下限，但是当点位数量巨大，比如高达100000个网格时，开销会直线上升
               6. shader 利用shader计算得到上限，然后相应调整
              */
-            _renderer.CurrentScrollRange = new ScrollRange(0, (long) e.NewValue);
-            _renderer.ScrollRangeChanged = true;
+            var renderer = testRendererCase.Renderer;
+            renderer.CurrentScrollRange = new ScrollRange(0, (long) e.NewValue);
+            renderer.ScrollRangeChanged = true;
             /*var currentYAxisValue = _renderer.CurrentYAxisValue;
             var bitmapSource = await OpenTkControl.PushRenderTask(
                 (procedure => { _renderer.CurrentYAxisValue = MaxYAxis; }),

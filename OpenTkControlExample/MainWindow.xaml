@@ -5,22 +5,20 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:openTkWpfHost="clr-namespace:OpenTkWPFHost;assembly=OpenTkWPFHost"
         mc:Ignorable="d"
-        Height="800"
-        Width="1280"
+        Height="1080"
+        Width="1920"
         Title="MainWindow">
     <!--Height="480"
         Width="720"-->
     <Grid>
         <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
-                                           
                                            IsRenderContinuously="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
                 <openTkWpfHost:BitmapProcedure />
             </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
         </openTkWpfHost:ThreadOpenTkControl>
-        <StackPanel HorizontalAlignment="Right"
-                    >
+        <StackPanel HorizontalAlignment="Right">
             <StackPanel.Resources>
                 <Style TargetType="{x:Type Button}">
                     <Setter Property="Height"

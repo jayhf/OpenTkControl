@@ -77,10 +77,13 @@
     <Compile Include="PixelSize.cs" />
     <Compile Include="PropertyChangedArgs.cs" />
     <Compile Include="RendererProcedureLifeCycle.cs" />
+    <Compile Include="RenderErrorArgs.cs" />
+    <Compile Include="RenderPhase.cs" />
     <Compile Include="RenderProcedureTask.cs" />
     <Compile Include="SemaphoreEvent.cs" />
     <Compile Include="EventWaiter.cs" />
     <Compile Include="StatefulWaiter.cs" />
+    <Compile Include="SyncMode.cs" />
     <Compile Include="ThreadOpenTkControl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UiOpenTkControl.cs" />

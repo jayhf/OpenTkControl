@@ -4,10 +4,31 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace OpenTkWPFHost
 {
-    [Obsolete("在5820k gtx970/10700 uhd630 下，通过对1080p的测试，超过双重缓冲并不能提高帧率")]
-    public class MultiPixelBuffer: IPixelBuffer
+    [Obsolete(
+        "Cannot surge fps when count of buffers are more than 2, test in  @5820k-gtx970/10700-uhd630/6300u-hd520")]
+    public class MultiPixelBuffer : IPixelBuffer
     {
-        private readonly BufferInfo[] _bufferInfos = new BufferInfo[3];
+        public MultiPixelBuffer(uint bufferCount)
+        {
+            if (bufferCount < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bufferCount));
+            }
+
+            _bufferInfos = new BufferInfo[bufferCount];
+        }
+
+        public MultiPixelBuffer() : this(3)
+        {
+        }
+
+        /// <summary>
+        /// Indicate whether call 'glFlush' before read buffer
+        /// <para>Recommend be true, but possibly cause stuck on low end cpu (2 physical core)</para>
+        /// </summary>
+        public bool EnableFlush { get; set; } = true;
+
+        private readonly BufferInfo[] _bufferInfos;
 
         private int _width, _height;
 
@@ -75,6 +96,10 @@ namespace OpenTkWPFHost
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
             writeBufferInfo.HasBuffer = true;
+            if (EnableFlush)
+            {
+                GL.Flush();
+            }
         }
 
         public void SwapBuffer()
@@ -106,6 +131,5 @@ namespace OpenTkWPFHost
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
             return true;
         }
-
     }
 }

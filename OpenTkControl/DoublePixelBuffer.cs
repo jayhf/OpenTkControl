@@ -6,8 +6,14 @@ using Buffer = OpenTK.Graphics.OpenGL4.Buffer;
 
 namespace OpenTkWPFHost
 {
-    public class DoublePixelBuffer: IPixelBuffer
+    public class DoublePixelBuffer : IPixelBuffer
     {
+        /// <summary>
+        /// Indicate whether call 'glFlush' before read buffer
+        /// <para>Recommend be true, but possibly cause stuck on low end cpu (2 physical core)</para>
+        /// </summary>
+        public bool EnableFlush { get; set; } = true;
+
         private int _width, _height;
 
         /// <summary>
@@ -73,6 +79,10 @@ namespace OpenTkWPFHost
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
             _writeBufferInfo.HasBuffer = true;
+            if (EnableFlush)
+            {
+                GL.Flush();
+            }
         }
 
         public void SwapBuffer()
@@ -89,7 +99,7 @@ namespace OpenTkWPFHost
             }
 
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _readBufferInfo.GlBufferPointer);
-            //getbuffer的性能优于mapbuffer（intel uhd630）
+            //如果不使用glFlush，getbuffer的性能优于mapbuffer，如果使用则性能相当
             GL.GetBufferSubData(BufferTarget.PixelPackBuffer, IntPtr.Zero, _readBufferInfo.BufferSize, ptr);
             /*var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
             var bufferSize = (long) _readBufferInfo.BufferSize;

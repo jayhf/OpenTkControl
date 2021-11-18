@@ -33,7 +33,10 @@ namespace OpenTkWPFHost
         /// </summary>
         private int _depthBuffer;
 
-        private readonly IPixelBuffer _doublePixelBuffer = new DoublePixelBuffer();
+        /// <summary>
+        /// can set pixel buffer based on your machine specification. Recommend is double pbo.
+        /// </summary>
+        public IPixelBuffer PixelBuffer { get; set; } = new DoublePixelBuffer();
 
         public bool IsInitialized { get; private set; }
 
@@ -47,15 +50,13 @@ namespace OpenTkWPFHost
 
         public void PostRender()
         {
-            // GL.Finish();
-            _doublePixelBuffer.FlushCurrentFrame();
-             //从结果（intel uhd630）来看，不适用该指令会导致帧率大幅下降
+            PixelBuffer.FlushCurrentFrame();
         }
 
         public void BindCanvas(IRenderCanvas canvas)
         {
-            var bitmapCanvas = (BitmapCanvas)canvas;
-            if (_doublePixelBuffer.TryReadFromBufferInfo(bitmapCanvas.DisplayBuffer, out var bufferInfo))
+            var bitmapCanvas = (BitmapCanvas) canvas;
+            if (PixelBuffer.TryReadFromBufferInfo(bitmapCanvas.DisplayBuffer, out var bufferInfo))
             {
                 bitmapCanvas.ReadBufferInfo = bufferInfo;
             }
@@ -69,9 +70,9 @@ namespace OpenTkWPFHost
         public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)
         {
             _windowInfo = window;
-            var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
-            _context = new GraphicsContext(mode, _windowInfo, settings.MajorVersion, settings.MinorVersion,
-                GraphicsContextFlags.Default);
+            // var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
+            _context = new GraphicsContext(settings.GraphicsMode, _windowInfo, settings.MajorVersion, settings.MinorVersion,
+                GraphicsContextFlags.Default){SwapInterval = (int)settings.SyncMode};
             _context.LoadAll();
             _context.MakeCurrent(_windowInfo);
             IsInitialized = true;
@@ -80,7 +81,7 @@ namespace OpenTkWPFHost
 
         public void SwapBuffer()
         {
-            _doublePixelBuffer.SwapBuffer();
+            PixelBuffer.SwapBuffer();
         }
 
         /// <summary>
@@ -91,8 +92,8 @@ namespace OpenTkWPFHost
         /// <param name="height">The new buffer height</param>
         private static void CalculateBufferSize(CanvasInfo info, out int width, out int height)
         {
-            width = (int)Math.Ceiling(info.ActualWidth * info.DpiScaleX);
-            height = (int)Math.Ceiling(info.ActualHeight * info.DpiScaleY);
+            width = (int) Math.Ceiling(info.ActualWidth * info.DpiScaleX);
+            height = (int) Math.Ceiling(info.ActualHeight * info.DpiScaleY);
         }
 
         public void SizeFrame(CanvasInfo canvas)
@@ -132,7 +133,7 @@ namespace OpenTkWPFHost
                 throw new GraphicsErrorException("Error creating frame buffer: " + error);
             }
 
-            _doublePixelBuffer.Allocate(width, height);
+            PixelBuffer.Allocate(width, height);
         }
 
         /// <summary>
@@ -158,7 +159,7 @@ namespace OpenTkWPFHost
                 _renderBuffer = 0;
             }
 
-            _doublePixelBuffer.Release();
+            PixelBuffer.Release();
         }
 
         public void Dispose()

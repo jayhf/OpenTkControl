@@ -102,14 +102,10 @@ namespace OpenTkWPFHost
 
             else
             {
-                /*var depObject = new DependencyObject();
-                var window = Window.GetWindow(depObject);
-                var baseHandle = window is null ? IntPtr.Zero : new WindowInteropHelper(window).Handle;
-                var hwndSource = new HwndSource(0, 0, 0, 0, 0, "GLWpfControl", baseHandle);
-                _windowInfo = Utilities.CreateWindowsWindowInfo(hwndSource.Handle);*/
-                var mode = new GraphicsMode(ColorFormat.Empty, 0, 0, 0, 0, 0, false);
-                var gfxCtx = new GraphicsContext(mode, _windowInfo, settings.MajorVersion, settings.MinorVersion,
-                    settings.GraphicsContextFlags);
+                // var mode = new GraphicsMode(ColorFormat.Empty, 0, 0, 0, 0, 0, false);
+                var gfxCtx = new GraphicsContext(settings.GraphicsMode, _windowInfo, settings.MajorVersion,
+                    settings.MinorVersion,
+                    settings.GraphicsContextFlags) {SwapInterval = (int) settings.SyncMode};
                 gfxCtx.LoadAll();
                 gfxCtx.MakeCurrent(_windowInfo);
                 _sharedContext = gfxCtx;

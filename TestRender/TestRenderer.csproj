@@ -52,6 +52,7 @@
     <Compile Include="ScaleMode.cs" />
     <Compile Include="Shader.cs" />
     <Compile Include="TendencyChartRenderer.cs" />
+    <Compile Include="TestCase.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Shaders\shader.frag">
