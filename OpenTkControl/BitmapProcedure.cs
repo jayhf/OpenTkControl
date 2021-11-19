@@ -5,15 +5,11 @@ using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
 
+
 namespace OpenTkWPFHost
 {
     public class BitmapProcedure : IRenderProcedure
     {
-        /// <summary>
-        /// Information about the current window
-        /// </summary>
-        private IWindowInfo _windowInfo;
-
         /// <summary>
         /// An OpenTK graphics context
         /// </summary>
@@ -37,7 +33,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// can set pixel buffer based on your machine specification. Recommend is double pbo.
         /// </summary>
-        public IPixelBuffer PixelBuffer { get; set; } = new MultiStoragePixelBuffer();
+        public IFrameBuffer FrameBuffer { get; set; } = new MultiStoragePixelBuffer();
 
         public bool IsInitialized { get; private set; }
 
@@ -49,18 +45,34 @@ namespace OpenTkWPFHost
         {
         }
 
-        public void PostRender()
+        public BufferArgs PostRender()
         {
-            PixelBuffer.FlushCurrentFrame();
+            var flushCurrentFrame = FrameBuffer.FlushCurrentFrame();
+            return new BufferArgs()
+            {
+                BufferInfo = flushCurrentFrame,
+                HostBufferIntPtr = _currentCanvas.DisplayBuffer,
+                CanvasInfo = _currentCanvas.Info,
+                
+            };
         }
+
+        private BitmapCanvas _currentCanvas = null;
 
         public void BindCanvas(IRenderCanvas canvas)
         {
-            var bitmapCanvas = (BitmapCanvas) canvas;
-            if (PixelBuffer.TryReadFromBufferInfo(bitmapCanvas.DisplayBuffer, out var bufferInfo))
+#if DEBUG
+            if (canvas is BitmapCanvas bitmapCanvas)
             {
-                bitmapCanvas.ReadBufferInfo = bufferInfo;
+                _currentCanvas = bitmapCanvas;
             }
+            else
+            {
+                throw new NotSupportedException("Not supported type!");
+            }
+#else
+            currentCanvas = (BitmapCanvas) canvas;
+#endif
         }
 
         public IRenderCanvas CreateCanvas()
@@ -70,48 +82,20 @@ namespace OpenTkWPFHost
 
         public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)
         {
-            _windowInfo = window;
             // var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
-            _context = new GraphicsContext(settings.GraphicsMode, _windowInfo, settings.MajorVersion, settings.MinorVersion,
-                GraphicsContextFlags.Default){SwapInterval = (int)settings.SyncMode};
+            _context = new GraphicsContext(settings.GraphicsMode, window, settings.MajorVersion,
+                settings.MinorVersion,
+                GraphicsContextFlags.Default) {SwapInterval = (int) settings.SyncMode};
             _context.LoadAll();
-            _context.MakeCurrent(_windowInfo);
+            _context.MakeCurrent(window);
             IsInitialized = true;
             return _context;
         }
 
-        public void SwapBuffer()
+        public void SizeFrame(PixelSize pixelSize)
         {
-            PixelBuffer.SwapBuffer();
-        }
-
-        /// <summary>
-        /// Determines the current buffer size based on the ActualWidth and ActualHeight of the control
-        /// </summary>
-        /// <param name="info"></param>
-        /// <param name="width">The new buffer width</param>
-        /// <param name="height">The new buffer height</param>
-        private static void CalculateBufferSize(CanvasInfo info, out int width, out int height)
-        {
-            width = (int) Math.Ceiling(info.ActualWidth * info.DpiScaleX);
-            height = (int) Math.Ceiling(info.ActualHeight * info.DpiScaleY);
-        }
-
-        public void SizeFrame(CanvasInfo canvas)
-        {
-            CalculateBufferSize(canvas, out var width, out var height);
-            AllocateFrameBuffers(width, height);
-        }
-
-        /// <summary>
-        /// Creates new OpenGl buffers of the specified size, including <see cref="_frameBuffer"/>, <see cref="_depthBuffer"/>,
-        /// and <see cref="_renderBuffer" />. This method is virtual so the behavior can be overriden, but the default behavior
-        /// should work for most purposes.
-        /// </summary>
-        /// <param name="width">The width of the new buffers</param>
-        /// <param name="height">The height of the new buffers</param>
-        protected virtual void AllocateFrameBuffers(int width, int height)
-        {
+            var height = pixelSize.Height;
+            var width = pixelSize.Width;
             ReleaseFrameBuffers();
             _frameBuffer = GL.GenFramebuffer();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, _frameBuffer);
@@ -133,8 +117,6 @@ namespace OpenTkWPFHost
             {
                 throw new GraphicsErrorException("Error creating frame buffer: " + error);
             }
-
-            PixelBuffer.Allocate(width, height);
         }
 
         /// <summary>
@@ -159,8 +141,6 @@ namespace OpenTkWPFHost
                 GL.DeleteRenderbuffer(_renderBuffer);
                 _renderBuffer = 0;
             }
-
-            PixelBuffer.Release();
         }
 
         public void Dispose()

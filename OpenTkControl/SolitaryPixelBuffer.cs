@@ -4,7 +4,7 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace OpenTkWPFHost
 {
-    public class SolitaryPixelBuffer : IPixelBuffer
+    public class SolitaryPixelBuffer : IFrameBuffer
     {
         /// <summary>
         /// Indicate whether call 'glFlush' before read buffer
@@ -19,8 +19,10 @@ namespace OpenTkWPFHost
         /// </summary>
         private BufferInfo _bufferInfo = new BufferInfo();
 
-        public void Allocate(int width, int height)
+        public void Allocate(PixelSize pixelSize)
         {
+            var width = pixelSize.Width;
+            var height = pixelSize.Height;
             this._width = width;
             this._height = height;
             var repaintRect = new Int32Rect(0, 0, width, height);
@@ -34,7 +36,7 @@ namespace OpenTkWPFHost
                 BufferUsageHint.StaticDraw);
         }
 
-        public void FlushCurrentFrame()
+        public BufferInfo FlushCurrentFrame()
         {
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _bufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
@@ -44,23 +46,26 @@ namespace OpenTkWPFHost
             {
                 GL.Flush();
             }
+
+            return null; //todo:
         }
 
         public void SwapBuffer()
         {
-            
         }
 
-        public bool TryReadFromBufferInfo(IntPtr ptr, out BufferInfo bufferInfo)
+        public bool TryReadFrames(BufferArgs args, out FrameArgs frameArgs)
         {
-            bufferInfo = this._bufferInfo;
-            if (!this._bufferInfo.HasBuffer)
+            //todo:
+            throw new NotImplementedException();
+            var bufferInfo = args.BufferInfo;
+            if (!bufferInfo.HasBuffer)
             {
                 return false;
             }
 
             GL.BindBuffer(BufferTarget.PixelPackBuffer, this._bufferInfo.GlBufferPointer);
-            GL.GetBufferSubData(BufferTarget.PixelPackBuffer, IntPtr.Zero, this._bufferInfo.BufferSize, ptr);
+            GL.GetBufferSubData(BufferTarget.PixelPackBuffer, IntPtr.Zero, this._bufferInfo.BufferSize, IntPtr.Zero);
             return true;
         }
 

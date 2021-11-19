@@ -12,6 +12,8 @@ namespace OpenTkWPFHost
         /// </summary>
         bool CanAsyncFlush { get; }
 
+        CanvasInfo Info { get; }
+
         /// <summary>
         /// if need to flush frame
         /// </summary>
@@ -26,7 +28,7 @@ namespace OpenTkWPFHost
 
         void Prepare();
 
-        void Flush();
+        void Flush(FrameArgs frame);
 
         /// <summary>
         /// flush frame buffer

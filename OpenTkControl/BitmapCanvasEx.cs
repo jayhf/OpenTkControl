@@ -54,7 +54,7 @@ namespace OpenTkWPFHost
             ReadBufferInfo = null;
         }
         
-        public void Flush()
+        public void Flush(FrameArgs frame)
         {
             if (ReadBufferInfo != null && ReadBufferInfo.HasBuffer)
             {
@@ -80,6 +80,7 @@ namespace OpenTkWPFHost
         }
 
         public bool CanAsyncFlush { get; } = true;
+        public CanvasInfo Info { get; }
 
         public bool IsDirty => _readDirt;
 

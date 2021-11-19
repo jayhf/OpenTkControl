@@ -6,7 +6,7 @@ using Buffer = OpenTK.Graphics.OpenGL4.Buffer;
 
 namespace OpenTkWPFHost
 {
-    public class DoublePixelBuffer : IPixelBuffer
+    public class DoublePixelBuffer : IFrameBuffer
     {
         /// <summary>
         /// Indicate whether call 'glFlush' before read buffer
@@ -29,10 +29,11 @@ namespace OpenTkWPFHost
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        public void Allocate(int width, int height)
+        /// <param name="pixelSize"></param>
+        public void Allocate(PixelSize pixelSize)
         {
+            var width = pixelSize.Width;
+            var height = pixelSize.Height;
             this._width = width;
             this._height = height;
             var repaintRect = new Int32Rect(0, 0, width, height);
@@ -73,7 +74,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public void FlushCurrentFrame()
+        public BufferInfo FlushCurrentFrame()
         {
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _writeBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
@@ -83,6 +84,8 @@ namespace OpenTkWPFHost
             {
                 GL.Flush();
             }
+
+            return null;//todo:
         }
 
         public void SwapBuffer()
@@ -90,9 +93,10 @@ namespace OpenTkWPFHost
             (_readBufferInfo, _writeBufferInfo) = (_writeBufferInfo, _readBufferInfo);
         }
 
-        public bool TryReadFromBufferInfo(IntPtr ptr, out BufferInfo bufferInfo)
+        public bool TryReadFrames(BufferArgs args, out FrameArgs bufferInfo)
         {
-            bufferInfo = _readBufferInfo;
+            //todo:
+            throw new NotImplementedException();
             if (!_readBufferInfo.HasBuffer)
             {
                 return false;
@@ -100,7 +104,7 @@ namespace OpenTkWPFHost
 
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _readBufferInfo.GlBufferPointer);
             //如果不使用glFlush，getbuffer的性能优于mapbuffer，如果使用则性能相当
-            GL.GetBufferSubData(BufferTarget.PixelPackBuffer, IntPtr.Zero, _readBufferInfo.BufferSize, ptr);
+            GL.GetBufferSubData(BufferTarget.PixelPackBuffer, IntPtr.Zero, _readBufferInfo.BufferSize, IntPtr.Zero);//todo:
             /*var mapBuffer = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
             var bufferSize = (long) _readBufferInfo.BufferSize;
             unsafe

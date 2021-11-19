@@ -12,16 +12,24 @@ namespace OpenTkWPFHost
     {
         IGraphicsContext Initialize(IWindowInfo window, GLSettings settings);
 
-        void SizeFrame(CanvasInfo size);
+        IFrameBuffer FrameBuffer { get; }
+
+        void SizeFrame(PixelSize pixelSize);
 
         void PreRender();
 
-        void PostRender();
+        BufferArgs PostRender();
 
-        void BindCanvas(IRenderCanvas canvas);
-
+        /// <summary>
+        /// 创建canvas不一定要使用
+        /// </summary>
+        /// <returns></returns>
         IRenderCanvas CreateCanvas();
 
-        void SwapBuffer();
+        /// <summary>
+        /// post render之前必须要绑定canvas
+        /// </summary>
+        /// <param name="canvas"></param>
+        void BindCanvas(IRenderCanvas canvas);
     }
 }

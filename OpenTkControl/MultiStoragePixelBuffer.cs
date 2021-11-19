@@ -1,19 +1,17 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
-using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using System.Windows;
-using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
-using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
     /// <summary>
     /// highest performance, but possibly cause stuck on low end cpu (2 physical core)
     /// </summary>
-    public class MultiStoragePixelBuffer : IPixelBuffer
+    public class MultiStoragePixelBuffer : IFrameBuffer
     {
-
         public MultiStoragePixelBuffer(uint bufferCount)
         {
             if (bufferCount < 1)
@@ -22,10 +20,9 @@ namespace OpenTkWPFHost
             }
 
             _bufferInfos = new BufferInfo[bufferCount];
-
         }
 
-        public MultiStoragePixelBuffer() : this(3)
+        public MultiStoragePixelBuffer() : this(5)
         {
         }
 
@@ -47,36 +44,20 @@ namespace OpenTkWPFHost
                                                 BufferStorageFlags.MapPersistentBit |
                                                 BufferStorageFlags.MapCoherentBit;
 
-        private IGraphicsContext graphicsContext;
-
-        private CancellationTokenSource tokenSource = new CancellationTokenSource();
-
-        public void Attach(GLSettings glSettings, IGraphicsContext context, IWindowInfo info)
-        {
-            var tokenSourceToken = tokenSource.Token;
-            Task.Run(() =>
-            {
-                graphicsContext = new GraphicsContext(glSettings.GraphicsMode, info, context, glSettings.MajorVersion,
-                    glSettings.MinorVersion, glSettings.GraphicsContextFlags);
-                while (!tokenSourceToken.IsCancellationRequested)
-                {
-                    
-                }
-            }, tokenSourceToken);
-        }
-
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        public void Allocate(int width, int height)
+        /// <param name="pixelSize"></param>
+        public void Allocate(PixelSize pixelSize)
         {
             if (_allocated)
             {
                 return;
             }
+
             _allocated = true;
+            var width = pixelSize.Width;
+            var height = pixelSize.Height;
             var repaintRect = new Int32Rect(0, 0, width, height);
             var currentPixelBufferSize = width * height * 4;
             this._width = width;
@@ -87,8 +68,6 @@ namespace OpenTkWPFHost
             {
                 var writeBuffer = GL.GenBuffer();
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBuffer);
-                /*GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
-                    BufferUsageHint.StreamRead);*/
                 GL.BufferStorage(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero, StorageFlags);
                 var mapBufferRange = GL.MapBufferRange(BufferTarget.PixelPackBuffer, IntPtr.Zero,
                     currentPixelBufferSize, AccessMask);
@@ -112,14 +91,14 @@ namespace OpenTkWPFHost
 
             _allocated = false;
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
-            for (int i = 0; i < _bufferInfos.Length; i++)
+            foreach (var bufferInfo in _bufferInfos)
             {
-                var bufferInfo = _bufferInfos[i];
+                bufferInfo.Fence = IntPtr.Zero;
                 bufferInfo.HasBuffer = false;
                 var writeBuffer = bufferInfo.GlBufferPointer;
                 if (writeBuffer != 0)
                 {
-                    GL.DeleteBuffer(writeBuffer);
+                    GL.DeleteBuffer(writeBuffer); //todo: release是否要删除fence?
                 }
             }
         }
@@ -127,7 +106,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public void FlushCurrentFrame()
+        public BufferInfo FlushCurrentFrame()
         {
             // GL.Flush();
             var writeBufferIndex = _currentWriteBufferIndex % 3;
@@ -136,8 +115,9 @@ namespace OpenTkWPFHost
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
             writeBufferInfo.Fence = GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, WaitSyncFlags.None);
-            GL.Flush();
             writeBufferInfo.HasBuffer = true;
+            GL.Flush();
+            return writeBufferInfo;
         }
 
         public void SwapBuffer()
@@ -145,35 +125,50 @@ namespace OpenTkWPFHost
             _currentWriteBufferIndex++;
         }
 
-        public bool TryReadFromBufferInfo(IntPtr ptr, out BufferInfo bufferInfo)
+        public bool TryReadFrames(BufferArgs args, out FrameArgs frameArgs)
         {
-            var readBufferIndex = (_currentWriteBufferIndex - 1) % 3;
-            bufferInfo = _bufferInfos[readBufferIndex];
-            if (!bufferInfo.HasBuffer)
-            {
-                return false;
-            }
-
-            var bufferSize = (long)bufferInfo.BufferSize;
+            var bufferInfo = args.BufferInfo;
+            var bufferSize = (long) bufferInfo.BufferSize;
             var fence = bufferInfo.Fence;
             if (fence != IntPtr.Zero)
             {
-                GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
+                try
+                {
+                    var clientWaitSync = GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
+                }
+                catch (Exception e)
+                {
+                    Debugger.Break();
+                }
+
                 GL.DeleteSync(fence);
+                unsafe
+                {
+                    System.Buffer.MemoryCopy(bufferInfo.ClientIntPtr.ToPointer(), args.HostBufferIntPtr.ToPointer(),
+                        bufferSize, bufferSize);
+                }
+
+                var int32Rect = bufferInfo.RepaintPixelRect;
+                frameArgs = new FrameArgs()
+                {
+                    RepaintPixelRect = int32Rect,
+                };
+                return true;
+                /*var clientWaitSync = 
+                if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
+                    clientWaitSync == WaitSyncStatus.ConditionSatisfied)
+                {
+                    
+                }*/
             }
 
-            unsafe
-            {
-                System.Buffer.MemoryCopy(bufferInfo.ClientIntPtr.ToPointer(), ptr.ToPointer(), bufferSize, bufferSize);
-            }
-
-            return true;
+            frameArgs = null;
+            return false;
         }
 
         public void Dispose()
         {
             this.Release();
-
         }
     }
 }

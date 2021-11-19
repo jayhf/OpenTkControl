@@ -22,7 +22,6 @@ namespace OpenTkControlExample
     {
         private TestRendererCase testRendererCase = new TestRendererCase();
 
-
         public MainWindow()
         {
             this.InitializeComponent();
@@ -33,7 +32,18 @@ namespace OpenTkControlExample
             Loaded += MainWindow_Loaded;
             this.OpenTkControl.Renderer = testRendererCase.Renderer;
             this.OpenTkControl.ExceptionOccurred += OpenTkControl_ExceptionOccurred;
+            this.OpenTkControl.OpenGlErrorReceived += OpenTkControl_OpenGlErrorReceived;
         }
+
+        private void OpenTkControl_OpenGlErrorReceived(object sender, OpenGlErrorArgs e)
+        {
+            var s = e.ToString();
+            Debugger.Break();
+        }
+
+        /*var error = GL.GetError();
+           if (error != ErrorCode.NoError)
+               throw new GraphicsException(error.ToString());*/
 
         public void GenerateRenderer()
         {

@@ -32,6 +32,7 @@ namespace OpenTkWPFHost
             return new DxCanvas();
         }
 
+
         public DXProcedure()
         {
         }
@@ -48,14 +49,17 @@ namespace OpenTkWPFHost
         }
 
         /// Sets up the framebuffer and prepares stuff for usage in directx.
-        public void PostRender()
+        public BufferArgs PostRender()
         {
+            throw new NotImplementedException();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             Wgl.DXUnlockObjectsNV(_context.GlDeviceHandle, 1, new[] {_frameBuffer.DxInteropRegisteredHandle});
             if (EnableFlush)
             {
                 GL.Flush();
             }
+
+            return null;//todo:
         }
 
         public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)
@@ -70,17 +74,20 @@ namespace OpenTkWPFHost
             return _context.GraphicsContext;
         }
 
-        public void SizeFrame(CanvasInfo size)
+        public IFrameBuffer FrameBuffer { get; }
+
+
+        public void SizeFrame(PixelSize pixelSize)
         {
-            var width = size.ActualWidth;
-            var height = size.ActualHeight;
-            if (_frameBuffer == null || _frameBuffer.Width != width || _frameBuffer.Height != height)
+            var width = pixelSize.Width;
+            var height = pixelSize.Height;
+            if (_frameBuffer == null || _frameBuffer.FramebufferWidth != width || _frameBuffer.FramebufferHeight != height)
             {
                 _frameBuffer?.Dispose();
                 _frameBuffer = null;
                 if (width > 0 && height > 0)
                 {
-                    _frameBuffer = new DxGLFramebuffer(_context, width, height, size.DpiScaleX, size.DpiScaleY);
+                    _frameBuffer = new DxGLFramebuffer(_context, width, height);
                 }
             }
         }

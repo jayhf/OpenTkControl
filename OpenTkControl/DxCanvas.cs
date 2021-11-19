@@ -17,6 +17,7 @@ namespace OpenTkWPFHost
         private FieldInfo _fieldInfo;
 
         public bool CanAsyncFlush { get; set; } = false;
+        public CanvasInfo Info { get; }
 
         public IntPtr FrameBuffer { get; set; }
 
@@ -72,7 +73,7 @@ namespace OpenTkWPFHost
             IsDirty = false;
         }
 
-        public void Flush()
+        public void Flush(FrameArgs frame)
         {
             var preDirtRect = new Int32Rect(0, 0, _canvasInfo.ActualWidth,
                 _canvasInfo.ActualHeight);

@@ -23,11 +23,11 @@ namespace OpenTkWPFHost
         /// The height of this buffer in pixels
         public int FramebufferHeight { get; }
 
-        /// The width of the element in device-independent pixels
+        /*/// The width of the element in device-independent pixels
         public int Width { get; }
 
         /// The height of the element in device-independent pixels
-        public int Height { get; }
+        public int Height { get; }*/
 
         /// The DirectX Render target (framebuffer) handle.
         public IntPtr DxRenderTargetHandle { get; }
@@ -46,14 +46,11 @@ namespace OpenTkWPFHost
 
         public PixelSize PixelSize => new PixelSize(FramebufferWidth, FramebufferHeight);
         
-        public DxGLFramebuffer([NotNull] DxGlContext context, int width, int height, double dpiScaleX, double dpiScaleY)
+        public DxGLFramebuffer([NotNull] DxGlContext context, int pixelWidth, int pixelHeight)
         {
             DxGlContext = context;
-            Width = width;
-            Height = height;
-            FramebufferWidth = (int) Math.Ceiling(width * dpiScaleX);
-            FramebufferHeight = (int) Math.Ceiling(height * dpiScaleY);
-
+            FramebufferWidth = pixelWidth;
+            FramebufferHeight = pixelHeight;
             var dxSharedHandle = IntPtr.Zero; // Unused windows-vista legacy sharing handle. Must always be null.
             DXInterop.CreateRenderTarget(
                 context.DxDeviceHandle,

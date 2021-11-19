@@ -12,8 +12,6 @@ namespace OpenTkWPFHost
 {
     public class BitmapCanvas : IRenderCanvas
     {
-        private volatile BufferInfo _bufferInfo;
-
         /// <summary>
         /// The source of the internal Image
         /// </summary>
@@ -27,39 +25,39 @@ namespace OpenTkWPFHost
 
         private Rect _dirtRect;
 
+        private Int32Rect _int32Rect;
 
         public void Allocate(CanvasInfo info)
         {
+            this.Info = info;
             _transformGroup = new TransformGroup();
             _transformGroup.Children.Add(new ScaleTransform(1, -1));
             _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
             _transformGroup.Freeze();
-            _bitmap = new WriteableBitmap((int)(info.ActualWidth * info.DpiScaleX),
-                (int)(info.ActualHeight * info.DpiScaleY), 96 * info.DpiScaleX, 96 * info.DpiScaleY,
+            _bitmap = new WriteableBitmap(info.PixelWidth, info.PixelHeight, info.DpiX, info.DpiY,
                 PixelFormats.Pbgra32, null);
             _dirtRect = info.Rect;
+            _int32Rect = info.Int32Rect;
             DisplayBuffer = _bitmap.BackBuffer;
         }
 
         public void Prepare()
         {
-            ReadBufferInfo = null;
             this.IsDirty = false;
         }
 
-        public void Flush()
+        public void Flush(FrameArgs frame)
         {
-            if (ReadBufferInfo != null && ReadBufferInfo.HasBuffer)
+            if (frame != null && _int32Rect.Equals(frame.RepaintPixelRect))
             {
                 try
                 {
                     _bitmap.Lock();
-                    _bitmap.AddDirtyRect(ReadBufferInfo.RepaintPixelRect);
+                    _bitmap.AddDirtyRect(_int32Rect);
                     this.IsDirty = true;
                 }
                 finally
                 {
-                    ReadBufferInfo.HasBuffer = false;
                     _bitmap.Unlock();
                 }
             }
@@ -74,12 +72,8 @@ namespace OpenTkWPFHost
 
         public bool CanAsyncFlush { get; } = true;
 
-        public bool IsDirty { get; set; }
+        public CanvasInfo Info { get; private set; }
 
-        public BufferInfo ReadBufferInfo
-        {
-            get => _bufferInfo;
-            set => _bufferInfo = value;
-        }
+        public bool IsDirty { get; set; }
     }
 }

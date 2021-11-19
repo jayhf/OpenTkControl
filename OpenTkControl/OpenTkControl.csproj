@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="BitmapCanvas.cs" />
     <Compile Include="BitmapCanvasEx.cs" />
+    <Compile Include="BufferArgs.cs" />
     <Compile Include="ContextWaiter.cs" />
     <Compile Include="DesignTimeHelper.cs" />
     <Compile Include="DoubleBuffer.cs" />
@@ -56,8 +57,11 @@
     <Compile Include="DXGLContext.cs" />
     <Compile Include="DxGLFramebuffer.cs" />
     <Compile Include="EmptyWindowInfo.cs" />
+    <Compile Include="CompareExtension.cs" />
     <Compile Include="FpsCounter.cs" />
     <Compile Include="BitmapProcedure.cs" />
+    <Compile Include="FrameArgs.cs" />
+    <Compile Include="GLContextTaskScheduler.cs" />
     <Compile Include="GlRenderEventArgs.cs" />
     <Compile Include="DXProcedure.cs" />
     <Compile Include="GLSettings.cs" />
@@ -65,7 +69,7 @@
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />
-    <Compile Include="IPixelBuffer.cs" />
+    <Compile Include="IFrameBuffer.cs" />
     <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
     <Compile Include="IRenderProcedure.cs" />
@@ -97,6 +101,9 @@
     </PackageReference>
     <PackageReference Include="OpenTK">
       <Version>3.3.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.Threading.Tasks.Dataflow">
+      <Version>6.0.0</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

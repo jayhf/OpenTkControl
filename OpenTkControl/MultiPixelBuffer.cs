@@ -6,7 +6,7 @@ namespace OpenTkWPFHost
 {
     [Obsolete(
         "Cannot surge fps when count of buffers are more than 2, test in  @5820k-gtx970/10700-uhd630/6300u-hd520")]
-    public class MultiPixelBuffer : IPixelBuffer
+    public class MultiPixelBuffer : IFrameBuffer
     {
         public MultiPixelBuffer(uint bufferCount)
         {
@@ -42,15 +42,17 @@ namespace OpenTkWPFHost
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        public void Allocate(int width, int height)
+        /// <param name="pixelSize"></param>
+        public void Allocate(PixelSize pixelSize)
         {
             if (_allocated)
             {
                 return;
             }
+
             _allocated = true;
+            var width = pixelSize.Width;
+            var height = pixelSize.Height;
             var repaintRect = new Int32Rect(0, 0, width, height);
             var currentPixelBufferSize = width * height * 4;
             this._width = width;
@@ -92,7 +94,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public void FlushCurrentFrame()
+        public BufferInfo FlushCurrentFrame()
         {
             var writeBufferIndex = _currentWriteBufferIndex % 3;
             var writeBufferInfo = _bufferInfos[writeBufferIndex];
@@ -104,6 +106,8 @@ namespace OpenTkWPFHost
             {
                 GL.Flush();
             }
+
+            return writeBufferInfo;
         }
 
         public void SwapBuffer()
@@ -111,8 +115,10 @@ namespace OpenTkWPFHost
             _currentWriteBufferIndex++;
         }
 
-        public bool TryReadFromBufferInfo(IntPtr ptr, out BufferInfo bufferInfo)
+        public bool TryReadFrames(BufferArgs args, out FrameArgs bufferInfo)
         {
+            //todo:
+            throw new NotImplementedException();
             var readBufferIndex = (_currentWriteBufferIndex - 1) % 3;
             var readBufferInfo = _bufferInfos[readBufferIndex];
             if (!readBufferInfo.HasBuffer)
@@ -128,10 +134,10 @@ namespace OpenTkWPFHost
             var bufferSize = (long) readBufferInfo.BufferSize;
             unsafe
             {
-                System.Buffer.MemoryCopy(mapBuffer.ToPointer(), ptr.ToPointer(), bufferSize, bufferSize);
+                System.Buffer.MemoryCopy(mapBuffer.ToPointer(), IntPtr.Zero.ToPointer(), bufferSize, bufferSize);
             }
 
-            bufferInfo = readBufferInfo;
+            
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
             return true;
         }

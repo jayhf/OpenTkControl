@@ -15,14 +15,20 @@ namespace OpenTkWPFHost
 
         public int PixelHeight => RepaintPixelRect.Height;
 
-        public int GlBufferPointer;
+        public volatile int GlBufferPointer;
 
-        public  bool HasBuffer;
+        public volatile bool HasBuffer;
+
+        private volatile IntPtr _fence;
 
         public int Stride => PixelWidth * 4;
 
         public IntPtr ClientIntPtr { get; set; }
 
-        public IntPtr Fence { get; set; }
+        public IntPtr Fence
+        {
+            get => _fence;
+            set => _fence = value;
+        }
     }
 }

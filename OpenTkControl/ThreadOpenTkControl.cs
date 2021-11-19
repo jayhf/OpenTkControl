@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -88,19 +89,31 @@ namespace OpenTkWPFHost
 
         private IWindowInfo _windowInfo;
 
+        private IDataflowBlock _uiRenderBlock;
 
         protected override void StartRenderProcedure(IWindowInfo windowInfo)
         {
             this._windowInfo = windowInfo;
             _endThreadCts = new CancellationTokenSource();
-            var renderProcedureValue = this.RenderProcedure;
+            var procedure = this.RenderProcedure;
             var renderer = this.Renderer;
             var glSettings = this.GlSettings;
             IRenderCanvas uiRenderCanvas = null;
+            IFrameBuffer frameBuffer = null;
+            IGraphicsContext graphicsContext;
             try
             {
                 RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
-                uiRenderCanvas = renderProcedureValue.CreateCanvas();
+                uiRenderCanvas = procedure.CreateCanvas();
+                graphicsContext = procedure.Initialize(_windowInfo, glSettings);
+                frameBuffer = procedure.FrameBuffer;
+                GL.Enable(EnableCap.DebugOutput);
+                GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
+                renderer.Initialize(graphicsContext);
+                _renderSyncWaiter.Context = graphicsContext;
+                _renderSyncWaiter.WindowInfo = _windowInfo;
+                _sizeNotEmptyWaiter.Context = graphicsContext;
+                _sizeNotEmptyWaiter.WindowInfo = _windowInfo;
             }
             catch (Exception e)
             {
@@ -108,14 +121,251 @@ namespace OpenTkWPFHost
                 return;
             }
 
+            var transformBlock = new TransformBlock<BufferArgs, FrameArgs>((args =>
+                {
+                    if (frameBuffer.TryReadFrames(args, out var frameArgs))
+                    {
+                        return frameArgs;
+                    }
+
+                    return null;
+                }),
+                new ExecutionDataflowBlockOptions()
+                {
+                    SingleProducerConstrained = true,
+                    TaskScheduler = new GLContextTaskScheduler(glSettings, graphicsContext, _windowInfo, _debugProc),
+                });
+            var actionBlock = new ActionBlock<FrameArgs>((args =>
+            {
+                if (args == null)
+                {
+                    return;
+                }
+
+                uiRenderCanvas.Prepare();
+                uiRenderCanvas.Flush(args);
+                if (uiRenderCanvas.IsDirty)
+                {
+                    using (var drawingContext = _drawingGroup.Open())
+                    {
+                        uiRenderCanvas.FlushFrame(drawingContext);
+                    }
+
+                    this.InvalidateVisual();
+                }
+            }), new ExecutionDataflowBlockOptions()
+            {
+                SingleProducerConstrained = true,
+                TaskScheduler = TaskScheduler.FromCurrentSynchronizationContext()
+            });
+            _uiRenderBlock = actionBlock;
+            transformBlock.LinkTo(actionBlock);
+            graphicsContext.MakeCurrent(new EmptyWindowInfo());
             _renderTask = Task.Run(async () =>
             {
                 using (_endThreadCts)
                 {
-                    await RenderThread(_endThreadCts.Token, renderProcedureValue, renderer, uiRenderCanvas, glSettings);
+                    await RenderThread(_endThreadCts.Token, procedure, renderer, uiRenderCanvas, frameBuffer,
+                        graphicsContext, transformBlock);
                 }
             });
         }
+
+        private async Task RenderThread(CancellationToken token, IRenderProcedure procedure,
+            IRenderer renderer, IRenderCanvas uiThreadCanvas, IFrameBuffer frameBuffer,
+            IGraphicsContext graphicsContext, ITargetBlock<BufferArgs> targetBlock)
+        {
+            if (!graphicsContext.IsCurrent)
+            {
+                graphicsContext.MakeCurrent(_windowInfo);
+            }
+
+            #region initialize
+
+            try
+            {
+                if (!renderer.IsInitialized)
+                {
+                    renderer.Initialize(graphicsContext);
+                }
+            }
+            catch (Exception e)
+            {
+                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Initialize, e));
+                return;
+            }
+
+            #endregion
+
+            CanvasInfo canvasInfo = null;
+            GlRenderEventArgs renderEventArgs = null;
+            procedure.BindCanvas(uiThreadCanvas);
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            using (procedure)
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    var renderContinuously = IsRenderContinuouslyValue;
+                    if (!UserVisible)
+                    {
+                        _userVisibleResetEvent.WaitInfinity();
+                    }
+
+                    if (!renderContinuously)
+                    {
+                        _renderContinuousWaiter.WaitInfinity();
+                    }
+
+                    if (!Equals(canvasInfo, RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
+                    {
+                        canvasInfo = RecentCanvasInfo;
+                        renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
+                        OnUITaskAsync(() => { uiThreadCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
+                        var pixelSize = canvasInfo.GetPixelSize();
+                        procedure.SizeFrame(pixelSize);
+                        frameBuffer.Release();
+                        frameBuffer.Allocate(pixelSize);
+                        renderer.Resize(pixelSize);
+                    }
+
+                    if (RecentCanvasInfo.IsEmpty)
+                    {
+                        await _sizeNotEmptyWaiter;
+                        continue;
+                    }
+
+                    if (!uiThreadCanvas.Ready)
+                    {
+                        var spinWait = new SpinWait();
+                        spinWait.SpinOnce();
+                        spinWait.SpinOnce();
+                        // await graphicsContext.Delay(, _windowInfo);
+                        continue;
+                    }
+
+                    if (!renderer.PreviewRender())
+                    {
+                        await graphicsContext.Delay(30, _windowInfo);
+                        continue;
+                    }
+
+                    try
+                    {
+                        OnBeforeRender();
+                        uiThreadCanvas.Prepare();
+                        procedure.PreRender();
+                        renderer.Render(renderEventArgs);
+                        // graphicsContext.SwapBuffers(); //swap?
+                        if (ShowFps)
+                        {
+                            _glFps.Increment();
+                        }
+
+                        if (!renderContinuously)
+                        {
+                            frameBuffer.SwapBuffer();
+                        }
+
+                        var postRender = procedure.PostRender();
+                        OnAfterRender();
+                        targetBlock.SendAsync(postRender);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception exception)
+                    {
+                        OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Render, exception));
+                    }
+                    finally
+                    {
+                    }
+
+                    if (EnableFrameRateLimit)
+                    {
+                        var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
+                        if (renderMinus > 5)
+                        {
+                            await graphicsContext.Delay((int) renderMinus, _windowInfo);
+                        }
+                        else if (renderMinus > 0)
+                        {
+                            Thread.Sleep((int) renderMinus);
+                        }
+
+                        stopwatch.Restart();
+                    }
+
+                    /*if (uiThreadCanvas.IsDirty)
+                    {
+                        OnUITaskAsync(() =>
+                        {
+                            using (var drawingContext = _drawingGroup.Open())
+                            {
+                                uiThreadCanvas.FlushFrame(drawingContext);
+                            }
+
+                            this.InvalidateVisual();
+                        });
+                        if (!uiThreadCanvas.CanAsyncFlush)
+                        {
+                            //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，此时上下文切换的开销小于wait
+                            await _renderSyncWaiter;
+                        }
+
+                        if (EnableFrameRateLimit)
+                        {
+                            var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
+                            if (renderMinus > 5)
+                            {
+                                await graphicsContext.Delay((int) renderMinus, _windowInfo);
+                            }
+                            else if (renderMinus > 0)
+                            {
+                                Thread.Sleep((int) renderMinus);
+                            }
+
+                            stopwatch.Restart();
+                        }
+                    }*/
+
+                    if (renderContinuously)
+                    {
+                        //read previous turn before swap buffer
+                        frameBuffer.SwapBuffer();
+                    }
+                }
+
+                targetBlock.Complete();
+                frameBuffer.Release();
+                renderer.Uninitialize();
+                stopwatch.Stop();
+            }
+        }
+
+        private void CloseRenderThread()
+        {
+            try
+            {
+                _endThreadCts.Cancel();
+            }
+            finally
+            {
+                _sizeNotEmptyWaiter.ForceSet();
+                _renderSyncWaiter.ForceSet();
+                if (!UserVisible)
+                {
+                    _userVisibleResetEvent.ForceSet();
+                }
+
+                _renderContinuousWaiter.ForceSet();
+                _renderTask.Wait();
+                _uiRenderBlock.Completion.Wait();
+            }
+        }
+
 
         protected override void ResumeRender()
         {
@@ -167,192 +417,6 @@ namespace OpenTkWPFHost
 
             targetBitmap.Render(drawingVisual);
             return targetBitmap;
-        }
-
-        private async Task RenderThread(CancellationToken token, IRenderProcedure renderProcedureValue,
-            IRenderer renderer, IRenderCanvas uiThreadCanvas, GLSettings settings)
-        {
-            #region initialize
-
-            IGraphicsContext graphicsContext;
-            try
-            {
-                graphicsContext = renderProcedureValue.Initialize(_windowInfo, settings);
-                GL.Enable(EnableCap.DebugOutput);
-                GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-                renderer.Initialize(graphicsContext);
-                _renderSyncWaiter.Context = graphicsContext;
-                _renderSyncWaiter.WindowInfo = _windowInfo;
-                _sizeNotEmptyWaiter.Context = graphicsContext;
-                _sizeNotEmptyWaiter.WindowInfo = _windowInfo;
-            }
-            catch (Exception e)
-            {
-                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Inbuilt, e));
-                return;
-            }
-
-            try
-            {
-                if (!renderer.IsInitialized)
-                {
-                    renderer.Initialize(graphicsContext);
-                }
-            }
-            catch (Exception e)
-            {
-                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Initialize, e));
-                return;
-            }
-
-            #endregion
-
-            CanvasInfo canvasInfo = null;
-            GlRenderEventArgs renderEventArgs = null;
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            using (renderProcedureValue)
-            {
-                while (!token.IsCancellationRequested)
-                {
-                    var renderContinuously = IsRenderContinuouslyValue;
-                    if (!UserVisible)
-                    {
-                        _userVisibleResetEvent.WaitInfinity();
-                    }
-
-                    if (!renderContinuously)
-                    {
-                        _renderContinuousWaiter.WaitInfinity();
-                    }
-
-                    if (!Equals(canvasInfo, RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
-                    {
-                        canvasInfo = RecentCanvasInfo;
-                        renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
-                        OnUITaskAsync(() => { uiThreadCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
-                        renderProcedureValue.SizeFrame(canvasInfo);
-                        renderer.Resize(canvasInfo.GetPixelSize());
-                    }
-
-                    if (RecentCanvasInfo.IsEmpty)
-                    {
-                        await _sizeNotEmptyWaiter;
-                        continue;
-                    }
-
-                    if (!uiThreadCanvas.Ready)
-                    {
-                        var spinWait = new SpinWait();
-                        spinWait.SpinOnce();
-                        spinWait.SpinOnce();
-                        // await graphicsContext.Delay(, _windowInfo);
-                        continue;
-                    }
-
-                    if (!renderer.PreviewRender())
-                    {
-                        await graphicsContext.Delay(30, _windowInfo);
-                        continue;
-                    }
-
-                    try
-                    {
-                        OnBeforeRender();
-                        uiThreadCanvas.Prepare();
-                        renderProcedureValue.PreRender();
-                        renderer.Render(renderEventArgs);
-                        graphicsContext.SwapBuffers(); //swap?
-                        if (ShowFps)
-                        {
-                            _glFps.Increment();
-                        }
-
-                        if (!renderContinuously)
-                        {
-                            renderProcedureValue.SwapBuffer();
-                        }
-
-                        renderProcedureValue.PostRender();
-                        renderProcedureValue.BindCanvas(uiThreadCanvas);
-                        OnUITaskAsync(() => uiThreadCanvas.Flush()).Wait(token);
-                        OnAfterRender();
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
-                    catch (Exception exception)
-                    {
-                        OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Render, exception));
-                    }
-                    finally
-                    {
-                    }
-
-                    if (uiThreadCanvas.IsDirty)
-                    {
-                        OnUITaskAsync(() =>
-                        {
-                            using (var drawingContext = _drawingGroup.Open())
-                            {
-                                uiThreadCanvas.FlushFrame(drawingContext);
-                            }
-
-                            this.InvalidateVisual();
-                        });
-                        if (!uiThreadCanvas.CanAsyncFlush)
-                        {
-                            //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，此时上下文切换的开销小于wait
-                            await _renderSyncWaiter;
-                        }
-
-                        if (EnableFrameRateLimit)
-                        {
-                            var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
-                            if (renderMinus > 5)
-                            {
-                                await graphicsContext.Delay((int) renderMinus, _windowInfo);
-                            }
-                            else if (renderMinus > 0)
-                            {
-                                Thread.Sleep((int) renderMinus);
-                            }
-
-                            stopwatch.Restart();
-                        }
-                    }
-
-                    if (renderContinuously)
-                    {
-                        //read previous turn before swap buffer
-                        renderProcedureValue.SwapBuffer();
-                    }
-                }
-
-                renderer.Uninitialize();
-                stopwatch.Stop();
-            }
-        }
-
-        private void CloseRenderThread()
-        {
-            try
-            {
-                _endThreadCts.Cancel();
-            }
-            finally
-            {
-                _sizeNotEmptyWaiter.ForceSet();
-                _renderSyncWaiter.ForceSet();
-                if (!UserVisible)
-                {
-                    _userVisibleResetEvent.ForceSet();
-                }
-
-                _renderContinuousWaiter.ForceSet();
-                _renderTask.Wait();
-            }
         }
 
         protected override void Dispose(bool dispose)

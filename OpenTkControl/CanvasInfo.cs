@@ -15,32 +15,37 @@ namespace OpenTkWPFHost
             DpiScaleY = dpiScaleY;
             PixelWidth = (int) Math.Ceiling(width * dpiScaleX);
             PixelHeight = (int) Math.Ceiling(height * dpiScaleY);
-            Rect = new Rect(new Size(width, height));
         }
 
-        public Rect Rect { get; }
+        public Rect Rect => new Rect(new Size(ActualWidth, ActualHeight));
 
         public double DpiScaleX { get; }
 
+        public double DpiX => 96 * this.DpiScaleX;
+
         public double DpiScaleY { get; }
+
+        public double DpiY => 96 * DpiScaleY;
 
         /// <summary>
         /// device independent
         /// </summary>
         public int ActualWidth { get; }
 
-        public int PixelWidth { get; set; }
+        public int PixelWidth { get; }
 
         /// <summary>
         /// device independent
         /// </summary>
         public int ActualHeight { get; }
 
-        public int PixelHeight { get; set; }
+        public int PixelHeight { get; }
 
         public bool IsEmpty => ActualWidth == 0 || ActualHeight == 0;
 
         public int BufferSize => ActualWidth * ActualHeight * 4;
+
+        public Int32Rect Int32Rect => new Int32Rect(0, 0, ActualWidth, ActualHeight);
 
         public RenderTargetBitmap CreateRenderTargetBitmap()
         {

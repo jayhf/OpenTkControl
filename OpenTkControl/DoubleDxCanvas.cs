@@ -50,6 +50,7 @@ namespace OpenTkWPFHost
         }
 
         public bool CanAsyncFlush { get; }
+        public CanvasInfo Info { get; }
         public bool IsDirty { get; }
         public bool Ready { get; }
 
@@ -66,7 +67,7 @@ namespace OpenTkWPFHost
             throw new NotImplementedException();
         }
 
-        public void Flush()
+        public void Flush(FrameArgs frame)
         {
             throw new NotImplementedException();
         }
