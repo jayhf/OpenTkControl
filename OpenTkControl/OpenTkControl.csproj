@@ -44,7 +44,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitmapCanvas.cs" />
-    <Compile Include="BitmapCanvasEx.cs" />
     <Compile Include="BufferArgs.cs" />
     <Compile Include="ContextWaiter.cs" />
     <Compile Include="DesignTimeHelper.cs" />

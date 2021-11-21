@@ -33,7 +33,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// can set pixel buffer based on your machine specification. Recommend is double pbo.
         /// </summary>
-        public IFrameBuffer FrameBuffer { get; set; } = new MultiStoragePixelBuffer();
+        public IFrameBuffer FrameBuffer { get; set; } = new MultiStoragePixelBuffer(3);
 
         public bool IsInitialized { get; private set; }
 
@@ -71,7 +71,7 @@ namespace OpenTkWPFHost
                 throw new NotSupportedException("Not supported type!");
             }
 #else
-            currentCanvas = (BitmapCanvas) canvas;
+            _currentCanvas = (BitmapCanvas) canvas;
 #endif
         }
 

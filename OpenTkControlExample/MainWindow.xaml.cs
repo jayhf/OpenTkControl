@@ -34,11 +34,10 @@ namespace OpenTkControlExample
             this.OpenTkControl.ExceptionOccurred += OpenTkControl_ExceptionOccurred;
             this.OpenTkControl.OpenGlErrorReceived += OpenTkControl_OpenGlErrorReceived;
         }
-
         private void OpenTkControl_OpenGlErrorReceived(object sender, OpenGlErrorArgs e)
         {
             var s = e.ToString();
-            Debugger.Break();
+            Debug.WriteLine(s);
         }
 
         /*var error = GL.GetError();

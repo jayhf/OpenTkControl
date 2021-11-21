@@ -65,14 +65,30 @@ namespace OpenTkWPFHost
             Interlocked.Increment(ref _frameCount);
         }
 
-        public FpsCounter()
+        public FpsCounter(Color color, Action<FpsCounter> onTick)
         {
-            this.Color = Colors.MediumPurple;
-            _timer = new Timer((state =>
+            this.Color = color;
+            if (onTick == null)
             {
-                Fps = _frameCount;
-                _frameCount = 0;
-            }), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+                _timer = new Timer((state =>
+                {
+                    Fps = _frameCount;
+                    _frameCount = 0;
+                }), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+            }
+            else
+            {
+                _timer = new Timer((state =>
+                {
+                    Fps = _frameCount;
+                    _frameCount = 0;
+                    onTick(this);
+                }), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+            }
+        }
+
+        public FpsCounter() : this(Colors.MediumPurple, null)
+        {
         }
 
         public void DrawFps(DrawingContext drawingContext, Point point)

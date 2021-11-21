@@ -42,9 +42,9 @@ namespace OpenTkWPFHost
 
         private readonly DebugProc _debugProc;
 
-        private readonly FpsCounter _glFps = new FpsCounter() {Title = "GLFps"};
+        private readonly FpsCounter _glFps = new FpsCounter() { Title = "GLFps" };
 
-        private readonly FpsCounter _controlFps = new FpsCounter() {Title = "ControlFps"};
+        private readonly FpsCounter _controlFps = new FpsCounter() { Title = "ControlFps" };
 
         protected volatile CanvasInfo RecentCanvasInfo = new CanvasInfo(0, 0, 96, 96);
 
@@ -91,6 +91,12 @@ namespace OpenTkWPFHost
 
         private IDataflowBlock _uiRenderBlock;
 
+        private FpsCounter counter1 =
+            new FpsCounter(Colors.AliceBlue, (counter => { Debug.WriteLine($"buffer:{counter.Fps}"); }));
+
+        private FpsCounter counter2 =
+            new FpsCounter(Colors.Aqua, (counter => { Debug.WriteLine($"frame:{counter.Fps}"); }));
+
         protected override void StartRenderProcedure(IWindowInfo windowInfo)
         {
             this._windowInfo = windowInfo;
@@ -123,17 +129,21 @@ namespace OpenTkWPFHost
 
             var transformBlock = new TransformBlock<BufferArgs, FrameArgs>((args =>
                 {
+                    
                     if (frameBuffer.TryReadFrames(args, out var frameArgs))
                     {
+                        counter1.Increment();
                         return frameArgs;
                     }
 
+                    args.BufferInfo.HasBuffer = false;
                     return null;
                 }),
                 new ExecutionDataflowBlockOptions()
                 {
                     SingleProducerConstrained = true,
                     TaskScheduler = new GLContextTaskScheduler(glSettings, graphicsContext, _windowInfo, _debugProc),
+                    MaxDegreeOfParallelism = 1,
                 });
             var actionBlock = new ActionBlock<FrameArgs>((args =>
             {
@@ -142,6 +152,7 @@ namespace OpenTkWPFHost
                     return;
                 }
 
+                counter2.Increment();
                 uiRenderCanvas.Prepare();
                 uiRenderCanvas.Flush(args);
                 if (uiRenderCanvas.IsDirty)
@@ -159,7 +170,9 @@ namespace OpenTkWPFHost
                 TaskScheduler = TaskScheduler.FromCurrentSynchronizationContext()
             });
             _uiRenderBlock = actionBlock;
-            transformBlock.LinkTo(actionBlock);
+            // transformBlock.LinkTo(actionBlock);
+            transformBlock.Post(new BufferArgs() { BufferInfo = new BufferInfo() { Fence = IntPtr.Zero } });
+            // Thread.Sleep(100);
             graphicsContext.MakeCurrent(new EmptyWindowInfo());
             _renderTask = Task.Run(async () =>
             {
@@ -180,6 +193,7 @@ namespace OpenTkWPFHost
                 graphicsContext.MakeCurrent(_windowInfo);
             }
 
+           
             #region initialize
 
             try
@@ -270,10 +284,7 @@ namespace OpenTkWPFHost
                         var postRender = procedure.PostRender();
                         OnAfterRender();
                         targetBlock.SendAsync(postRender);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
+                        // targetBlock.SendAsync(postRender);
                     }
                     catch (Exception exception)
                     {
@@ -288,11 +299,11 @@ namespace OpenTkWPFHost
                         var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
                         if (renderMinus > 5)
                         {
-                            await graphicsContext.Delay((int) renderMinus, _windowInfo);
+                            await graphicsContext.Delay((int)renderMinus, _windowInfo);
                         }
                         else if (renderMinus > 0)
                         {
-                            Thread.Sleep((int) renderMinus);
+                            Thread.Sleep((int)renderMinus);
                         }
 
                         stopwatch.Restart();
