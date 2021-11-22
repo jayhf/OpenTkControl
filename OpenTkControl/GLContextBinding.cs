@@ -15,12 +15,17 @@ namespace OpenTkWPFHost
 
         public IWindowInfo Info { get; }
 
-        public void CheckAccess()
+        public void BindCurrentThread()
         {
-            if (Context.IsCurrent)
+            if (!Context.IsCurrent)
             {
                 Context.MakeCurrent(Info);
             }
+        }
+
+        public void BindNull()
+        {
+            Context.MakeCurrent(new EmptyWindowInfo());
         }
     }
 }

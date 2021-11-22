@@ -41,10 +41,6 @@ namespace OpenTkWPFHost
             _displayBuffer = _bitmap.BackBuffer;
         }
 
-        public void Prepare()
-        {
-            this.IsDirty = false;
-        }
 
         public CanvasArgs Flush(FrameArgs frame)
         {
@@ -53,7 +49,7 @@ namespace OpenTkWPFHost
                 return null;
             }
 
-            var bitmapFrameArgs = (BitmapFrameArgs) frame;
+            var bitmapFrameArgs = (BitmapFrameArgs)frame;
             var bufferInfo = bitmapFrameArgs.BufferInfo;
             var bufferSize = bufferInfo.BufferSize;
             unsafe
@@ -73,30 +69,30 @@ namespace OpenTkWPFHost
 
         public bool Commit(DrawingContext context, CanvasArgs args)
         {
-            var canvasArgs = (BitmapCanvasArgs) args;
+            var canvasArgs = (BitmapCanvasArgs)args;
             if (canvasArgs != null && _int32Rect.Equals(canvasArgs.Int32Rect))
             {
                 try
                 {
                     _bitmap.Lock();
                     _bitmap.AddDirtyRect(_int32Rect);
-                    this.IsDirty = true;
                 }
                 finally
                 {
                     _bitmap.Unlock();
                 }
+
+                context.PushTransform(this._transformGroup);
+                context.DrawImage(_bitmap, _dirtRect);
+                context.Pop();
+                return true;
             }
 
-            context.PushTransform(this._transformGroup);
-            context.DrawImage(_bitmap, _dirtRect);
-            context.Pop();
+            return false;
         }
 
         public bool CanAsyncFlush { get; } = true;
 
         public CanvasInfo Info { get; private set; }
-
-        public bool IsDirty { get; set; }
     }
 }

@@ -128,7 +128,7 @@ namespace TestRenderer
         private int _yAxisSsbo;
         private readonly int[] _yAxisRaster = new int[300];
         private ScrollRange _currentScrollRange;
-        private long _currentYAxisValue;
+        private long _currentYAxisValue=100;
 
         public bool IsInitialized { get; private set; }
 

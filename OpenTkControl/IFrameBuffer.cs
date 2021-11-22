@@ -16,7 +16,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        BufferInfo Flush();
+        BufferInfo FlushAsync();
 
         void SwapBuffer();
         

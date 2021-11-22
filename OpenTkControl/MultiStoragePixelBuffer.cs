@@ -78,10 +78,10 @@ namespace OpenTkWPFHost
                 _bufferInfos[i] = new BufferInfo
                 {
                     BufferSize = currentPixelBufferSize,
-                    RepaintPixelRect = repaintRect,
                     GlBufferPointer = writeBuffer,
                     MapBufferIntPtr = mapBufferRange,
                     Fence = IntPtr.Zero,
+                    PixelSize = pixelSize,
                 };
             }
 
@@ -114,7 +114,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public BufferInfo Flush()
+        public BufferInfo FlushAsync()
         {
             while (_writeBufferInfo.HasBuffer)
             {

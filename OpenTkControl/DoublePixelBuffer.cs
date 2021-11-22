@@ -37,10 +37,8 @@ namespace OpenTkWPFHost
             var height = pixelSize.Height;
             this._width = width;
             this._height = height;
-            var repaintRect = new Int32Rect(0, 0, width, height);
             var currentPixelBufferSize = width * height * 4;
             _writeBufferInfo.BufferSize = currentPixelBufferSize;
-            _writeBufferInfo.RepaintPixelRect = repaintRect;
             var writeBuffer = GL.GenBuffer();
             _writeBufferInfo.GlBufferPointer = writeBuffer;
             GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBuffer);
@@ -49,7 +47,6 @@ namespace OpenTkWPFHost
             var readBuffer = GL.GenBuffer();
             _readBufferInfo.GlBufferPointer = readBuffer;
             _readBufferInfo.BufferSize = currentPixelBufferSize;
-            _readBufferInfo.RepaintPixelRect = repaintRect;
             GL.BindBuffer(BufferTarget.PixelPackBuffer, readBuffer);
             GL.BufferData(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero,
                 BufferUsageHint.StaticDraw);
@@ -75,7 +72,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public BufferInfo Flush()
+        public BufferInfo FlushAsync()
         {
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _writeBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
@@ -98,7 +95,7 @@ namespace OpenTkWPFHost
         {
             //todo:
             throw new NotImplementedException();
-            if (!_readBufferInfo.HasBuffer)
+            /*if (!_readBufferInfo.HasBuffer)
             {
                 return false;
             }
@@ -112,8 +109,8 @@ namespace OpenTkWPFHost
             {
                 System.Buffer.MemoryCopy(mapBuffer.ToPointer(), ptr.ToPointer(), bufferSize, bufferSize);
             }
-            GL.UnmapBuffer(BufferTarget.PixelPackBuffer);*/
-            return true;
+            GL.UnmapBuffer(BufferTarget.PixelPackBuffer);#1#
+            return true;*/
         }
 
         public void Dispose()

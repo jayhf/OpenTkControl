@@ -17,7 +17,7 @@ namespace OpenTkWPFHost
         {
             _thread = new Thread(() =>
             {
-                binding.CheckAccess();
+                binding.BindCurrentThread();
                 GL.Enable(EnableCap.DebugOutputSynchronous);
                 GL.Enable(EnableCap.DebugOutput);
                 GL.DebugMessageCallback(debugProc, IntPtr.Zero);

@@ -32,6 +32,11 @@ namespace OpenTkWPFHost
             return new DxCanvas();
         }
 
+        public IFrameBuffer CreateFrameBuffer()
+        {
+            throw new NotImplementedException();
+        }
+
 
         public DXProcedure()
         {

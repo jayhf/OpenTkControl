@@ -8,14 +8,12 @@ namespace OpenTkWPFHost
 {
     public class GraphicContextAwaiter : INotifyCompletion
     {
-        private readonly IGraphicsContext _graphicsContext;
-        private readonly IWindowInfo _windowInfo;
+        private readonly GLContextBinding _binding;
         private TaskAwaiter _taskAwaiter;
 
-        public GraphicContextAwaiter(Task task, IGraphicsContext graphicsContext, IWindowInfo windowInfo)
+        public GraphicContextAwaiter(Task task, GLContextBinding binding)
         {
-            _graphicsContext = graphicsContext;
-            _windowInfo = windowInfo;
+            this._binding = binding;
             _taskAwaiter = task.GetAwaiter();
         }
 
@@ -23,17 +21,13 @@ namespace OpenTkWPFHost
 
         public void GetResult()
         {
-            if (!_graphicsContext.IsCurrent)
-            {
-                _graphicsContext.MakeCurrent(_windowInfo);
-            }
-
+            _binding.BindCurrentThread();
             _taskAwaiter.GetResult();
         }
 
         public void OnCompleted(Action continuation)
         {
-            _graphicsContext.MakeCurrent(new EmptyWindowInfo());
+            _binding.BindNull();
             _taskAwaiter.OnCompleted(continuation);
         }
 

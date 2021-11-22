@@ -47,36 +47,22 @@ namespace OpenTkWPFHost
 
         public RenderArgs PostRender()
         {
-            var flushCurrentFrame = FrameBuffer.Flush();
-            return new RenderArgs()
+            var bufferInfo = FrameBuffer.FlushAsync();
+            return new BitmapRenderArgs()
             {
-                BufferInfo = flushCurrentFrame,
-                HostBufferIntPtr = _currentCanvas.DisplayBuffer,
-                CanvasInfo = _currentCanvas.Info,
+                BufferInfo = bufferInfo,
+                PixelSize = bufferInfo.PixelSize,
             };
-        }
-
-        private BitmapCanvas _currentCanvas = null;
-
-        public void BindCanvas(IRenderCanvas canvas)
-        {
-#if DEBUG
-            if (canvas is BitmapCanvas bitmapCanvas)
-            {
-                _currentCanvas = bitmapCanvas;
-            }
-            else
-            {
-                throw new NotSupportedException("Not supported type!");
-            }
-#else
-            _currentCanvas = (BitmapCanvas) canvas;
-#endif
-        }
-
+        } 
+        
         public IRenderCanvas CreateCanvas()
         {
             return new BitmapCanvas();
+        }
+
+        public IFrameBuffer CreateFrameBuffer()
+        {
+            return FrameBuffer;
         }
 
         public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)

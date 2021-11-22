@@ -75,6 +75,7 @@ namespace OpenTkWPFHost
 
         public CanvasArgs Flush(FrameArgs frame)
         {
+            throw new NotImplementedException();
             var preDirtRect = new Int32Rect(0, 0, _canvasInfo.ActualWidth,
                 _canvasInfo.ActualHeight);
             if (this.FrameBuffer != IntPtr.Zero && !preDirtRect.IsEmpty)
@@ -89,6 +90,7 @@ namespace OpenTkWPFHost
 
         public bool Commit(DrawingContext drawingContext, CanvasArgs args)
         {
+            return true;
             drawingContext.PushTransform(_transformGroup);
             drawingContext.DrawImage(_image, new Rect(new Size(_image.Width, _image.Height)));
             drawingContext.Pop();
