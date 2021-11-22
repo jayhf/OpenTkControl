@@ -15,8 +15,6 @@ namespace OpenTkWPFHost
     /// Prior to releasing references. 
     internal sealed class DxGLFramebuffer : IDisposable
     {
-        private DxGlContext DxGlContext { get; }
-
         /// The width of this buffer in pixels
         public int FramebufferWidth { get; }
 
@@ -48,7 +46,6 @@ namespace OpenTkWPFHost
         
         public DxGLFramebuffer([NotNull] DxGlContext context, int pixelWidth, int pixelHeight)
         {
-            DxGlContext = context;
             FramebufferWidth = pixelWidth;
             FramebufferHeight = pixelHeight;
             var dxSharedHandle = IntPtr.Zero; // Unused windows-vista legacy sharing handle. Must always be null.

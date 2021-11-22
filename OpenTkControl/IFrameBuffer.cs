@@ -16,11 +16,13 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        BufferInfo FlushCurrentFrame();
+        BufferInfo Flush();
 
         void SwapBuffer();
+        
+        FrameArgs ReadFrames(RenderArgs args);
 
-        bool TryReadFrames(BufferArgs args, out FrameArgs frame);
+        // void Bind(IRenderCanvas canvas);
 
         void Release();
     }

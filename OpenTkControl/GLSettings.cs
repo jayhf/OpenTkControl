@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
+using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
@@ -96,6 +97,23 @@ namespace OpenTkWPFHost
             }
 
             return new CanvasInfo((int) element.ActualWidth, (int) element.ActualHeight, dpiScaleX, dpiScaleY);
+        }
+
+        public IGraphicsContext CreateContext(IWindowInfo windowInfo, IGraphicsContext sharedContext = null)
+        {
+            if (sharedContext == null)
+            {
+                return new GraphicsContext(this.GraphicsMode, windowInfo, this.MajorVersion,
+                        this.MinorVersion,
+                        this.GraphicsContextFlags)
+                    {SwapInterval = (int) this.SyncMode};
+            }
+
+            return new GraphicsContext(this.GraphicsMode, windowInfo, sharedContext, this.MajorVersion,
+                this.MinorVersion, this.GraphicsContextFlags)
+            {
+                SwapInterval = (int) this.SyncMode,
+            };
         }
     }
 }

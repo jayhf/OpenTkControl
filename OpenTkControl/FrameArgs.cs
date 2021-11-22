@@ -2,8 +2,12 @@
 
 namespace OpenTkWPFHost
 {
-    public class FrameArgs
+    public class FrameArgs : PipelineArgs
     {
-        public Int32Rect RepaintPixelRect;
+    }
+
+    public class BitmapFrameArgs : FrameArgs
+    {
+        public BufferInfo BufferInfo { get; set; }
     }
 }

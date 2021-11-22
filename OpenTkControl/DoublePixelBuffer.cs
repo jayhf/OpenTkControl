@@ -6,6 +6,7 @@ using Buffer = OpenTK.Graphics.OpenGL4.Buffer;
 
 namespace OpenTkWPFHost
 {
+    [Obsolete("use storeagebuffer")]
     public class DoublePixelBuffer : IFrameBuffer
     {
         /// <summary>
@@ -74,7 +75,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public BufferInfo FlushCurrentFrame()
+        public BufferInfo Flush()
         {
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _writeBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
@@ -93,7 +94,7 @@ namespace OpenTkWPFHost
             (_readBufferInfo, _writeBufferInfo) = (_writeBufferInfo, _readBufferInfo);
         }
 
-        public bool TryReadFrames(BufferArgs args, out FrameArgs bufferInfo)
+        public FrameArgs ReadFrames(RenderArgs args)
         {
             //todo:
             throw new NotImplementedException();

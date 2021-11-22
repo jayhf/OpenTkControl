@@ -10,7 +10,7 @@ namespace OpenTkWPFHost
         public Int32Rect RepaintPixelRect;
 
         public int BufferSize;
-
+        
         public int PixelWidth => RepaintPixelRect.Width;
 
         public int PixelHeight => RepaintPixelRect.Height;
@@ -19,16 +19,10 @@ namespace OpenTkWPFHost
 
         public volatile bool HasBuffer;
 
-        private volatile IntPtr _fence;
+        public volatile IntPtr Fence;
 
         public int Stride => PixelWidth * 4;
 
-        public IntPtr ClientIntPtr { get; set; }
-
-        public IntPtr Fence
-        {
-            get => _fence;
-            set => _fence = value;
-        }
+        public IntPtr MapBufferIntPtr { get; set; }
     }
 }

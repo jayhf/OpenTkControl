@@ -42,9 +42,9 @@ namespace OpenTkWPFHost
 
         private readonly DebugProc _debugProc;
 
-        private readonly FpsCounter _glFps = new FpsCounter() { Title = "GLFps" };
+        private readonly FpsCounter _glFps = new FpsCounter() {Title = "GLFps"};
 
-        private readonly FpsCounter _controlFps = new FpsCounter() { Title = "ControlFps" };
+        private readonly FpsCounter _controlFps = new FpsCounter() {Title = "ControlFps"};
 
         protected volatile CanvasInfo RecentCanvasInfo = new CanvasInfo(0, 0, 96, 96);
 
@@ -53,7 +53,6 @@ namespace OpenTkWPFHost
         public ThreadOpenTkControl() : base()
         {
             _debugProc = Callback;
-            this.SizeChanged += ThreadOpenTkControl_SizeChanged;
         }
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -61,7 +60,7 @@ namespace OpenTkWPFHost
             RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
             if (!RecentCanvasInfo.IsEmpty)
             {
-                _sizeNotEmptyWaiter.TrySet();
+                _sizeNotEmptyEvent.TrySet();
             }
 
             CallValidRenderOnce();
@@ -69,9 +68,9 @@ namespace OpenTkWPFHost
 
         private readonly DrawingGroup _drawingGroup = new DrawingGroup();
 
-        private readonly ContextWaiter _renderSyncWaiter = new ContextWaiter();
+        private readonly TaskCompletionEvent _renderSyncWaiter = new TaskCompletionEvent();
 
-        private readonly ContextWaiter _sizeNotEmptyWaiter = new ContextWaiter();
+        private readonly TaskCompletionEvent _sizeNotEmptyEvent = new TaskCompletionEvent();
 
         private readonly EventWaiter _renderContinuousWaiter = new EventWaiter();
 
@@ -87,19 +86,44 @@ namespace OpenTkWPFHost
             }
         }
 
-        private IWindowInfo _windowInfo;
+        private void BuildPipeline(GLContextBinding contextBinding, IRenderCanvas canvas, IFrameBuffer frameBuffer)
+        {
+            var renderBlock = new TransformBlock<RenderArgs, FrameArgs>(
+                args => { return frameBuffer.ReadFrames(args); },
+                new ExecutionDataflowBlockOptions()
+                {
+                    SingleProducerConstrained = true,
+                    TaskScheduler = new GLContextTaskScheduler(contextBinding, _debugProc),
+                    MaxDegreeOfParallelism = 1,
+                });
+            var frameBlock = new TransformBlock<FrameArgs, CanvasArgs>(args => { return canvas.Flush(args); });
+            renderBlock.LinkTo(frameBlock);
+            var canvasBlock = new ActionBlock<CanvasArgs>((args =>
+            {
+                if (args == null)
+                {
+                    return;
+                }
+
+                bool commit;
+                using (var drawingContext = _drawingGroup.Open())
+                {
+                    commit = canvas.Commit(drawingContext, args);
+                }
+
+                this.InvalidateVisual();
+            }), new ExecutionDataflowBlockOptions()
+            {
+                SingleProducerConstrained = true,
+                TaskScheduler = TaskScheduler.FromCurrentSynchronizationContext()
+            });
+            frameBlock.LinkTo(canvasBlock);
+        }
 
         private IDataflowBlock _uiRenderBlock;
 
-        private FpsCounter counter1 =
-            new FpsCounter(Colors.AliceBlue, (counter => { Debug.WriteLine($"buffer:{counter.Fps}"); }));
-
-        private FpsCounter counter2 =
-            new FpsCounter(Colors.Aqua, (counter => { Debug.WriteLine($"frame:{counter.Fps}"); }));
-
         protected override void StartRenderProcedure(IWindowInfo windowInfo)
         {
-            this._windowInfo = windowInfo;
             _endThreadCts = new CancellationTokenSource();
             var procedure = this.RenderProcedure;
             var renderer = this.Renderer;
@@ -107,19 +131,18 @@ namespace OpenTkWPFHost
             IRenderCanvas uiRenderCanvas = null;
             IFrameBuffer frameBuffer = null;
             IGraphicsContext graphicsContext;
+            IGraphicsContext sharedGraphicsContext;
             try
             {
-                RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
+                RecentCanvasInfo = glSettings.CreateCanvasInfo(this);
                 uiRenderCanvas = procedure.CreateCanvas();
-                graphicsContext = procedure.Initialize(_windowInfo, glSettings);
+                graphicsContext = procedure.Initialize(windowInfo, glSettings);
+                sharedGraphicsContext = glSettings.CreateContext(windowInfo, graphicsContext);
                 frameBuffer = procedure.FrameBuffer;
                 GL.Enable(EnableCap.DebugOutput);
                 GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
                 renderer.Initialize(graphicsContext);
-                _renderSyncWaiter.Context = graphicsContext;
-                _renderSyncWaiter.WindowInfo = _windowInfo;
-                _sizeNotEmptyWaiter.Context = graphicsContext;
-                _sizeNotEmptyWaiter.WindowInfo = _windowInfo;
+                this.SizeChanged += ThreadOpenTkControl_SizeChanged;
             }
             catch (Exception e)
             {
@@ -127,73 +150,37 @@ namespace OpenTkWPFHost
                 return;
             }
 
-            var transformBlock = new TransformBlock<BufferArgs, FrameArgs>((args =>
-                {
-                    
-                    if (frameBuffer.TryReadFrames(args, out var frameArgs))
-                    {
-                        counter1.Increment();
-                        return frameArgs;
-                    }
 
-                    args.BufferInfo.HasBuffer = false;
-                    return null;
-                }),
-                new ExecutionDataflowBlockOptions()
-                {
-                    SingleProducerConstrained = true,
-                    TaskScheduler = new GLContextTaskScheduler(glSettings, graphicsContext, _windowInfo, _debugProc),
-                    MaxDegreeOfParallelism = 1,
-                });
-            var actionBlock = new ActionBlock<FrameArgs>((args =>
-            {
-                if (args == null)
-                {
-                    return;
-                }
-
-                counter2.Increment();
-                uiRenderCanvas.Prepare();
-                uiRenderCanvas.Flush(args);
-                if (uiRenderCanvas.IsDirty)
-                {
-                    using (var drawingContext = _drawingGroup.Open())
-                    {
-                        uiRenderCanvas.FlushFrame(drawingContext);
-                    }
-
-                    this.InvalidateVisual();
-                }
-            }), new ExecutionDataflowBlockOptions()
-            {
-                SingleProducerConstrained = true,
-                TaskScheduler = TaskScheduler.FromCurrentSynchronizationContext()
-            });
             _uiRenderBlock = actionBlock;
-            // transformBlock.LinkTo(actionBlock);
-            transformBlock.Post(new BufferArgs() { BufferInfo = new BufferInfo() { Fence = IntPtr.Zero } });
+
+            transformBlock.Post(new RenderArgs()
+            {
+                BufferInfo = new BufferInfo() {Fence = IntPtr.Zero}
+            });
             // Thread.Sleep(100);
             graphicsContext.MakeCurrent(new EmptyWindowInfo());
             _renderTask = Task.Run(async () =>
             {
                 using (_endThreadCts)
                 {
-                    await RenderThread(_endThreadCts.Token, procedure, renderer, uiRenderCanvas, frameBuffer,
+                    await RenderThread(_endThreadCts.Token, windowInfo, procedure, renderer, uiRenderCanvas,
+                        frameBuffer,
                         graphicsContext, transformBlock);
                 }
             });
         }
 
-        private async Task RenderThread(CancellationToken token, IRenderProcedure procedure,
+        private async Task RenderThread(CancellationToken token, IWindowInfo windowInfo, IRenderProcedure procedure,
             IRenderer renderer, IRenderCanvas uiThreadCanvas, IFrameBuffer frameBuffer,
-            IGraphicsContext graphicsContext, ITargetBlock<BufferArgs> targetBlock)
+            IGraphicsContext graphicsContext, ITargetBlock<RenderArgs> targetBlock)
         {
+            var glBinding = new GLContextBinding(graphicsContext, windowInfo);
             if (!graphicsContext.IsCurrent)
             {
-                graphicsContext.MakeCurrent(_windowInfo);
+                graphicsContext.MakeCurrent(windowInfo);
             }
 
-           
+
             #region initialize
 
             try
@@ -245,7 +232,7 @@ namespace OpenTkWPFHost
 
                     if (RecentCanvasInfo.IsEmpty)
                     {
-                        await _sizeNotEmptyWaiter;
+                        await _sizeNotEmptyEvent.Wait(glBinding);
                         continue;
                     }
 
@@ -260,7 +247,7 @@ namespace OpenTkWPFHost
 
                     if (!renderer.PreviewRender())
                     {
-                        await graphicsContext.Delay(30, _windowInfo);
+                        await graphicsContext.Delay(30, windowInfo);
                         continue;
                     }
 
@@ -299,11 +286,11 @@ namespace OpenTkWPFHost
                         var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
                         if (renderMinus > 5)
                         {
-                            await graphicsContext.Delay((int)renderMinus, _windowInfo);
+                            await graphicsContext.Delay((int) renderMinus, windowInfo);
                         }
                         else if (renderMinus > 0)
                         {
-                            Thread.Sleep((int)renderMinus);
+                            Thread.Sleep((int) renderMinus);
                         }
 
                         stopwatch.Restart();
@@ -364,7 +351,7 @@ namespace OpenTkWPFHost
             }
             finally
             {
-                _sizeNotEmptyWaiter.ForceSet();
+                _sizeNotEmptyEvent.ForceSet();
                 _renderSyncWaiter.ForceSet();
                 if (!UserVisible)
                 {

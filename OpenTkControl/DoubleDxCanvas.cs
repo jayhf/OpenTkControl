@@ -67,12 +67,12 @@ namespace OpenTkWPFHost
             throw new NotImplementedException();
         }
 
-        public void Flush(FrameArgs frame)
+        public CanvasArgs Flush(FrameArgs frame)
         {
             throw new NotImplementedException();
         }
 
-        public void FlushFrame(DrawingContext context)
+        public bool Commit(DrawingContext context, CanvasArgs args)
         {
             throw new NotImplementedException();
         }

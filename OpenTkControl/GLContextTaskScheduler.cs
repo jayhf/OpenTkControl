@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
-using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
@@ -16,45 +13,21 @@ namespace OpenTkWPFHost
 
         private readonly BlockingCollection<Task> _tasks = new BlockingCollection<Task>();
 
-        private IGraphicsContext _graphicsContext;
-
-        private DebugProc _debugProc;
-
-        public GLContextTaskScheduler(GLSettings glSettings, IGraphicsContext sharedContext, IWindowInfo info,
-            DebugProc debugProc)
+        public GLContextTaskScheduler(GLContextBinding binding, DebugProc debugProc)
         {
-            this._debugProc = debugProc;
             _thread = new Thread(() =>
             {
-                try
+                binding.CheckAccess();
+                GL.Enable(EnableCap.DebugOutputSynchronous);
+                GL.Enable(EnableCap.DebugOutput);
+                GL.DebugMessageCallback(debugProc, IntPtr.Zero);
+                foreach (var task in _tasks.GetConsumingEnumerable())
                 {
-                    Context = new GraphicsContext(glSettings.GraphicsMode, info, sharedContext, glSettings.MajorVersion,
-                        glSettings.MinorVersion, glSettings.GraphicsContextFlags);
-                    if (!Context.IsCurrent)
-                    {
-                        Context.MakeCurrent(info);
-                    }
-
-                    GL.Enable(EnableCap.DebugOutputSynchronous);
-                    GL.Enable(EnableCap.DebugOutput);
-                    GL.DebugMessageCallback(debugProc, IntPtr.Zero);
-                    foreach (var task in _tasks.GetConsumingEnumerable())
-                    {
-                        TryExecuteTask(task);
-                    }
-                }
-                catch (Exception e)
-                {
-                    Debugger.Break();
+                    TryExecuteTask(task);
                 }
             });
         }
 
-        public IGraphicsContext Context
-        {
-            get => _graphicsContext;
-            set => _graphicsContext = value;
-        }
 
         protected override void QueueTask(Task task)
         {

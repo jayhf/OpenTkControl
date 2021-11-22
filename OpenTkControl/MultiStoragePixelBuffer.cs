@@ -80,7 +80,7 @@ namespace OpenTkWPFHost
                     BufferSize = currentPixelBufferSize,
                     RepaintPixelRect = repaintRect,
                     GlBufferPointer = writeBuffer,
-                    ClientIntPtr = mapBufferRange,
+                    MapBufferIntPtr = mapBufferRange,
                     Fence = IntPtr.Zero,
                 };
             }
@@ -114,13 +114,13 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public BufferInfo FlushCurrentFrame()
+        public BufferInfo Flush()
         {
             while (_writeBufferInfo.HasBuffer)
             {
                 _spinWait.SpinOnce();
             }
-            
+
             GL.BindBuffer(BufferTarget.PixelPackBuffer, _writeBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
@@ -139,65 +139,42 @@ namespace OpenTkWPFHost
             _writeBufferInfo = _bufferInfos[writeBufferIndex];
         }
 
-        private int insCount = 0;
-
-
-        public bool TryReadFrames(BufferArgs args, out FrameArgs frameArgs)
+        public FrameArgs ReadFrames(RenderArgs args)
         {
-            insCount++;
-            var bufferInfo = args.BufferInfo;
+            if (args == null)
+            {
+                return null;
+            }
+
+            var bufferInfo = ((BitmapRenderArgs) args).BufferInfo;
             var fence = bufferInfo.Fence;
             if (fence != IntPtr.Zero)
             {
-                try
-                {
-                    var bufferSize = (long)bufferInfo.BufferSize;
-                    // GL.GetSync(fence, SyncParameterName.SyncStatus, 1, out int length, out int status);
+                // GL.GetSync(fence, SyncParameterName.SyncStatus, 1, out int length, out int status);
 
-                    // GL.GetSync(fence,SyncParameterName.SyncStatus,sizeof(IntPtr));
-                    // GL.WaitSync(fence, WaitSyncFlags.None, 0);
-                    var clientWaitSync = GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
+                // GL.GetSync(fence,SyncParameterName.SyncStatus,sizeof(IntPtr));
+                // GL.WaitSync(fence, WaitSyncFlags.None, 0);
+                var clientWaitSync = GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
+                if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
+                    clientWaitSync == WaitSyncStatus.ConditionSatisfied)
+                {
                     GL.DeleteSync(fence);
-                    unsafe
+                    return new BitmapFrameArgs()
                     {
-                        System.Buffer.MemoryCopy(bufferInfo.ClientIntPtr.ToPointer(),
-                            args.HostBufferIntPtr.ToPointer(),
-                            bufferSize, bufferSize);
-                    }
-
-                    var int32Rect = bufferInfo.RepaintPixelRect;
-                    frameArgs = new FrameArgs()
-                    {
-                        RepaintPixelRect = int32Rect,
+                        PixelSize = args.PixelSize,
+                        BufferInfo = bufferInfo,
                     };
-                    return true;
-
-                    if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
-                        clientWaitSync == WaitSyncStatus.ConditionSatisfied)
-                    {
-                        
-                    }
-
-                    /*if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
-                        clientWaitSync == WaitSyncStatus.ConditionSatisfied)
-                    {
-                        
-                    }
-
-                    var errorCode = GL.GetError();
-                    if (errorCode != ErrorCode.NoError)
-                    {
-                        throw new Exception(errorCode.ToString());
-                    }*/
                 }
-                catch (Exception e)
+
+                /*var errorCode = GL.GetError();
+                if (errorCode != ErrorCode.NoError)
                 {
-                    Debugger.Break();
-                }
+                    throw new Exception(errorCode.ToString());
+                }*/
             }
 
-            frameArgs = null;
-            return false;
+            bufferInfo.HasBuffer = false;
+            return null;
         }
 
         public void Dispose()

@@ -5,6 +5,7 @@ using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
+
     /// <summary>
     /// 渲染过程
     /// </summary>
@@ -18,7 +19,7 @@ namespace OpenTkWPFHost
 
         void PreRender();
 
-        BufferArgs PostRender();
+        RenderArgs PostRender();
 
         /// <summary>
         /// 创建canvas不一定要使用

@@ -73,7 +73,7 @@ namespace OpenTkWPFHost
             IsDirty = false;
         }
 
-        public void Flush(FrameArgs frame)
+        public CanvasArgs Flush(FrameArgs frame)
         {
             var preDirtRect = new Int32Rect(0, 0, _canvasInfo.ActualWidth,
                 _canvasInfo.ActualHeight);
@@ -87,7 +87,7 @@ namespace OpenTkWPFHost
             }
         }
 
-        public void FlushFrame(DrawingContext drawingContext)
+        public bool Commit(DrawingContext drawingContext, CanvasArgs args)
         {
             drawingContext.PushTransform(_transformGroup);
             drawingContext.DrawImage(_image, new Rect(new Size(_image.Width, _image.Height)));

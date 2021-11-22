@@ -103,9 +103,7 @@ namespace OpenTkWPFHost
             else
             {
                 // var mode = new GraphicsMode(ColorFormat.Empty, 0, 0, 0, 0, 0, false);
-                var gfxCtx = new GraphicsContext(settings.GraphicsMode, _windowInfo, settings.MajorVersion,
-                    settings.MinorVersion,
-                    settings.GraphicsContextFlags) {SwapInterval = (int) settings.SyncMode};
+                var gfxCtx = settings.CreateContext(_windowInfo);
                 gfxCtx.LoadAll();
                 gfxCtx.MakeCurrent(_windowInfo);
                 _sharedContext = gfxCtx;

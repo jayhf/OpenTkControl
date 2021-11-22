@@ -44,10 +44,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitmapCanvas.cs" />
-    <Compile Include="BufferArgs.cs" />
+    <Compile Include="CanvasArgs.cs" />
+    <Compile Include="ContextWaiterExtension.cs" />
+    <Compile Include="GLContextBinding.cs" />
+    <Compile Include="RenderArgs.cs" />
     <Compile Include="ContextWaiter.cs" />
     <Compile Include="DesignTimeHelper.cs" />
-    <Compile Include="DoubleBuffer.cs" />
     <Compile Include="DoubleDxCanvas.cs" />
     <Compile Include="DoublePixelBuffer.cs" />
     <Compile Include="BufferInfo.cs" />
@@ -72,7 +74,6 @@
     <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
     <Compile Include="IRenderProcedure.cs" />
-    <Compile Include="MultiPixelBuffer.cs" />
     <Compile Include="MultiStoragePixelBuffer.cs" />
     <Compile Include="OpenGLError.cs" />
     <Compile Include="CanvasInfo.cs" />
@@ -85,7 +86,6 @@
     <Compile Include="RenderProcedureTask.cs" />
     <Compile Include="SemaphoreEvent.cs" />
     <Compile Include="EventWaiter.cs" />
-    <Compile Include="SolitaryPixelBuffer.cs" />
     <Compile Include="StatefulWaiter.cs" />
     <Compile Include="SyncMode.cs" />
     <Compile Include="TestFramework.cs" />

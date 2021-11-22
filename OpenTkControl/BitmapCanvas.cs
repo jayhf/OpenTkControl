@@ -17,7 +17,7 @@ namespace OpenTkWPFHost
         /// </summary>
         private WriteableBitmap _bitmap;
 
-        public IntPtr DisplayBuffer { get; private set; }
+        private IntPtr _displayBuffer;
 
         public bool Ready { get; } = true;
 
@@ -38,7 +38,7 @@ namespace OpenTkWPFHost
                 PixelFormats.Pbgra32, null);
             _dirtRect = info.Rect;
             _int32Rect = info.Int32Rect;
-            DisplayBuffer = _bitmap.BackBuffer;
+            _displayBuffer = _bitmap.BackBuffer;
         }
 
         public void Prepare()
@@ -46,9 +46,35 @@ namespace OpenTkWPFHost
             this.IsDirty = false;
         }
 
-        public void Flush(FrameArgs frame)
+        public CanvasArgs Flush(FrameArgs frame)
         {
-            if (frame != null && _int32Rect.Equals(frame.RepaintPixelRect))
+            if (frame == null)
+            {
+                return null;
+            }
+
+            var bitmapFrameArgs = (BitmapFrameArgs) frame;
+            var bufferInfo = bitmapFrameArgs.BufferInfo;
+            var bufferSize = bufferInfo.BufferSize;
+            unsafe
+            {
+                Buffer.MemoryCopy(bufferInfo.MapBufferIntPtr.ToPointer(),
+                    _displayBuffer.ToPointer(),
+                    bufferSize, bufferSize);
+            }
+
+            bufferInfo.HasBuffer = false;
+            return new BitmapCanvasArgs()
+            {
+                PixelSize = frame.PixelSize,
+                Int32Rect = _int32Rect
+            };
+        }
+
+        public bool Commit(DrawingContext context, CanvasArgs args)
+        {
+            var canvasArgs = (BitmapCanvasArgs) args;
+            if (canvasArgs != null && _int32Rect.Equals(canvasArgs.Int32Rect))
             {
                 try
                 {
@@ -61,10 +87,7 @@ namespace OpenTkWPFHost
                     _bitmap.Unlock();
                 }
             }
-        }
 
-        public void FlushFrame(DrawingContext context)
-        {
             context.PushTransform(this._transformGroup);
             context.DrawImage(_bitmap, _dirtRect);
             context.Pop();

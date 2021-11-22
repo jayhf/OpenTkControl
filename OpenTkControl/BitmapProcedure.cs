@@ -45,15 +45,14 @@ namespace OpenTkWPFHost
         {
         }
 
-        public BufferArgs PostRender()
+        public RenderArgs PostRender()
         {
-            var flushCurrentFrame = FrameBuffer.FlushCurrentFrame();
-            return new BufferArgs()
+            var flushCurrentFrame = FrameBuffer.Flush();
+            return new RenderArgs()
             {
                 BufferInfo = flushCurrentFrame,
                 HostBufferIntPtr = _currentCanvas.DisplayBuffer,
                 CanvasInfo = _currentCanvas.Info,
-                
             };
         }
 
@@ -82,10 +81,7 @@ namespace OpenTkWPFHost
 
         public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)
         {
-            // var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
-            _context = new GraphicsContext(settings.GraphicsMode, window, settings.MajorVersion,
-                settings.MinorVersion,
-                GraphicsContextFlags.Default) {SwapInterval = (int) settings.SyncMode};
+            _context = settings.CreateContext(window);
             _context.LoadAll();
             _context.MakeCurrent(window);
             IsInitialized = true;

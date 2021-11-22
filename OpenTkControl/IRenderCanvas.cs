@@ -15,26 +15,19 @@ namespace OpenTkWPFHost
         CanvasInfo Info { get; }
 
         /// <summary>
-        /// if need to flush frame
-        /// </summary>
-        bool IsDirty { get; }
-
-        /// <summary>
         /// indicate whether ready to render
         /// </summary>
         bool Ready { get; }
 
         void Allocate(CanvasInfo info);
 
-        void Prepare();
-
-        void Flush(FrameArgs frame);
+        CanvasArgs Flush(FrameArgs frame);
 
         /// <summary>
-        /// flush frame buffer
+        /// commit to ui
         /// </summary>
         /// <param name="context"></param>
-        void FlushFrame(DrawingContext context);
-        
+        /// <param name="args"></param>
+        bool Commit(DrawingContext context, CanvasArgs args);
     }
 }

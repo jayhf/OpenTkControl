@@ -49,7 +49,7 @@ namespace OpenTkWPFHost
         }
 
         /// Sets up the framebuffer and prepares stuff for usage in directx.
-        public BufferArgs PostRender()
+        public RenderArgs PostRender()
         {
             throw new NotImplementedException();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
@@ -75,7 +75,6 @@ namespace OpenTkWPFHost
         }
 
         public IFrameBuffer FrameBuffer { get; }
-
 
         public void SizeFrame(PixelSize pixelSize)
         {
