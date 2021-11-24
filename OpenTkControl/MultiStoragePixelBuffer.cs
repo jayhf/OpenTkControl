@@ -64,7 +64,6 @@ namespace OpenTkWPFHost
             _allocated = true;
             var width = pixelSize.Width;
             var height = pixelSize.Height;
-            var repaintRect = new Int32Rect(0, 0, width, height);
             var currentPixelBufferSize = width * height * 4;
             this._width = width;
             this._height = height;
@@ -166,7 +165,10 @@ namespace OpenTkWPFHost
                     };
                 }
 
-                /*var errorCode = GL.GetError();
+                var errorCode = GL.GetError();
+                Debug.WriteLine(errorCode.ToString());
+                // Debugger.Break();
+                /*
                 if (errorCode != ErrorCode.NoError)
                 {
                     throw new Exception(errorCode.ToString());

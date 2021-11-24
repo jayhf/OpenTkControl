@@ -99,7 +99,11 @@ namespace OpenTkWPFHost
                     MaxDegreeOfParallelism = 1,
                 });
             var frameBlock = new TransformBlock<FrameArgs, CanvasArgs>(args => { return canvas.Flush(args); },
-                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
+                new ExecutionDataflowBlockOptions()
+                {
+                    MaxDegreeOfParallelism = 1,
+                    SingleProducerConstrained = true,
+                });
             renderBlock.LinkTo(frameBlock);
             var canvasBlock = new ActionBlock<CanvasArgs>((args =>
             {
@@ -120,6 +124,7 @@ namespace OpenTkWPFHost
                 }
             }), new ExecutionDataflowBlockOptions()
             {
+                MaxDegreeOfParallelism = 1,
                 SingleProducerConstrained = true,
                 TaskScheduler = TaskScheduler.FromCurrentSynchronizationContext()
             });
@@ -135,60 +140,48 @@ namespace OpenTkWPFHost
             var procedure = this.RenderProcedure;
             var renderer = this.Renderer;
             var glSettings = this.GlSettings;
-            IRenderCanvas uiRenderCanvas = null;
-            IFrameBuffer frameBuffer = null;
-            IGraphicsContext sharedContext = null;
-            GLContextBinding glContextBinding;
-            try
-            {
-                RecentCanvasInfo = glSettings.CreateCanvasInfo(this);
-                var mainContext = procedure.Initialize(windowInfo, glSettings);
-                glContextBinding = new GLContextBinding(mainContext, windowInfo);
-                uiRenderCanvas = procedure.CreateCanvas();
-                frameBuffer = procedure.CreateFrameBuffer();
-                sharedContext = glSettings.CreateContext(windowInfo, mainContext);
-                GL.Enable(EnableCap.DebugOutput);
-                GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-                renderer.Initialize(mainContext);
-                this.SizeChanged += ThreadOpenTkControl_SizeChanged;
-            }
-            catch (Exception e)
-            {
-                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Inbuilt, e));
-                return;
-            }
-
-
-            BuildPipeline(new GLContextBinding(sharedContext, windowInfo), uiRenderCanvas, frameBuffer,
-                out var targetBlock, out var dataflowBlock);
-            glContextBinding.BindNull();
+            RecentCanvasInfo = glSettings.CreateCanvasInfo(this);
+            this.SizeChanged += ThreadOpenTkControl_SizeChanged;
+            var renderCanvas = procedure.CreateCanvas();
             _renderTask = Task.Run(async () =>
             {
                 using (_endThreadCts)
                 {
-                    await RenderThread(_endThreadCts.Token, glContextBinding, procedure, renderer, uiRenderCanvas,
-                        frameBuffer, targetBlock, dataflowBlock);
+                    await RenderThread(_endThreadCts.Token, glSettings, procedure, renderer, windowInfo, renderCanvas);
                 }
             });
         }
 
-        private async Task RenderThread(CancellationToken token, GLContextBinding binding, IRenderProcedure procedure,
-            IRenderer renderer, IRenderCanvas uiThreadCanvas, IFrameBuffer frameBuffer,
-            ITargetBlock<RenderArgs> targetBlock, IDataflowBlock endBlock)
+        private async Task RenderThread(CancellationToken token, GLSettings glSettings,
+            IRenderProcedure procedure, IRenderer renderer, IWindowInfo windowInfo, IRenderCanvas uiRenderCanvas)
         {
             #region initialize
 
-            binding.BindCurrentThread();
+            IFrameBuffer frameBuffer = null;
+            GLContextBinding glContextBinding = null;
+            ITargetBlock<RenderArgs> renderBlock;
+            IDataflowBlock actionblock;
             try
             {
+                var mainContext = procedure.Initialize(windowInfo, glSettings);
+                GL.Enable(EnableCap.DebugOutput);
+                GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
+                glContextBinding = new GLContextBinding(mainContext, windowInfo);
+                frameBuffer = procedure.CreateFrameBuffer();
                 if (!renderer.IsInitialized)
                 {
-                    renderer.Initialize(binding.Context);
+                    renderer.Initialize(mainContext);
                 }
+
+                var sharedBinding = glSettings.CreateBinding(glContextBinding);
+                sharedBinding.BindNull();
+                glContextBinding.BindCurrentThread();
+                BuildPipeline(sharedBinding, uiRenderCanvas, frameBuffer,
+                    out renderBlock, out actionblock);
             }
             catch (Exception e)
             {
-                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Initialize, e));
+                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Inbuilt, e));
                 return;
             }
 
@@ -217,8 +210,8 @@ namespace OpenTkWPFHost
                     {
                         canvasInfo = RecentCanvasInfo;
                         renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
-                        OnUITaskAsync(() => { uiThreadCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
-                        var pixelSize = canvasInfo.GetPixelSize();
+                        OnUITaskAsync(() => { uiRenderCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
+                        var pixelSize = RecentCanvasInfo.GetPixelSize();
                         procedure.SizeFrame(pixelSize);
                         frameBuffer.Release();
                         frameBuffer.Allocate(pixelSize);
@@ -227,11 +220,11 @@ namespace OpenTkWPFHost
 
                     if (RecentCanvasInfo.IsEmpty)
                     {
-                        await _sizeNotEmptyEvent.Wait(binding);
+                        await _sizeNotEmptyEvent.Wait(glContextBinding);
                         continue;
                     }
 
-                    if (!uiThreadCanvas.Ready)
+                    if (!uiRenderCanvas.Ready)
                     {
                         var spinWait = new SpinWait();
                         spinWait.SpinOnce();
@@ -242,7 +235,7 @@ namespace OpenTkWPFHost
 
                     if (!renderer.PreviewRender())
                     {
-                        await binding.Delay(30);
+                        await glContextBinding.Delay(30);
                         continue;
                     }
 
@@ -259,8 +252,7 @@ namespace OpenTkWPFHost
 
                         var postRender = procedure.PostRender();
                         OnAfterRender();
-                        targetBlock.SendAsync(postRender);
-                        // targetBlock.SendAsync(postRender);
+                        renderBlock.Post(postRender);
                     }
                     catch (Exception exception)
                     {
@@ -275,7 +267,7 @@ namespace OpenTkWPFHost
                         var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
                         if (renderMinus > 5)
                         {
-                            await binding.Delay((int)renderMinus);
+                            await glContextBinding.Delay((int)renderMinus);
                         }
                         else if (renderMinus > 0)
                         {
@@ -285,53 +277,16 @@ namespace OpenTkWPFHost
                         stopwatch.Restart();
                     }
 
-                    /*if (uiThreadCanvas.IsDirty)
-                    {
-                        OnUITaskAsync(() =>
-                        {
-                            using (var drawingContext = _drawingGroup.Open())
-                            {
-                                uiThreadCanvas.FlushFrame(drawingContext);
-                            }
-
-                            this.InvalidateVisual();
-                        });
-                        if (!uiThreadCanvas.CanAsyncFlush)
-                        {
-                            //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，此时上下文切换的开销小于wait
-                            await _renderSyncWaiter;
-                        }
-
-                        if (EnableFrameRateLimit)
-                        {
-                            var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
-                            if (renderMinus > 5)
-                            {
-                                await graphicsContext.Delay((int) renderMinus, _windowInfo);
-                            }
-                            else if (renderMinus > 0)
-                            {
-                                Thread.Sleep((int) renderMinus);
-                            }
-
-                            stopwatch.Restart();
-                        }
-                    }*/
-
-                    if (renderContinuously)
-                    {
-                        //read previous turn before swap buffer
-                        frameBuffer.SwapBuffer();
-                    }
+                    frameBuffer.SwapBuffer();
                 }
 
-                targetBlock.Complete();
+                renderBlock.Complete();
                 frameBuffer.Release();
                 renderer.Uninitialize();
                 stopwatch.Stop();
             }
 
-            await endBlock.Completion;
+            await actionblock.Completion;
         }
 
         private void CloseRenderThread()

@@ -99,6 +99,11 @@ namespace OpenTkWPFHost
             return new CanvasInfo((int) element.ActualWidth, (int) element.ActualHeight, dpiScaleX, dpiScaleY);
         }
 
+        public GLContextBinding CreateBinding(GLContextBinding binding)
+        {
+            return new GLContextBinding(CreateContext(binding.Info, binding.Context),binding.Info);
+        }
+
         public IGraphicsContext CreateContext(IWindowInfo windowInfo, IGraphicsContext sharedContext = null)
         {
             if (sharedContext == null)

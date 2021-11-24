@@ -33,7 +33,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// can set pixel buffer based on your machine specification. Recommend is double pbo.
         /// </summary>
-        public IFrameBuffer FrameBuffer { get; set; } = new MultiStoragePixelBuffer(3);
+        public IFrameBuffer FrameBuffer { get; set; } = new MultiStoragePixelBuffer(5);
 
         public bool IsInitialized { get; private set; }
 
