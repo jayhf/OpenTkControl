@@ -44,11 +44,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitmapCanvas.cs" />
-    <Compile Include="BitmapCanvasEx.cs" />
     <Compile Include="ContextWaiter.cs" />
     <Compile Include="DesignTimeHelper.cs" />
     <Compile Include="DoubleBuffer.cs" />
-    <Compile Include="DoubleDxCanvas.cs" />
     <Compile Include="DoublePixelBuffer.cs" />
     <Compile Include="BufferInfo.cs" />
     <Compile Include="DrawingDirective.cs" />
@@ -69,7 +67,6 @@
     <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
     <Compile Include="IRenderProcedure.cs" />
-    <Compile Include="MultiPixelBuffer.cs" />
     <Compile Include="MultiStoragePixelBuffer.cs" />
     <Compile Include="OpenGLError.cs" />
     <Compile Include="CanvasInfo.cs" />
@@ -85,11 +82,9 @@
     <Compile Include="SolitaryPixelBuffer.cs" />
     <Compile Include="StatefulWaiter.cs" />
     <Compile Include="SyncMode.cs" />
-    <Compile Include="TestFramework.cs" />
     <Compile Include="ThreadOpenTkControl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UiOpenTkControl.cs" />
-    <Compile Include="UnstartedControlHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="JetBrains.Annotations">

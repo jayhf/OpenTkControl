@@ -12,7 +12,7 @@ namespace ConsoleApp1
     {
         static void Main(string[] args)
         {
-            using (Game game = new Game(1280, 720, "LearnOpenTK"))
+            using (Game game = new Game(2560, 1040, "LearnOpenTK"))
             {
                 game.VSync = OpenTK.VSyncMode.Off;
                 game.Run();

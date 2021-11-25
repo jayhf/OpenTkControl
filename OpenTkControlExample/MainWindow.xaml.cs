@@ -1,19 +1,7 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
-using System.Numerics;
 using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media.Imaging;
-using OpenTK.Graphics;
-using OpenTkWPFHost;
 using TestRenderer;
-using Point = System.Drawing.Point;
-using Vector = System.Numerics.Vector;
 
 
 namespace OpenTkControlExample

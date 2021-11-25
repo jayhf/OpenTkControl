@@ -13,6 +13,7 @@ namespace OpenTkWPFHost
     /// </summary>
     public class MultiStoragePixelBuffer : IPixelBuffer
     {
+        private readonly uint _bufferCount;
 
         public MultiStoragePixelBuffer(uint bufferCount)
         {
@@ -20,6 +21,8 @@ namespace OpenTkWPFHost
             {
                 throw new ArgumentOutOfRangeException(nameof(bufferCount));
             }
+
+            _bufferCount = bufferCount;
 
             _bufferInfos = new BufferInfo[bufferCount];
 
@@ -46,24 +49,6 @@ namespace OpenTkWPFHost
         const BufferStorageFlags StorageFlags = BufferStorageFlags.MapWriteBit |
                                                 BufferStorageFlags.MapPersistentBit |
                                                 BufferStorageFlags.MapCoherentBit;
-
-        private IGraphicsContext graphicsContext;
-
-        private CancellationTokenSource tokenSource = new CancellationTokenSource();
-
-        public void Attach(GLSettings glSettings, IGraphicsContext context, IWindowInfo info)
-        {
-            var tokenSourceToken = tokenSource.Token;
-            Task.Run(() =>
-            {
-                graphicsContext = new GraphicsContext(glSettings.GraphicsMode, info, context, glSettings.MajorVersion,
-                    glSettings.MinorVersion, glSettings.GraphicsContextFlags);
-                while (!tokenSourceToken.IsCancellationRequested)
-                {
-                    
-                }
-            }, tokenSourceToken);
-        }
 
         /// <summary>
         /// 
@@ -130,7 +115,7 @@ namespace OpenTkWPFHost
         public void FlushCurrentFrame()
         {
             // GL.Flush();
-            var writeBufferIndex = _currentWriteBufferIndex % 3;
+            var writeBufferIndex = _currentWriteBufferIndex % _bufferCount;
             var writeBufferInfo = _bufferInfos[writeBufferIndex];
             GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,

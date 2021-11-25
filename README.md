@@ -15,12 +15,18 @@ So I commenced combination of  [official project](https://github.com/opentk/GLWp
 
 3. Async GL.ReadPixel and double pixel buffer object in writeablebitmap.
 
-4. Can render user invisible frame.
+4. Use storage and sync object to boost frame.
 
-6. Can set framerate.
+5. Can set frame rate.
 
-7. Can manually call render.
+6. Provider a 2d coordinate chart example.
 
-8. Provider a 2d coordinate chart example.
 
-![Mdpng](mdpng.png)
+As wpf use dx to render any control. I've tried to use pipeline but frame rate hadn't boost, you can see it in branch net47-dev-datafoow.
+
+The following shows gamewindow can reach about 1200 fps but my control only be limited to 200 use same render code.
+
+So I suggest using opengl winform control for maximum fps.
+
+![imgpng1](wpfhost.png)
+![imgpng2](rawopengl.png)
