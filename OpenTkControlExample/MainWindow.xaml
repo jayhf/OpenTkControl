@@ -13,7 +13,7 @@
     <Grid>
         <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
-                                           MaxFrameRate="60"
+                                           MaxFrameRate="500"
                                            IsRenderContinuously="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
                 <openTkWpfHost:BitmapProcedure />

@@ -154,15 +154,16 @@ namespace OpenTkWPFHost
                 // GL.GetSync(fence,SyncParameterName.SyncStatus,sizeof(IntPtr));
                 // GL.WaitSync(fence, WaitSyncFlags.None, 0);
                 var clientWaitSync = GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
+                GL.DeleteSync(fence);
+                return new BitmapFrameArgs()
+                {
+                    PixelSize = args.PixelSize,
+                    BufferInfo = bufferInfo,
+                };
                 if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
                     clientWaitSync == WaitSyncStatus.ConditionSatisfied)
                 {
-                    GL.DeleteSync(fence);
-                    return new BitmapFrameArgs()
-                    {
-                        PixelSize = args.PixelSize,
-                        BufferInfo = bufferInfo,
-                    };
+                    
                 }
 
                 var errorCode = GL.GetError();

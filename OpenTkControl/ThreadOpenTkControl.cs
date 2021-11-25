@@ -171,14 +171,8 @@ namespace OpenTkWPFHost
                 GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
                 glContextBinding = new GLContextBinding(mainContext, windowInfo);
                 frameBuffer = procedure.CreateFrameBuffer();
-                if (!renderer.IsInitialized)
-                {
-                    renderer.Initialize(mainContext);
-                }
-
                 var sharedBinding = glSettings.CreateBinding(glContextBinding);
                 sharedBinding.BindNull();
-                glContextBinding.BindCurrentThread();
                 BuildPipeline(sharedBinding, uiRenderCanvas, frameBuffer, taskScheduler, out renderBlock, out actionblock);
             }
             catch (Exception e)
@@ -188,9 +182,13 @@ namespace OpenTkWPFHost
             }
 
             #endregion
-
+            glContextBinding.BindCurrentThread();
             CanvasInfo canvasInfo = null;
             GlRenderEventArgs renderEventArgs = null;
+            if (!renderer.IsInitialized)
+            {
+                renderer.Initialize(glContextBinding.Context);
+            }
             var stopwatch = new Stopwatch();
             stopwatch.Start();
             using (procedure)

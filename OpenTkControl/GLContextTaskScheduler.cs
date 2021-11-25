@@ -26,16 +26,13 @@ namespace OpenTkWPFHost
                     TryExecuteTask(task);
                 }
             });
+            _thread.Start();
         }
 
 
         protected override void QueueTask(Task task)
         {
             _tasks.Add(task);
-            if (!_thread.IsAlive)
-            {
-                _thread.Start();
-            }
         }
 
         protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)

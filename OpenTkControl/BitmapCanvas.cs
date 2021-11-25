@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -42,6 +43,10 @@ namespace OpenTkWPFHost
         }
 
 
+        private ReaderWriterLockSlim readerWriterLockSlim = new ReaderWriterLockSlim();
+        
+        
+
         public CanvasArgs Flush(FrameArgs frame)
         {
             if (frame == null)
@@ -49,16 +54,24 @@ namespace OpenTkWPFHost
                 return null;
             }
 
-            var bitmapFrameArgs = (BitmapFrameArgs)frame;
+            var bitmapFrameArgs = (BitmapFrameArgs) frame;
             var bufferInfo = bitmapFrameArgs.BufferInfo;
             var bufferSize = bufferInfo.BufferSize;
-            unsafe
+            try
             {
-                Buffer.MemoryCopy(bufferInfo.MapBufferIntPtr.ToPointer(),
-                    _displayBuffer.ToPointer(),
-                    bufferSize, bufferSize);
+                readerWriterLockSlim.EnterWriteLock();
+                unsafe
+                {
+                    Buffer.MemoryCopy(bufferInfo.MapBufferIntPtr.ToPointer(),
+                        _displayBuffer.ToPointer(),
+                        bufferSize, bufferSize);
+                }
             }
-
+            finally
+            {
+                readerWriterLockSlim.ExitWriteLock();
+            }
+            
             bufferInfo.HasBuffer = false;
             return new BitmapCanvasArgs()
             {
@@ -69,17 +82,19 @@ namespace OpenTkWPFHost
 
         public bool Commit(DrawingContext context, CanvasArgs args)
         {
-            var canvasArgs = (BitmapCanvasArgs)args;
+            var canvasArgs = (BitmapCanvasArgs) args;
             if (canvasArgs != null && _int32Rect.Equals(canvasArgs.Int32Rect))
             {
                 try
                 {
+                    readerWriterLockSlim.EnterReadLock();
                     _bitmap.Lock();
                     _bitmap.AddDirtyRect(_int32Rect);
                 }
                 finally
                 {
                     _bitmap.Unlock();
+                    readerWriterLockSlim.ExitReadLock();
                 }
 
                 context.PushTransform(this._transformGroup);
