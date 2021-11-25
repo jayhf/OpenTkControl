@@ -75,6 +75,17 @@ namespace OpenTkWPFHost
             }), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
         }
 
+        public FpsCounter(Action<FpsCounter> action)
+        {
+            this.Color = Colors.MediumPurple;
+            _timer = new Timer((state =>
+            {
+                Fps = _frameCount;
+                _frameCount = 0;
+                action.Invoke(this);
+            }), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        }
+
         public void DrawFps(DrawingContext drawingContext, Point point)
         {
             var formattedText = new FormattedText($"{Title} :{Fps}", _cultureInfo,
