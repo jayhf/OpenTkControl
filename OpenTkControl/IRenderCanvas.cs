@@ -12,8 +12,6 @@ namespace OpenTkWPFHost
         /// </summary>
         bool CanAsyncFlush { get; }
 
-        CanvasInfo Info { get; }
-
         /// <summary>
         /// indicate whether ready to render
         /// </summary>
@@ -22,6 +20,8 @@ namespace OpenTkWPFHost
         void Allocate(CanvasInfo info);
 
         CanvasArgs Flush(FrameArgs frame);
+
+        void Swap();
 
         /// <summary>
         /// commit to ui

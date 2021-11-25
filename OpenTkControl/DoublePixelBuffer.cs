@@ -86,7 +86,7 @@ namespace OpenTkWPFHost
             return null;//todo:
         }
 
-        public void SwapBuffer()
+        public void Swap()
         {
             (_readBufferInfo, _writeBufferInfo) = (_writeBufferInfo, _readBufferInfo);
         }

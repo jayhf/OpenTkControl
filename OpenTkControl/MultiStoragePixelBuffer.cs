@@ -9,6 +9,12 @@ using Buffer = OpenTK.Graphics.OpenGL4.Buffer;
 
 namespace OpenTkWPFHost
 {
+    public enum GLSignalStatus : int
+    {
+        Signaled = 0x9119,
+        UnSignaled = 0x9118,
+    }
+
     /// <summary>
     /// highest performance, but possibly cause stuck on low end cpu (2 physical core)
     /// </summary>
@@ -26,6 +32,10 @@ namespace OpenTkWPFHost
             _bufferCount = bufferCount;
 
             _bufferInfos = new BufferInfo[bufferCount];
+            for (int i = 0; i < bufferCount; i++)
+            {
+                _bufferInfos[i] = new BufferInfo();
+            }
         }
 
         public MultiStoragePixelBuffer() : this(3)
@@ -67,24 +77,21 @@ namespace OpenTkWPFHost
             var currentPixelBufferSize = width * height * 4;
             this._width = width;
             this._height = height;
-            for (var i = 0; i < _bufferInfos.Length; i++)
+            foreach (var bufferInfo in _bufferInfos)
             {
                 var writeBuffer = GL.GenBuffer();
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBuffer);
                 GL.BufferStorage(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero, StorageFlags);
                 var mapBufferRange = GL.MapBufferRange(BufferTarget.PixelPackBuffer, IntPtr.Zero,
                     currentPixelBufferSize, AccessMask);
-                _bufferInfos[i] = new BufferInfo
-                {
-                    BufferSize = currentPixelBufferSize,
-                    GlBufferPointer = writeBuffer,
-                    MapBufferIntPtr = mapBufferRange,
-                    Fence = IntPtr.Zero,
-                    PixelSize = pixelSize,
-                };
+                bufferInfo.BufferSize = currentPixelBufferSize;
+                bufferInfo.GlBufferPointer = writeBuffer;
+                bufferInfo.MapBufferIntPtr = mapBufferRange;
+                bufferInfo.Fence = IntPtr.Zero;
+                bufferInfo.PixelSize = pixelSize;
             }
 
-            _writeBufferInfo = _bufferInfos[_currentWriteBufferIndex];
+            this.Swap();
         }
 
         public void Release()
@@ -125,13 +132,13 @@ namespace OpenTkWPFHost
                 IntPtr.Zero);
             _writeBufferInfo.Fence = GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, WaitSyncFlags.None);
             _writeBufferInfo.HasBuffer = true;
-            GL.Flush();
+            GL.Finish();
             return _writeBufferInfo;
         }
 
         private BufferInfo _writeBufferInfo;
 
-        public void SwapBuffer()
+        public void Swap()
         {
             _currentWriteBufferIndex++;
             var writeBufferIndex = _currentWriteBufferIndex % _bufferCount;
@@ -149,31 +156,26 @@ namespace OpenTkWPFHost
             var fence = bufferInfo.Fence;
             if (fence != IntPtr.Zero)
             {
-                // GL.GetSync(fence, SyncParameterName.SyncStatus, 1, out int length, out int status);
-
-                // GL.GetSync(fence,SyncParameterName.SyncStatus,sizeof(IntPtr));
-                // GL.WaitSync(fence, WaitSyncFlags.None, 0);
                 var clientWaitSync = GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
-                GL.DeleteSync(fence);
-                return new BitmapFrameArgs()
-                {
-                    PixelSize = args.PixelSize,
-                    BufferInfo = bufferInfo,
-                };
                 if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
                     clientWaitSync == WaitSyncStatus.ConditionSatisfied)
                 {
-                    
+                    GL.DeleteSync(fence);
+                    return new BitmapFrameArgs()
+                    {
+                        PixelSize = args.PixelSize,
+                        BufferInfo = bufferInfo,
+                    };
                 }
 
-                var errorCode = GL.GetError();
-                Debug.WriteLine(errorCode.ToString());
-                // Debugger.Break();
-                /*
-                if (errorCode != ErrorCode.NoError)
+                GL.GetSync(fence, SyncParameterName.SyncStatus, 1, out int length, out int status);
+                if (status == (int) GLSignalStatus.UnSignaled)
                 {
-                    throw new Exception(errorCode.ToString());
-                }*/
+                    var errorCode = GL.GetError();
+                    Debug.WriteLine(errorCode.ToString());
+                }
+
+                Debug.WriteLine(clientWaitSync.ToString());
             }
 
             bufferInfo.HasBuffer = false;

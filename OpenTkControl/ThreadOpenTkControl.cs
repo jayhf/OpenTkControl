@@ -118,9 +118,9 @@ namespace OpenTkWPFHost
                 {
                     commit = canvas.Commit(drawingContext, args);
                 }
-
                 if (commit)
                 {
+                    canvas.Swap();
                     this.InvalidateVisual();
                 }
             }), new ExecutionDataflowBlockOptions()
@@ -277,7 +277,7 @@ namespace OpenTkWPFHost
                         stopwatch.Restart();
                     }
 
-                    frameBuffer.SwapBuffer();
+                    frameBuffer.Swap();
                 }
 
                 renderBlock.Complete();

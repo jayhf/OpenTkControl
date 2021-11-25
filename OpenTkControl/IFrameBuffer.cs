@@ -18,7 +18,7 @@ namespace OpenTkWPFHost
         /// </summary>
         BufferInfo FlushAsync();
 
-        void SwapBuffer();
+        void Swap();
         
         FrameArgs ReadFrames(RenderArgs args);
 
