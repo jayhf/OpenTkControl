@@ -45,8 +45,6 @@ namespace OpenTkWPFHost
 
         private ReaderWriterLockSlim readerWriterLockSlim = new ReaderWriterLockSlim();
         
-        
-
         public CanvasArgs Flush(FrameArgs frame)
         {
             if (frame == null)
