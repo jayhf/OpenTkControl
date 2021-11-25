@@ -42,9 +42,9 @@ namespace OpenTkWPFHost
 
         private readonly DebugProc _debugProc;
 
-        private readonly FpsCounter _glFps = new FpsCounter() { Title = "GLFps" };
+        private readonly FpsCounter _glFps = new FpsCounter() {Title = "GLFps"};
 
-        private readonly FpsCounter _controlFps = new FpsCounter() { Title = "ControlFps" };
+        private readonly FpsCounter _controlFps = new FpsCounter() {Title = "ControlFps"};
 
         protected volatile CanvasInfo RecentCanvasInfo = new CanvasInfo(0, 0, 96, 96);
 
@@ -74,6 +74,7 @@ namespace OpenTkWPFHost
 
         private readonly EventWaiter _renderContinuousWaiter = new EventWaiter();
 
+
         protected override void OnRender(DrawingContext drawingContext)
         {
             drawingContext.DrawDrawing(_drawingGroup);
@@ -87,7 +88,7 @@ namespace OpenTkWPFHost
         }
 
         private void BuildPipeline(GLContextBinding contextBinding, IRenderCanvas canvas, IFrameBuffer frameBuffer,
-            out ITargetBlock<RenderArgs> targetBlock, out IDataflowBlock dataflowBlock)
+            TaskScheduler scheduler, out ITargetBlock<RenderArgs> targetBlock, out IDataflowBlock dataflowBlock)
         {
             // contextBinding.BindNull();
             var renderBlock = new TransformBlock<RenderArgs, FrameArgs>(
@@ -126,7 +127,7 @@ namespace OpenTkWPFHost
             {
                 MaxDegreeOfParallelism = 1,
                 SingleProducerConstrained = true,
-                TaskScheduler = TaskScheduler.FromCurrentSynchronizationContext()
+                TaskScheduler = scheduler,
             });
             frameBlock.LinkTo(canvasBlock);
             targetBlock = renderBlock;
@@ -143,16 +144,18 @@ namespace OpenTkWPFHost
             RecentCanvasInfo = glSettings.CreateCanvasInfo(this);
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
             var renderCanvas = procedure.CreateCanvas();
+            var scheduler = TaskScheduler.FromCurrentSynchronizationContext();
             _renderTask = Task.Run(async () =>
             {
                 using (_endThreadCts)
                 {
-                    await RenderThread(_endThreadCts.Token, glSettings, procedure, renderer, windowInfo, renderCanvas);
+                    await RenderThread(_endThreadCts.Token, glSettings, scheduler, procedure, renderer, windowInfo,
+                        renderCanvas);
                 }
             });
         }
 
-        private async Task RenderThread(CancellationToken token, GLSettings glSettings,
+        private async Task RenderThread(CancellationToken token, GLSettings glSettings, TaskScheduler taskScheduler,
             IRenderProcedure procedure, IRenderer renderer, IWindowInfo windowInfo, IRenderCanvas uiRenderCanvas)
         {
             #region initialize
@@ -176,8 +179,7 @@ namespace OpenTkWPFHost
                 var sharedBinding = glSettings.CreateBinding(glContextBinding);
                 sharedBinding.BindNull();
                 glContextBinding.BindCurrentThread();
-                BuildPipeline(sharedBinding, uiRenderCanvas, frameBuffer,
-                    out renderBlock, out actionblock);
+                BuildPipeline(sharedBinding, uiRenderCanvas, frameBuffer, taskScheduler, out renderBlock, out actionblock);
             }
             catch (Exception e)
             {
@@ -267,11 +269,11 @@ namespace OpenTkWPFHost
                         var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
                         if (renderMinus > 5)
                         {
-                            await glContextBinding.Delay((int)renderMinus);
+                            await glContextBinding.Delay((int) renderMinus);
                         }
                         else if (renderMinus > 0)
                         {
-                            Thread.Sleep((int)renderMinus);
+                            Thread.Sleep((int) renderMinus);
                         }
 
                         stopwatch.Restart();
