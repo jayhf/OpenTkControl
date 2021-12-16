@@ -163,15 +163,15 @@ namespace OpenTkWPFHost
             return targetBitmap;
         }
 
-        private async Task RenderThread(CancellationToken token, IRenderProcedure renderProcedureValue,
-            IRenderer renderer, IRenderCanvas uiThreadCanvas, GLSettings settings)
+        private async Task RenderThread(CancellationToken token, IRenderProcedure renderProcedure,
+            IRenderer renderer, IRenderCanvas canvas, GLSettings settings)
         {
             #region initialize
 
             IGraphicsContext graphicsContext;
             try
             {
-                graphicsContext = renderProcedureValue.Initialize(_windowInfo, settings);
+                graphicsContext = renderProcedure.Initialize(_windowInfo, settings);
                 GL.Enable(EnableCap.DebugOutput);
                 GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
                 renderer.Initialize(graphicsContext);
@@ -205,7 +205,7 @@ namespace OpenTkWPFHost
             GlRenderEventArgs renderEventArgs = null;
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            using (renderProcedureValue)
+            using (renderProcedure)
             {
                 while (!token.IsCancellationRequested)
                 {
@@ -224,8 +224,8 @@ namespace OpenTkWPFHost
                     {
                         canvasInfo = RecentCanvasInfo;
                         renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
-                        OnUITaskAsync(() => { uiThreadCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
-                        renderProcedureValue.SizeFrame(canvasInfo);
+                        OnUITaskAsync(() => { canvas.Allocate(RecentCanvasInfo); }).Wait(token);
+                        renderProcedure.SizeFrame(canvasInfo);
                         renderer.Resize(canvasInfo.GetPixelSize());
                     }
 
@@ -235,7 +235,7 @@ namespace OpenTkWPFHost
                         continue;
                     }
 
-                    if (!uiThreadCanvas.Ready)
+                    if (!canvas.Ready)
                     {
                         var spinWait = new SpinWait();
                         spinWait.SpinOnce();
@@ -244,33 +244,37 @@ namespace OpenTkWPFHost
                         continue;
                     }
 
-                    if (!renderer.PreviewRender())
-                    {
-                        await graphicsContext.Delay(30, _windowInfo);
-                        continue;
-                    }
-
                     try
                     {
-                        OnBeforeRender();
-                        uiThreadCanvas.Prepare();
-                        renderProcedureValue.PreRender();
-                        renderer.Render(renderEventArgs);
-                        graphicsContext.SwapBuffers(); //swap?
-                        if (ShowFps)
+                        canvas.Prepare();
+                        if (renderer.PreviewRender())
                         {
-                            _glFps.Increment();
+                            OnBeforeRender();
+                            renderProcedure.PreRender();
+                            renderer.Render(renderEventArgs);
+                            graphicsContext.SwapBuffers(); //swap?
+                            if (ShowFps)
+                            {
+                                _glFps.Increment();
+                            }
+
+                            if (!renderContinuously)
+                            {
+                                renderProcedure.SwapBuffer();
+                            }
+
+                            renderProcedure.PostRender();
+                            OnAfterRender();
+                        }
+                        else
+                        {
+                            await graphicsContext.Delay(30, _windowInfo);
                         }
 
-                        if (!renderContinuously)
+                        if (renderProcedure.BindCanvas(canvas))
                         {
-                            renderProcedureValue.SwapBuffer();
+                            OnUITaskAsync(canvas.Flush).Wait(token);
                         }
-
-                        renderProcedureValue.PostRender();
-                        renderProcedureValue.BindCanvas(uiThreadCanvas);
-                        OnUITaskAsync(() => uiThreadCanvas.Flush()).Wait(token);
-                        OnAfterRender();
                     }
                     catch (OperationCanceledException)
                     {
@@ -284,18 +288,18 @@ namespace OpenTkWPFHost
                     {
                     }
 
-                    if (uiThreadCanvas.IsDirty)
+                    if (canvas.IsDirty)
                     {
                         OnUITaskAsync(() =>
                         {
                             using (var drawingContext = _drawingGroup.Open())
                             {
-                                uiThreadCanvas.FlushFrame(drawingContext);
+                                canvas.FlushFrame(drawingContext);
                             }
 
                             this.InvalidateVisual();
                         });
-                        if (!uiThreadCanvas.CanAsyncFlush)
+                        if (!canvas.CanAsyncFlush)
                         {
                             //由于wpf的默认刷新率为60，意味着等待延迟最高达16ms，此时上下文切换的开销小于wait
                             await _renderSyncWaiter;
@@ -320,7 +324,7 @@ namespace OpenTkWPFHost
                     if (renderContinuously)
                     {
                         //read previous turn before swap buffer
-                        renderProcedureValue.SwapBuffer();
+                        renderProcedure.SwapBuffer();
                     }
                 }
 

@@ -22,9 +22,10 @@ namespace OpenTkWPFHost
 
         public bool IsInitialized { get; private set; }
 
-        public void BindCanvas(IRenderCanvas canvas)
+        public bool BindCanvas(IRenderCanvas canvas)
         {
             ((DxCanvas) canvas).FrameBuffer = this.DxRenderTargetHandle;
+            return true;
         }
 
         public IRenderCanvas CreateCanvas()

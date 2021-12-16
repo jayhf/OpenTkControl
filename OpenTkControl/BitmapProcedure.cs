@@ -54,13 +54,16 @@ namespace OpenTkWPFHost
             PixelBuffer.FlushCurrentFrame();
         }
 
-        public void BindCanvas(IRenderCanvas canvas)
+        public bool BindCanvas(IRenderCanvas canvas)
         {
             var bitmapCanvas = (BitmapCanvas) canvas;
             if (PixelBuffer.TryReadFromBufferInfo(bitmapCanvas.DisplayBuffer, out var bufferInfo))
             {
                 bitmapCanvas.ReadBufferInfo = bufferInfo;
+                return true;
             }
+
+            return false;
         }
 
         public IRenderCanvas CreateCanvas()
@@ -72,8 +75,9 @@ namespace OpenTkWPFHost
         {
             _windowInfo = window;
             // var mode = new GraphicsMode(DisplayDevice.Default.BitsPerPixel, 16, 0, 4, 0, 2, false);
-            _context = new GraphicsContext(settings.GraphicsMode, _windowInfo, settings.MajorVersion, settings.MinorVersion,
-                GraphicsContextFlags.Default){SwapInterval = (int)settings.SyncMode};
+            _context = new GraphicsContext(settings.GraphicsMode, _windowInfo, settings.MajorVersion,
+                settings.MinorVersion,
+                GraphicsContextFlags.Default) {SwapInterval = (int) settings.SyncMode};
             _context.LoadAll();
             _context.MakeCurrent(_windowInfo);
             IsInitialized = true;

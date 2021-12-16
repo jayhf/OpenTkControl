@@ -18,7 +18,12 @@ namespace OpenTkWPFHost
 
         void PostRender();
 
-        void BindCanvas(IRenderCanvas canvas);
+        /// <summary>
+        /// bind canvas to procedure, let canvas can read output from procedure
+        /// </summary>
+        /// <param name="canvas"></param>
+        /// <returns>indicate whether output is available</returns>
+        bool BindCanvas(IRenderCanvas canvas);
 
         IRenderCanvas CreateCanvas();
 
