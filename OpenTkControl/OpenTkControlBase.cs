@@ -34,6 +34,7 @@ namespace OpenTkWPFHost
 
         public event EventHandler<RenderErrorArgs> RenderErrorReceived;
 
+
         /// <summary>
         /// renderer is ready
         /// </summary>
@@ -535,5 +536,6 @@ namespace OpenTkWPFHost
         {
             RenderErrorReceived?.Invoke(this, e);
         }
+
     }
 }

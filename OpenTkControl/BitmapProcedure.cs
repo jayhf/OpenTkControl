@@ -57,7 +57,8 @@ namespace OpenTkWPFHost
         
         public IRenderCanvas CreateCanvas()
         {
-            return new BitmapCanvas();
+            //over than 2 will occasion flash
+            return new BitmapCanvas(2);
         }
 
         public IFrameBuffer CreateFrameBuffer()

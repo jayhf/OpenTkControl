@@ -30,6 +30,16 @@ namespace OpenTkWPFHost
     /// </summary>
     public class ThreadOpenTkControl : OpenTkControlBase
     {
+        public static readonly DependencyProperty SourceProperty = DependencyProperty.Register(
+            "Source", typeof(ImageSource), typeof(ThreadOpenTkControl),
+            new FrameworkPropertyMetadata(default(ImageSource), FrameworkPropertyMetadataOptions.AffectsRender));
+
+        public ImageSource Source
+        {
+            get { return (ImageSource) GetValue(SourceProperty); }
+            set { SetValue(SourceProperty, value); }
+        }
+
         /// <summary>
         /// The Thread object for the rendering thread， use origin thread but not task lest context switch
         /// </summary>
@@ -87,18 +97,29 @@ namespace OpenTkWPFHost
             }
         }
 
+        private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 2);
+
         private void BuildPipeline(GLContextBinding contextBinding, IRenderCanvas canvas, IFrameBuffer frameBuffer,
-            TaskScheduler scheduler, out ITargetBlock<RenderArgs> targetBlock, out ActionBlock<CanvasArgs> dataflowBlock)
+            TaskScheduler scheduler, out ITargetBlock<RenderArgs> targetBlock,
+            out ActionBlock<CanvasArgs> dataflowBlock)
         {
             // run on gl thread, read buffer from pbo.
             var renderBlock = new TransformBlock<RenderArgs, FrameArgs>(
-                args => { return frameBuffer.ReadFrames(args); },
+                args =>
+                {
+                    if (ShowFps)
+                    {
+                        _glFps.Increment();
+                    }
+
+                    return frameBuffer.ReadFrames(args);
+                },
                 new ExecutionDataflowBlockOptions()
                 {
                     SingleProducerConstrained = true,
                     TaskScheduler = new GLContextTaskScheduler(contextBinding, _debugProc),
                     MaxDegreeOfParallelism = 1,
-                    // BoundedCapacity = 10,
+                    BoundedCapacity = 1,
                 });
             //copy buffer to image source
             var frameBlock = new TransformBlock<FrameArgs, CanvasArgs>(args => { return canvas.Flush(args); },
@@ -106,36 +127,66 @@ namespace OpenTkWPFHost
                 {
                     MaxDegreeOfParallelism = 1,
                     SingleProducerConstrained = true,
-                    // BoundedCapacity = 10,
+                    BoundedCapacity = 1,
                 });
             renderBlock.LinkTo(frameBlock);
             //call render 
             var canvasBlock = new ActionBlock<CanvasArgs>((args =>
             {
-                if (args == null)
+                try
                 {
-                    return;
-                }
+                    if (args == null)
+                    {
+                        return;
+                    }
 
-                bool commit;
-                using (var drawingContext = _drawingGroup.Open())
-                {
-                    commit = canvas.Commit(drawingContext, args);
-                }
+                    bool commit;
+                    using (var drawingContext = _drawingGroup.Open())
+                    {
+                        commit = canvas.Commit(drawingContext, args);
+                    }
 
-                if (commit)
+                    if (commit)
+                    {
+                        canvas.Swap();
+                        this.InvalidateVisual();
+                        // _controlFps.Increment();//when set here, rate will differ from onrender method.
+                    }
+                }
+                finally
                 {
-                    canvas.Swap();
-                    this.InvalidateVisual();
+                    // _semaphoreSlim.Release();
                 }
             }), new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = 1,
                 SingleProducerConstrained = true,
                 TaskScheduler = scheduler,
-                // BoundedCapacity = 10,
+                BoundedCapacity = 1,
             });
             frameBlock.LinkTo(canvasBlock);
+            renderBlock.Completion.ContinueWith((task =>
+            {
+                if (task.IsFaulted)
+                {
+                    ((IDataflowBlock) frameBlock).Fault(task.Exception);
+                }
+                else
+                {
+                    frameBlock.Complete();
+                }
+            }));
+            frameBlock.Completion.ContinueWith((task =>
+            {
+                if (task.IsFaulted)
+                {
+                    ((IDataflowBlock) canvasBlock).Fault(task.Exception);
+                }
+                else
+                {
+                    canvasBlock.Complete();
+                }
+            }));
             targetBlock = renderBlock;
             dataflowBlock = canvasBlock;
         }
@@ -254,20 +305,11 @@ namespace OpenTkWPFHost
                         procedure.PreRender();
                         renderer.Render(renderEventArgs);
                         // graphicsContext.SwapBuffers(); //swap?
-                        if (ShowFps)
-                        {
-                            _glFps.Increment();
-                        }
-
                         var postRender = procedure.PostRender();
                         OnAfterRender();
-                        var sendAsync = renderBlock.Post(postRender);
-                        // var sendAsync = await renderBlock.SendAsync(postRender, token);
-                        Debug.WriteLine(actionBlock.InputCount); 
-                        if (!sendAsync)
-                        {
-                            Debugger.Break();
-                        }
+                        // var sendAsync = renderBlock.Post(postRender);
+                        renderBlock.SendAsync(postRender, token).Wait(token);
+                        // _semaphoreSlim.Wait(token);
                     }
                     catch (Exception exception)
                     {
@@ -304,7 +346,7 @@ namespace OpenTkWPFHost
             await actionBlock.Completion;
         }
 
-        private void CloseRenderThread()
+        private async Task CloseRenderThread()
         {
             try
             {
@@ -320,19 +362,18 @@ namespace OpenTkWPFHost
                 }
 
                 _renderContinuousWaiter.ForceSet();
-                _renderTask.Wait();
+                await _renderTask;
             }
         }
-
 
         protected override void ResumeRender()
         {
             _renderContinuousWaiter.TrySet();
         }
 
-        protected override void CloseRenderer()
+        protected override async void CloseRenderer()
         {
-            CloseRenderThread();
+            await CloseRenderThread();
             base.CloseRenderer();
         }
 

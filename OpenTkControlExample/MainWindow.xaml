@@ -40,7 +40,7 @@
                        Foreground="White" />
             <Slider Width="666"
                     Margin="20"
-                    Minimum="0"
+                    Minimum="10"
                     ValueChanged="Slider_OnValueChanged"
                     x:Name="Slider" />
             <TextBlock Text="frame rate:"
@@ -50,6 +50,7 @@
                     Minimum="0"
                     Value="0"
                     ValueChanged="FrameRate_OnValueChanged" />
+            <ListBox x:Name="ItemsControl"></ListBox>
         </StackPanel>
 
         <!--<openTkWpfHost:TestFrameworkElement Width="300"

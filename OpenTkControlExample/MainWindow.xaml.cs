@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
@@ -34,6 +36,8 @@ namespace OpenTkControlExample
             this.OpenTkControl.ExceptionOccurred += OpenTkControl_ExceptionOccurred;
             this.OpenTkControl.OpenGlErrorReceived += OpenTkControl_OpenGlErrorReceived;
         }
+
+
         private void OpenTkControl_OpenGlErrorReceived(object sender, OpenGlErrorArgs e)
         {
             var s = e.ToString();
