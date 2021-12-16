@@ -88,9 +88,9 @@ namespace OpenTkWPFHost
         }
 
         private void BuildPipeline(GLContextBinding contextBinding, IRenderCanvas canvas, IFrameBuffer frameBuffer,
-            TaskScheduler scheduler, out ITargetBlock<RenderArgs> targetBlock, out IDataflowBlock dataflowBlock)
+            TaskScheduler scheduler, out ITargetBlock<RenderArgs> targetBlock, out ActionBlock<CanvasArgs> dataflowBlock)
         {
-            // contextBinding.BindNull();
+            // run on gl thread, read buffer from pbo.
             var renderBlock = new TransformBlock<RenderArgs, FrameArgs>(
                 args => { return frameBuffer.ReadFrames(args); },
                 new ExecutionDataflowBlockOptions()
@@ -98,14 +98,18 @@ namespace OpenTkWPFHost
                     SingleProducerConstrained = true,
                     TaskScheduler = new GLContextTaskScheduler(contextBinding, _debugProc),
                     MaxDegreeOfParallelism = 1,
+                    // BoundedCapacity = 10,
                 });
+            //copy buffer to image source
             var frameBlock = new TransformBlock<FrameArgs, CanvasArgs>(args => { return canvas.Flush(args); },
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 1,
                     SingleProducerConstrained = true,
+                    // BoundedCapacity = 10,
                 });
             renderBlock.LinkTo(frameBlock);
+            //call render 
             var canvasBlock = new ActionBlock<CanvasArgs>((args =>
             {
                 if (args == null)
@@ -118,6 +122,7 @@ namespace OpenTkWPFHost
                 {
                     commit = canvas.Commit(drawingContext, args);
                 }
+
                 if (commit)
                 {
                     canvas.Swap();
@@ -128,6 +133,7 @@ namespace OpenTkWPFHost
                 MaxDegreeOfParallelism = 1,
                 SingleProducerConstrained = true,
                 TaskScheduler = scheduler,
+                // BoundedCapacity = 10,
             });
             frameBlock.LinkTo(canvasBlock);
             targetBlock = renderBlock;
@@ -163,7 +169,7 @@ namespace OpenTkWPFHost
             IFrameBuffer frameBuffer = null;
             GLContextBinding glContextBinding = null;
             ITargetBlock<RenderArgs> renderBlock;
-            IDataflowBlock actionblock;
+            ActionBlock<CanvasArgs> actionBlock;
             try
             {
                 var mainContext = procedure.Initialize(windowInfo, glSettings);
@@ -173,7 +179,8 @@ namespace OpenTkWPFHost
                 frameBuffer = procedure.CreateFrameBuffer();
                 var sharedBinding = glSettings.CreateBinding(glContextBinding);
                 sharedBinding.BindNull();
-                BuildPipeline(sharedBinding, uiRenderCanvas, frameBuffer, taskScheduler, out renderBlock, out actionblock);
+                BuildPipeline(sharedBinding, uiRenderCanvas, frameBuffer, taskScheduler, out renderBlock,
+                    out actionBlock);
             }
             catch (Exception e)
             {
@@ -182,6 +189,7 @@ namespace OpenTkWPFHost
             }
 
             #endregion
+
             glContextBinding.BindCurrentThread();
             CanvasInfo canvasInfo = null;
             GlRenderEventArgs renderEventArgs = null;
@@ -189,6 +197,7 @@ namespace OpenTkWPFHost
             {
                 renderer.Initialize(glContextBinding.Context);
             }
+
             var stopwatch = new Stopwatch();
             stopwatch.Start();
             using (procedure)
@@ -252,7 +261,13 @@ namespace OpenTkWPFHost
 
                         var postRender = procedure.PostRender();
                         OnAfterRender();
-                        renderBlock.Post(postRender);
+                        var sendAsync = renderBlock.Post(postRender);
+                        // var sendAsync = await renderBlock.SendAsync(postRender, token);
+                        Debug.WriteLine(actionBlock.InputCount); 
+                        if (!sendAsync)
+                        {
+                            Debugger.Break();
+                        }
                     }
                     catch (Exception exception)
                     {
@@ -286,7 +301,7 @@ namespace OpenTkWPFHost
                 stopwatch.Stop();
             }
 
-            await actionblock.Completion;
+            await actionBlock.Completion;
         }
 
         private void CloseRenderThread()

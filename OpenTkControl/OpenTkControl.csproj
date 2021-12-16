@@ -86,6 +86,7 @@
     <Compile Include="RenderProcedureTask.cs" />
     <Compile Include="SemaphoreEvent.cs" />
     <Compile Include="EventWaiter.cs" />
+    <Compile Include="SingleBitmapCanvas.cs" />
     <Compile Include="StatefulWaiter.cs" />
     <Compile Include="SyncMode.cs" />
     <Compile Include="TestFramework.cs" />

@@ -167,7 +167,7 @@ namespace OpenTkWPFHost
                         BufferInfo = bufferInfo,
                     };
                 }
-
+#if DEBUG
                 GL.GetSync(fence, SyncParameterName.SyncStatus, 1, out int length, out int status);
                 if (status == (int) GLSignalStatus.UnSignaled)
                 {
@@ -176,6 +176,7 @@ namespace OpenTkWPFHost
                 }
 
                 Debug.WriteLine(clientWaitSync.ToString());
+#endif
             }
 
             bufferInfo.HasBuffer = false;
