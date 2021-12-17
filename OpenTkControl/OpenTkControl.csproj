@@ -47,6 +47,7 @@
     <Compile Include="CanvasArgs.cs" />
     <Compile Include="ContextWaiterExtension.cs" />
     <Compile Include="GLContextBinding.cs" />
+    <Compile Include="Pipeline.cs" />
     <Compile Include="RenderArgs.cs" />
     <Compile Include="ContextWaiter.cs" />
     <Compile Include="DesignTimeHelper.cs" />
@@ -58,7 +59,6 @@
     <Compile Include="DXGLContext.cs" />
     <Compile Include="DxGLFramebuffer.cs" />
     <Compile Include="EmptyWindowInfo.cs" />
-    <Compile Include="CompareExtension.cs" />
     <Compile Include="FpsCounter.cs" />
     <Compile Include="BitmapProcedure.cs" />
     <Compile Include="FrameArgs.cs" />
@@ -89,7 +89,6 @@
     <Compile Include="SingleBitmapCanvas.cs" />
     <Compile Include="StatefulWaiter.cs" />
     <Compile Include="SyncMode.cs" />
-    <Compile Include="TestFramework.cs" />
     <Compile Include="ThreadOpenTkControl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UiOpenTkControl.cs" />

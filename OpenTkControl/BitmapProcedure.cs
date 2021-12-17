@@ -53,8 +53,8 @@ namespace OpenTkWPFHost
                 BufferInfo = bufferInfo,
                 PixelSize = bufferInfo.PixelSize,
             };
-        } 
-        
+        }
+
         public IRenderCanvas CreateCanvas()
         {
             //over than 2 will occasion flash
@@ -66,13 +66,18 @@ namespace OpenTkWPFHost
             return FrameBuffer;
         }
 
-        public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)
+        public GLContextBinding Initialize(IWindowInfo window, GLSettings settings)
         {
+            if (IsInitialized)
+            {
+                throw new NotSupportedException("Initialized already!");
+            }
+
             _context = settings.CreateContext(window);
             _context.LoadAll();
             _context.MakeCurrent(window);
             IsInitialized = true;
-            return _context;
+            return new GLContextBinding(_context, window);
         }
 
         public void SizeFrame(PixelSize pixelSize)

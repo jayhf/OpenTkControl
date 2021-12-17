@@ -19,6 +19,11 @@ namespace OpenTkWPFHost
 
         private Int32Rect _int32Rect;
 
+        /// <summary>
+        /// The source of the internal Image
+        /// </summary>
+        public WriteableBitmap Bitmap => _bitmap;
+
         public void Allocate(CanvasInfo info)
         {
             _bitmap = new WriteableBitmap(info.PixelWidth, info.PixelHeight, info.DpiX, info.DpiY,

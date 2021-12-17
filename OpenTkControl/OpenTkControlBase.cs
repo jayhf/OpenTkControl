@@ -34,16 +34,15 @@ namespace OpenTkWPFHost
 
         public event EventHandler<RenderErrorArgs> RenderErrorReceived;
 
-
         /// <summary>
         /// renderer is ready
         /// </summary>
-        public event Action BeforeRender;
+        public event EventHandler<GlRenderEventArgs> BeforeRender;
 
         /// <summary>
         /// after successfully render
         /// </summary>
-        public event Action AfterRender;
+        public event EventHandler<GlRenderEventArgs> AfterRender;
 
         /// <summary>
         /// Called whenever an exception occurs during initialization, rendering or deinitialization
@@ -59,9 +58,19 @@ namespace OpenTkWPFHost
             set { SetValue(GlSettingsProperty, value); }
         }
 
+        public static readonly DependencyProperty RenderSettingProperty = DependencyProperty.Register(
+            "RenderSetting", typeof(RenderSetting), typeof(OpenTkControlBase),
+            new PropertyMetadata(new RenderSetting()));
+
+        public RenderSetting RenderSetting
+        {
+            get { return (RenderSetting) GetValue(RenderSettingProperty); }
+            set { SetValue(RenderSettingProperty, value); }
+        }
+
         public static readonly DependencyProperty RenderProcedureProperty = DependencyProperty.Register(
             "RenderProcedure", typeof(IRenderProcedure), typeof(OpenTkControlBase),
-            new PropertyMetadata(new DXProcedure()));
+            new PropertyMetadata(new BitmapProcedure()));
 
         /// <summary>
         /// must be set before render start
@@ -86,7 +95,6 @@ namespace OpenTkWPFHost
             get { return (IRenderer) GetValue(RendererProperty); }
             set { SetValue(RendererProperty, value); }
         }
-
 
         public static readonly DependencyProperty IsShowFpsProperty =
             DependencyProperty.Register("IsShowFps", typeof(bool), typeof(OpenTkControlBase),
@@ -176,17 +184,6 @@ namespace OpenTkWPFHost
             protected set { SetValue(IsUserVisibleProperty, value); }
         }
 
-        public static readonly DependencyProperty IsRefreshWhenRenderIncontinuousProperty = DependencyProperty.Register(
-            "IsRefreshWhenRenderIncontinuous", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(true));
-
-        /// <summary>
-        /// if true, resize will auto render when manually render.
-        /// </summary>
-        public bool IsRefreshWhenRenderIncontinuous
-        {
-            get { return (bool) GetValue(IsRefreshWhenRenderIncontinuousProperty); }
-            set { SetValue(IsRefreshWhenRenderIncontinuousProperty, value); }
-        }
 
         protected volatile bool UserVisible;
 
@@ -262,10 +259,12 @@ namespace OpenTkWPFHost
             };
             Application.Current.Exit += (sender, args) =>
             {
-                if (RendererProcedureLifeCycle == RendererProcedureLifeCycle.BoundToApplication)
+                if (RendererProcedureLifeCycle == RendererProcedureLifeCycle.BoundToApplication
+                    || this.IsRendererOpened)
                 {
                     Close();
                 }
+                this.Dispose();
             };
             this.IsVisibleChanged += OpenTkControlBase_IsVisibleChanged;
         }
@@ -292,7 +291,7 @@ namespace OpenTkWPFHost
         /// </summary>
         public void CallValidRenderOnce()
         {
-            if (IsRefreshWhenRenderIncontinuous && !IsRenderContinuouslyValue && IsRendererOpened && UserVisible)
+            if (!IsRenderContinuouslyValue && IsRendererOpened && UserVisible)
             {
                 ResumeRender();
             }
@@ -356,7 +355,7 @@ namespace OpenTkWPFHost
 
             if (hostWindow == null)
             {
-                throw new ArgumentNullException("Must bind to window!");
+                throw new ArgumentNullException(nameof(hostWindow));
             }
 
             if (IsRendererOpened)
@@ -377,8 +376,8 @@ namespace OpenTkWPFHost
             hostWindow.Closed += HostWindow_Closed;
             hostWindow.IsVisibleChanged += HostWindow_IsVisibleChanged;
             hostWindow.StateChanged += HostWindow_StateChanged;
-            this.IsRendererOpened = true;
             this.StartRenderProcedure(_windowInfo);
+            this.IsRendererOpened = true;
         }
 
         /// <summary>
@@ -392,8 +391,8 @@ namespace OpenTkWPFHost
                 return;
             }
 
-            this.IsRendererOpened = false;
             CloseRenderer();
+            this.IsRendererOpened = false;
         }
 
         /// <summary>
@@ -425,11 +424,13 @@ namespace OpenTkWPFHost
 
         protected override void OnRender(DrawingContext drawingContext)
         {
+#if DEBUG
             if (IsDesignMode())
             {
                 DesignTimeHelper.DrawDesignTimeHelper(this, drawingContext);
+                return;
             }
-
+#endif
             base.OnRender(drawingContext);
 
             /*if (!IsRendererOpened)
@@ -515,27 +516,26 @@ namespace OpenTkWPFHost
                 return;
             }
 
-            _isDisposed = true;
             Close();
             Dispose(true);
+            _isDisposed = true;
         }
 
         protected abstract void Dispose(bool dispose);
 
-        protected virtual void OnAfterRender()
+        protected virtual void OnAfterRender(GlRenderEventArgs renderEventArgs)
         {
-            AfterRender?.Invoke();
+            AfterRender?.Invoke(this, renderEventArgs);
         }
 
-        protected virtual void OnBeforeRender()
+        protected virtual void OnBeforeRender(GlRenderEventArgs renderEventArgs)
         {
-            BeforeRender?.Invoke();
+            BeforeRender?.Invoke(this, renderEventArgs);
         }
 
         protected virtual void OnRenderErrorReceived(RenderErrorArgs e)
         {
             RenderErrorReceived?.Invoke(this, e);
         }
-
     }
 }

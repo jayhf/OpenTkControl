@@ -67,6 +67,11 @@ namespace OpenTkWPFHost
             _writeBufferInfo = bitmapCanvasArray[writeBufferIndex];
         }
 
+        public ImageSource GetSource()
+        {
+            return _writeBufferInfo.Bitmap;
+        }
+
         public bool Commit(DrawingContext context, CanvasArgs args)
         {
             return _writeBufferInfo.Commit(context, args, this._transformGroup);

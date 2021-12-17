@@ -72,6 +72,11 @@ namespace OpenTkWPFHost
             throw new NotImplementedException();
         }
 
+        public ImageSource GetSource()
+        {
+            throw new NotImplementedException();
+        }
+
         public bool Commit(DrawingContext context, CanvasArgs args)
         {
             throw new NotImplementedException();

@@ -11,7 +11,7 @@ namespace OpenTkWPFHost
     /// </summary>
     public interface IRenderProcedure : IDisposable
     {
-        IGraphicsContext Initialize(IWindowInfo window, GLSettings settings);
+        GLContextBinding Initialize(IWindowInfo window, GLSettings settings);
 
         void SizeFrame(PixelSize pixelSize);
 

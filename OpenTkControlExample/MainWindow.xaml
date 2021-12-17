@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:openTkWpfHost="clr-namespace:OpenTkWPFHost;assembly=OpenTkWPFHost"
+        xmlns:openTkControlExample="clr-namespace:OpenTkControlExample"
         mc:Ignorable="d"
         Height="1080"
         Width="1920"
@@ -50,7 +51,7 @@
                     Minimum="0"
                     Value="0"
                     ValueChanged="FrameRate_OnValueChanged" />
-            <ListBox x:Name="ItemsControl"></ListBox>
+            
         </StackPanel>
 
         <!--<openTkWpfHost:TestFrameworkElement Width="300"

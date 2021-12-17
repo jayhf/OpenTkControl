@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -30,16 +31,6 @@ namespace OpenTkWPFHost
     /// </summary>
     public class ThreadOpenTkControl : OpenTkControlBase
     {
-        public static readonly DependencyProperty SourceProperty = DependencyProperty.Register(
-            "Source", typeof(ImageSource), typeof(ThreadOpenTkControl),
-            new FrameworkPropertyMetadata(default(ImageSource), FrameworkPropertyMetadataOptions.AffectsRender));
-
-        public ImageSource Source
-        {
-            get { return (ImageSource) GetValue(SourceProperty); }
-            set { SetValue(SourceProperty, value); }
-        }
-
         /// <summary>
         /// The Thread object for the rendering thread， use origin thread but not task lest context switch
         /// </summary>
@@ -65,9 +56,29 @@ namespace OpenTkWPFHost
             _debugProc = Callback;
         }
 
+        private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
+
+        private void CompositionTarget_Rendering(object sender, EventArgs e)
+        {
+            var renderingTime = ((RenderingEventArgs) e)?.RenderingTime;
+            if (renderingTime == _lastRenderTime)
+            {
+                return;
+            }
+
+            _lastRenderTime = renderingTime.Value;
+            if (_useSemaphore && _semaphoreSlim.CurrentCount > 2)
+            {
+                return;
+            }
+
+            this.InvalidateVisual();
+        }
+
+
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            RecentCanvasInfo = this.GlSettings.CreateCanvasInfo(this);
+            RecentCanvasInfo = this.RenderSetting.CreateCanvasInfo(this);
             if (!RecentCanvasInfo.IsEmpty)
             {
                 _sizeNotEmptyEvent.TrySet();
@@ -84,24 +95,36 @@ namespace OpenTkWPFHost
 
         private readonly EventWaiter _renderContinuousWaiter = new EventWaiter();
 
-
         protected override void OnRender(DrawingContext drawingContext)
         {
-            drawingContext.DrawDrawing(_drawingGroup);
-            _renderSyncWaiter.TrySet();
-            if (ShowFps)
+            try
             {
-                _controlFps.Increment();
-                _glFps.DrawFps(drawingContext, new Point(10, 10));
-                _controlFps.DrawFps(drawingContext, new Point(10, 50));
+                drawingContext.DrawDrawing(_drawingGroup);
+                _renderSyncWaiter.TrySet();
+                if (ShowFps)
+                {
+                    _controlFps.Increment();
+                    _glFps.DrawFps(drawingContext, new Point(10, 10));
+                    _controlFps.DrawFps(drawingContext, new Point(10, 50));
+                }
+            }
+            finally
+            {
+                if (_useSemaphore)
+                {
+                    _semaphoreSlim.Release();
+                }
             }
         }
 
-        private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 2);
+        private bool _useSemaphore = false;
 
-        private void BuildPipeline(GLContextBinding contextBinding, IRenderCanvas canvas, IFrameBuffer frameBuffer,
-            TaskScheduler scheduler, out ITargetBlock<RenderArgs> targetBlock,
-            out ActionBlock<CanvasArgs> dataflowBlock)
+        private bool _internalTrigger = false;
+
+        private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 3);
+
+        private Pipeline<RenderArgs> BuildPipeline(TaskScheduler glContextTaskScheduler, IRenderCanvas canvas,
+            IFrameBuffer frameBuffer, TaskScheduler uiScheduler)
         {
             // run on gl thread, read buffer from pbo.
             var renderBlock = new TransformBlock<RenderArgs, FrameArgs>(
@@ -117,9 +140,9 @@ namespace OpenTkWPFHost
                 new ExecutionDataflowBlockOptions()
                 {
                     SingleProducerConstrained = true,
-                    TaskScheduler = new GLContextTaskScheduler(contextBinding, _debugProc),
+                    TaskScheduler = glContextTaskScheduler,
                     MaxDegreeOfParallelism = 1,
-                    BoundedCapacity = 1,
+                    // BoundedCapacity = 10,
                 });
             //copy buffer to image source
             var frameBlock = new TransformBlock<FrameArgs, CanvasArgs>(args => { return canvas.Flush(args); },
@@ -127,42 +150,39 @@ namespace OpenTkWPFHost
                 {
                     MaxDegreeOfParallelism = 1,
                     SingleProducerConstrained = true,
-                    BoundedCapacity = 1,
+                    // BoundedCapacity = 10,
                 });
             renderBlock.LinkTo(frameBlock);
             //call render 
             var canvasBlock = new ActionBlock<CanvasArgs>((args =>
             {
-                try
+                if (args == null)
                 {
-                    if (args == null)
-                    {
-                        return;
-                    }
-
-                    bool commit;
-                    using (var drawingContext = _drawingGroup.Open())
-                    {
-                        commit = canvas.Commit(drawingContext, args);
-                    }
-
-                    if (commit)
-                    {
-                        canvas.Swap();
-                        this.InvalidateVisual();
-                        // _controlFps.Increment();//when set here, rate will differ from onrender method.
-                    }
+                    return;
                 }
-                finally
+
+                bool commit;
+                using (var drawingContext = _drawingGroup.Open())
                 {
-                    // _semaphoreSlim.Release();
+                    commit = canvas.Commit(drawingContext, args);
+                }
+
+                if (commit)
+                {
+                    canvas.Swap();
+                    if (_internalTrigger)
+                    {
+                        this.InvalidateVisual();
+                    }
+
+                    // _controlFps.Increment();//when set here, rate will differ from onrender method.
                 }
             }), new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = 1,
                 SingleProducerConstrained = true,
-                TaskScheduler = scheduler,
-                BoundedCapacity = 1,
+                TaskScheduler = uiScheduler,
+                // BoundedCapacity = 10
             });
             frameBlock.LinkTo(canvasBlock);
             renderBlock.Completion.ContinueWith((task =>
@@ -187,10 +207,10 @@ namespace OpenTkWPFHost
                     canvasBlock.Complete();
                 }
             }));
-            targetBlock = renderBlock;
-            dataflowBlock = canvasBlock;
+            return new Pipeline<RenderArgs>(renderBlock, canvasBlock);
         }
 
+        private RenderSetting _workingRenderSetting;
 
         protected override void StartRenderProcedure(IWindowInfo windowInfo)
         {
@@ -198,7 +218,21 @@ namespace OpenTkWPFHost
             var procedure = this.RenderProcedure;
             var renderer = this.Renderer;
             var glSettings = this.GlSettings;
-            RecentCanvasInfo = glSettings.CreateCanvasInfo(this);
+            _workingRenderSetting = this.RenderSetting;
+            _useSemaphore = _workingRenderSetting.RenderTactic == RenderTactic.LatencyPriority;
+            _internalTrigger = _workingRenderSetting.RenderTrigger == RenderTrigger.Internal;
+            RecentCanvasInfo = _workingRenderSetting.CreateCanvasInfo(this);
+            switch (_workingRenderSetting.RenderTrigger)
+            {
+                case RenderTrigger.CompositionTarget:
+                    CompositionTarget.Rendering += CompositionTarget_Rendering;
+                    break;
+                case RenderTrigger.Internal:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
             var renderCanvas = procedure.CreateCanvas();
             var scheduler = TaskScheduler.FromCurrentSynchronizationContext();
@@ -207,143 +241,149 @@ namespace OpenTkWPFHost
                 using (_endThreadCts)
                 {
                     await RenderThread(_endThreadCts.Token, glSettings, scheduler, procedure, renderer, windowInfo,
-                        renderCanvas);
+                        renderCanvas, _workingRenderSetting.RenderTactic == RenderTactic.LatencyPriority);
                 }
             });
         }
 
         private async Task RenderThread(CancellationToken token, GLSettings glSettings, TaskScheduler taskScheduler,
-            IRenderProcedure procedure, IRenderer renderer, IWindowInfo windowInfo, IRenderCanvas uiRenderCanvas)
+            IRenderProcedure procedure, IRenderer renderer, IWindowInfo windowInfo, IRenderCanvas uiRenderCanvas,
+            bool syncPipeline)
         {
-            #region initialize
-
-            IFrameBuffer frameBuffer = null;
-            GLContextBinding glContextBinding = null;
-            ITargetBlock<RenderArgs> renderBlock;
-            ActionBlock<CanvasArgs> actionBlock;
-            try
-            {
-                var mainContext = procedure.Initialize(windowInfo, glSettings);
-                GL.Enable(EnableCap.DebugOutput);
-                GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-                glContextBinding = new GLContextBinding(mainContext, windowInfo);
-                frameBuffer = procedure.CreateFrameBuffer();
-                var sharedBinding = glSettings.CreateBinding(glContextBinding);
-                sharedBinding.BindNull();
-                BuildPipeline(sharedBinding, uiRenderCanvas, frameBuffer, taskScheduler, out renderBlock,
-                    out actionBlock);
-            }
-            catch (Exception e)
-            {
-                OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Inbuilt, e));
-                return;
-            }
-
-            #endregion
-
-            glContextBinding.BindCurrentThread();
-            CanvasInfo canvasInfo = null;
-            GlRenderEventArgs renderEventArgs = null;
-            if (!renderer.IsInitialized)
-            {
-                renderer.Initialize(glContextBinding.Context);
-            }
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
             using (procedure)
             {
-                while (!token.IsCancellationRequested)
+                #region initialize
+
+                IFrameBuffer frameBuffer = null;
+                GLContextBinding mainContextBinding = null;
+                GLContextBinding pboContextBinding = null;
+                try
                 {
-                    var renderContinuously = IsRenderContinuouslyValue;
-                    if (!UserVisible)
-                    {
-                        _userVisibleResetEvent.WaitInfinity();
-                    }
-
-                    if (!renderContinuously)
-                    {
-                        _renderContinuousWaiter.WaitInfinity();
-                    }
-
-                    if (!Equals(canvasInfo, RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
-                    {
-                        canvasInfo = RecentCanvasInfo;
-                        renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
-                        OnUITaskAsync(() => { uiRenderCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
-                        var pixelSize = RecentCanvasInfo.GetPixelSize();
-                        procedure.SizeFrame(pixelSize);
-                        frameBuffer.Release();
-                        frameBuffer.Allocate(pixelSize);
-                        renderer.Resize(pixelSize);
-                    }
-
-                    if (RecentCanvasInfo.IsEmpty)
-                    {
-                        await _sizeNotEmptyEvent.Wait(glContextBinding);
-                        continue;
-                    }
-
-                    if (!uiRenderCanvas.Ready)
-                    {
-                        var spinWait = new SpinWait();
-                        spinWait.SpinOnce();
-                        spinWait.SpinOnce();
-                        // await graphicsContext.Delay(, _windowInfo);
-                        continue;
-                    }
-
-                    if (!renderer.PreviewRender())
-                    {
-                        await glContextBinding.Delay(30);
-                        continue;
-                    }
-
-                    try
-                    {
-                        OnBeforeRender();
-                        procedure.PreRender();
-                        renderer.Render(renderEventArgs);
-                        // graphicsContext.SwapBuffers(); //swap?
-                        var postRender = procedure.PostRender();
-                        OnAfterRender();
-                        // var sendAsync = renderBlock.Post(postRender);
-                        renderBlock.SendAsync(postRender, token).Wait(token);
-                        // _semaphoreSlim.Wait(token);
-                    }
-                    catch (Exception exception)
-                    {
-                        OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Render, exception));
-                    }
-                    finally
-                    {
-                    }
-
-                    if (EnableFrameRateLimit)
-                    {
-                        var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
-                        if (renderMinus > 5)
-                        {
-                            await glContextBinding.Delay((int) renderMinus);
-                        }
-                        else if (renderMinus > 0)
-                        {
-                            Thread.Sleep((int) renderMinus);
-                        }
-
-                        stopwatch.Restart();
-                    }
-
-                    frameBuffer.Swap();
+                    mainContextBinding = procedure.Initialize(windowInfo, glSettings);
+                    GL.Enable(EnableCap.DebugOutput);
+                    GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
+                    frameBuffer = procedure.CreateFrameBuffer();
+                    pboContextBinding = glSettings.NewBinding(mainContextBinding);
+                    pboContextBinding.BindNull();
+                }
+                catch (Exception e)
+                {
+                    OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Inbuilt, e));
+                    return;
                 }
 
-                renderBlock.Complete();
-                frameBuffer.Release();
-                renderer.Uninitialize();
-                stopwatch.Stop();
-            }
+                #endregion
 
-            await actionBlock.Completion;
+                using (var glContextTaskScheduler = new GLContextTaskScheduler(pboContextBinding, _debugProc))
+                {
+                    var pipeline = BuildPipeline(glContextTaskScheduler, uiRenderCanvas, frameBuffer, taskScheduler);
+                    mainContextBinding.BindCurrentThread();
+                    CanvasInfo canvasInfo = null;
+                    GlRenderEventArgs renderEventArgs = null;
+                    if (!renderer.IsInitialized)
+                    {
+                        renderer.Initialize(mainContextBinding.Context);
+                    }
+
+                    var stopwatch = new Stopwatch();
+                    stopwatch.Start();
+
+                    while (!token.IsCancellationRequested)
+                    {
+                        var renderContinuously = IsRenderContinuouslyValue;
+                        if (!UserVisible)
+                        {
+                            _userVisibleResetEvent.WaitInfinity();
+                        }
+
+                        if (!renderContinuously)
+                        {
+                            _renderContinuousWaiter.WaitInfinity();
+                        }
+
+                        if (!Equals(canvasInfo, RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
+                        {
+                            canvasInfo = RecentCanvasInfo;
+                            renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
+                            OnUITaskAsync(() => { uiRenderCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
+                            var pixelSize = RecentCanvasInfo.GetPixelSize();
+                            procedure.SizeFrame(pixelSize);
+                            frameBuffer.Release();
+                            frameBuffer.Allocate(pixelSize);
+                            renderer.Resize(pixelSize);
+                        }
+
+                        if (RecentCanvasInfo.IsEmpty)
+                        {
+                            await _sizeNotEmptyEvent.Wait(mainContextBinding);
+                            continue;
+                        }
+
+                        if (!uiRenderCanvas.Ready)
+                        {
+                            var spinWait = new SpinWait();
+                            spinWait.SpinOnce();
+                            spinWait.SpinOnce();
+                            // await graphicsContext.Delay(, _windowInfo);
+                            continue;
+                        }
+
+                        if (!renderer.PreviewRender())
+                        {
+                            await mainContextBinding.Delay(30);
+                            continue;
+                        }
+
+                        try
+                        {
+                            OnBeforeRender(renderEventArgs);
+                            procedure.PreRender();
+                            renderer.Render(renderEventArgs);
+                            // graphicsContext.SwapBuffers(); //swap?
+                            var postRender = procedure.PostRender();
+                            OnAfterRender(renderEventArgs);
+                            pipeline.Post(postRender);
+                            // pipeline.SendAsync(postRender, token).Wait(token);
+                            if (syncPipeline)
+                            {
+                                _semaphoreSlim.Wait(token);
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                        }
+                        catch (Exception exception)
+                        {
+                            OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Render, exception));
+                        }
+                        finally
+                        {
+                        }
+
+                        if (EnableFrameRateLimit)
+                        {
+                            var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
+                            if (renderMinus > 5)
+                            {
+                                await mainContextBinding.Delay((int) renderMinus);
+                            }
+                            else if (renderMinus > 0)
+                            {
+                                Thread.Sleep((int) renderMinus);
+                            }
+
+                            stopwatch.Restart();
+                        }
+
+                        frameBuffer.Swap();
+                    }
+
+                    stopwatch.Stop();
+                    pipeline.Finish().Wait(CancellationToken.None);
+                    renderer.Uninitialize();
+                    frameBuffer.Release();
+                }
+            }
         }
 
         private async Task CloseRenderThread()
@@ -363,6 +403,16 @@ namespace OpenTkWPFHost
 
                 _renderContinuousWaiter.ForceSet();
                 await _renderTask;
+                switch (_workingRenderSetting.RenderTrigger)
+                {
+                    case RenderTrigger.CompositionTarget:
+                        CompositionTarget.Rendering -= CompositionTarget_Rendering;
+                        break;
+                    case RenderTrigger.Internal:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             }
         }
 
@@ -420,6 +470,7 @@ namespace OpenTkWPFHost
 
         protected override void Dispose(bool dispose)
         {
+            this._semaphoreSlim.Dispose();
             this._controlFps.Dispose();
             this._glFps.Dispose();
             this._userVisibleResetEvent.Dispose();

@@ -64,19 +64,19 @@ namespace OpenTkWPFHost
                 GL.Flush();
             }
 
-            return null;//todo:
+            return null; //todo:
         }
 
-        public IGraphicsContext Initialize(IWindowInfo window, GLSettings settings)
+        public GLContextBinding Initialize(IWindowInfo window, GLSettings settings)
         {
             if (IsInitialized)
             {
-                return this._context.GraphicsContext;
+                throw new NotSupportedException("Initialized already!");
             }
 
-            IsInitialized = true;
             _context = new DxGlContext(settings, window);
-            return _context.GraphicsContext;
+            IsInitialized = true;
+            return new GLContextBinding(_context.GraphicsContext, window);
         }
 
         public IFrameBuffer FrameBuffer { get; }
@@ -85,7 +85,8 @@ namespace OpenTkWPFHost
         {
             var width = pixelSize.Width;
             var height = pixelSize.Height;
-            if (_frameBuffer == null || _frameBuffer.FramebufferWidth != width || _frameBuffer.FramebufferHeight != height)
+            if (_frameBuffer == null || _frameBuffer.FramebufferWidth != width ||
+                _frameBuffer.FramebufferHeight != height)
             {
                 _frameBuffer?.Dispose();
                 _frameBuffer = null;
