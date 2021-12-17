@@ -15,6 +15,7 @@ namespace OpenTkWPFHost
             DpiScaleY = dpiScaleY;
             PixelWidth = (int) Math.Ceiling(width * dpiScaleX);
             PixelHeight = (int) Math.Ceiling(height * dpiScaleY);
+            PixelSize = new PixelSize(PixelWidth, PixelHeight);
         }
 
         public Rect Rect => new Rect(new Size(ActualWidth, ActualHeight));
@@ -41,9 +42,11 @@ namespace OpenTkWPFHost
 
         public int PixelHeight { get; }
 
+        public PixelSize PixelSize { get; }
+
         public bool IsEmpty => ActualWidth == 0 || ActualHeight == 0;
 
-        public int BufferSize => ActualWidth * ActualHeight * 4;
+        public int BufferSize => PixelWidth * PixelHeight* 4;
 
         public Int32Rect Int32Rect => new Int32Rect(0, 0, ActualWidth, ActualHeight);
 
@@ -57,12 +60,7 @@ namespace OpenTkWPFHost
         {
             return new GlRenderEventArgs(PixelWidth, PixelHeight, false);
         }
-
-        public PixelSize GetPixelSize()
-        {
-            return new PixelSize(PixelWidth, PixelHeight);
-        }
-
+        
         public bool Equals(CanvasInfo other)
         {
             return DpiScaleX.Equals(other.DpiScaleX) && DpiScaleY.Equals(other.DpiScaleY) &&

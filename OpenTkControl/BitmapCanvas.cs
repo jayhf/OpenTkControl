@@ -12,39 +12,32 @@ namespace OpenTkWPFHost
     {
         private readonly int _bufferCount;
 
-        private SingleBitmapCanvas[] bitmapCanvasArray;
+        private readonly SingleBitmapCanvas[] _bitmapCanvasCollection;
 
         /// <summary>
         /// 先写入缓冲，然后才能读取，所以写入缓冲=读取缓冲+1
         /// </summary>
-        private int _currentWriteBufferIndex = 0;
+        private int _currentWriteCanvasIndex = 0;
 
-        public BitmapCanvas():this(2)
+        public BitmapCanvas() : this(2)
         {
-            
         }
 
         public BitmapCanvas(int bufferSize)
         {
             _bufferCount = bufferSize;
-            bitmapCanvasArray = new SingleBitmapCanvas[bufferSize];
+            _bitmapCanvasCollection = new SingleBitmapCanvas[bufferSize];
             for (int i = 0; i < bufferSize; i++)
             {
-                bitmapCanvasArray[i] = new SingleBitmapCanvas();
+                _bitmapCanvasCollection[i] = new SingleBitmapCanvas();
             }
         }
 
         public bool Ready { get; } = true;
 
-        private TransformGroup _transformGroup;
-
         public void Allocate(CanvasInfo info)
         {
-            _transformGroup = new TransformGroup();
-            _transformGroup.Children.Add(new ScaleTransform(1, -1));
-            _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
-            _transformGroup.Freeze();
-            foreach (var canvas in bitmapCanvasArray)
+            foreach (var canvas in _bitmapCanvasCollection)
             {
                 canvas.Allocate(info);
             }
@@ -52,29 +45,24 @@ namespace OpenTkWPFHost
             Swap();
         }
 
-        
-        private SingleBitmapCanvas _writeBufferInfo;
+
+        private SingleBitmapCanvas _writeCanvas;
 
         public CanvasArgs Flush(FrameArgs frame)
         {
-            return _writeBufferInfo.Flush(frame);
+            return _writeCanvas.Flush(frame);
         }
 
         public void Swap()
         {
-            _currentWriteBufferIndex++;
-            var writeBufferIndex = _currentWriteBufferIndex % _bufferCount;
-            _writeBufferInfo = bitmapCanvasArray[writeBufferIndex];
-        }
-
-        public ImageSource GetSource()
-        {
-            return _writeBufferInfo.Bitmap;
+            _currentWriteCanvasIndex++;
+            var writeBufferIndex = _currentWriteCanvasIndex % _bufferCount;
+            _writeCanvas = _bitmapCanvasCollection[writeBufferIndex];
         }
 
         public bool Commit(DrawingContext context, CanvasArgs args)
         {
-            return _writeBufferInfo.Commit(context, args, this._transformGroup);
+            return _writeCanvas.Commit(context, args);
         }
 
         public bool CanAsyncFlush { get; } = true;

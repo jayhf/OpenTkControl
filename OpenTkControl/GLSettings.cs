@@ -10,35 +10,6 @@ using OpenTK.Platform;
 
 namespace OpenTkWPFHost
 {
-    public enum RenderTrigger
-    {
-        /// <summary>
-        /// listen to <see cref="CompositionTarget.Rendering"/>
-        /// </summary>
-        CompositionTarget = 0,
-
-        /// <summary>
-        /// use a discrete loop to drive render
-        /// <para>warning: event rate of <see cref="CompositionTarget "/> will surge </para> 
-        /// </summary>
-        Internal = 1,
-    }
-
-    public enum RenderTactic
-    {
-        // Balance = 2,
-
-        /// <summary>
-        /// max Throughput£¬
-        /// </summary>
-        ThroughputPriority = 0,
-
-        /// <summary>
-        /// lowest latency
-        /// </summary>
-        LatencyPriority = 1,
-    }
-
     public class RenderSetting
     {
         public RenderTrigger RenderTrigger { get; set; } = RenderTrigger.CompositionTarget;

@@ -124,7 +124,7 @@ namespace OpenTkWPFHost
         private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 3);
 
         private Pipeline<RenderArgs> BuildPipeline(TaskScheduler glContextTaskScheduler, IRenderCanvas canvas,
-            IFrameBuffer frameBuffer, TaskScheduler uiScheduler)
+            IRenderBuffer renderBuffer, TaskScheduler uiScheduler)
         {
             // run on gl thread, read buffer from pbo.
             var renderBlock = new TransformBlock<RenderArgs, FrameArgs>(
@@ -135,7 +135,7 @@ namespace OpenTkWPFHost
                         _glFps.Increment();
                     }
 
-                    return frameBuffer.ReadFrames(args);
+                    return renderBuffer.ReadFrames(args);
                 },
                 new ExecutionDataflowBlockOptions()
                 {
@@ -160,7 +160,7 @@ namespace OpenTkWPFHost
                 {
                     return;
                 }
-
+                
                 bool commit;
                 using (var drawingContext = _drawingGroup.Open())
                 {
@@ -254,7 +254,7 @@ namespace OpenTkWPFHost
             {
                 #region initialize
 
-                IFrameBuffer frameBuffer = null;
+                IRenderBuffer renderBuffer = null;
                 GLContextBinding mainContextBinding = null;
                 GLContextBinding pboContextBinding = null;
                 try
@@ -262,7 +262,7 @@ namespace OpenTkWPFHost
                     mainContextBinding = procedure.Initialize(windowInfo, glSettings);
                     GL.Enable(EnableCap.DebugOutput);
                     GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-                    frameBuffer = procedure.CreateFrameBuffer();
+                    renderBuffer = procedure.CreateFrameBuffer();
                     pboContextBinding = glSettings.NewBinding(mainContextBinding);
                     pboContextBinding.BindNull();
                 }
@@ -276,7 +276,7 @@ namespace OpenTkWPFHost
 
                 using (var glContextTaskScheduler = new GLContextTaskScheduler(pboContextBinding, _debugProc))
                 {
-                    var pipeline = BuildPipeline(glContextTaskScheduler, uiRenderCanvas, frameBuffer, taskScheduler);
+                    var pipeline = BuildPipeline(glContextTaskScheduler, uiRenderCanvas, renderBuffer, taskScheduler);
                     mainContextBinding.BindCurrentThread();
                     CanvasInfo canvasInfo = null;
                     GlRenderEventArgs renderEventArgs = null;
@@ -305,11 +305,10 @@ namespace OpenTkWPFHost
                         {
                             canvasInfo = RecentCanvasInfo;
                             renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
-                            OnUITaskAsync(() => { uiRenderCanvas.Allocate(RecentCanvasInfo); }).Wait(token);
-                            var pixelSize = RecentCanvasInfo.GetPixelSize();
+                            var pixelSize = RecentCanvasInfo.PixelSize;
                             procedure.SizeFrame(pixelSize);
-                            frameBuffer.Release();
-                            frameBuffer.Allocate(pixelSize);
+                            renderBuffer.Release();
+                            renderBuffer.Allocate(RecentCanvasInfo);
                             renderer.Resize(pixelSize);
                         }
 
@@ -319,14 +318,14 @@ namespace OpenTkWPFHost
                             continue;
                         }
 
-                        if (!uiRenderCanvas.Ready)
+                        /*if (!uiRenderCanvas.Ready)
                         {
                             var spinWait = new SpinWait();
                             spinWait.SpinOnce();
                             spinWait.SpinOnce();
                             // await graphicsContext.Delay(, _windowInfo);
                             continue;
-                        }
+                        }*/
 
                         if (!renderer.PreviewRender())
                         {
@@ -375,13 +374,13 @@ namespace OpenTkWPFHost
                             stopwatch.Restart();
                         }
 
-                        frameBuffer.Swap();
+                        renderBuffer.Swap();
                     }
 
                     stopwatch.Stop();
                     pipeline.Finish().Wait(CancellationToken.None);
                     renderer.Uninitialize();
-                    frameBuffer.Release();
+                    renderBuffer.Release();
                 }
             }
         }

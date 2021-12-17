@@ -17,9 +17,6 @@ namespace OpenTkWPFHost
         private FieldInfo _fieldInfo;
 
         public bool CanAsyncFlush { get; set; } = false;
-        public CanvasInfo Info { get; }
-
-        public IntPtr FrameBuffer { get; set; }
 
         public bool IsDirty { get; set; }
 
@@ -41,6 +38,7 @@ namespace OpenTkWPFHost
             _transformGroup.Children.Add(new ScaleTransform(1, -1));
             _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
             _transformGroup.Freeze();
+            //only when dpi changed new d3dimage will be created
             if (info.DpiScaleX.Equals(_dpiScaleX)
                 && info.DpiScaleY.Equals(_dpiScaleY))
             {
@@ -48,8 +46,6 @@ namespace OpenTkWPFHost
             }
 
             _canvasInfo = info;
-            this._dpiScaleX = info.DpiScaleX;
-            this._dpiScaleY = info.DpiScaleY;
             if (_image != null)
             {
                 _image.IsFrontBufferAvailableChanged -= _image_IsFrontBufferAvailableChanged;
@@ -75,30 +71,34 @@ namespace OpenTkWPFHost
 
         public CanvasArgs Flush(FrameArgs frame)
         {
-            throw new NotImplementedException();
-            var preDirtRect = new Int32Rect(0, 0, _canvasInfo.ActualWidth,
-                _canvasInfo.ActualHeight);
-            if (this.FrameBuffer != IntPtr.Zero && !preDirtRect.IsEmpty)
-            {
-                _image.Lock();
-                _image.SetBackBuffer(D3DResourceType.IDirect3DSurface9, this.FrameBuffer);
-                _image.AddDirtyRect(preDirtRect);
-                _image.Unlock();
-                IsDirty = true;
-            }
-        }
-
-        public ImageSource GetSource()
-        {
-            throw new NotImplementedException();
         }
 
         public bool Commit(DrawingContext drawingContext, CanvasArgs args)
         {
+            try
+            {
+                var dxCanvasArgs = (DXCanvasArgs) args;
+                var preDirtRect = new Int32Rect(0, 0, _canvasInfo.ActualWidth,
+                    _canvasInfo.ActualHeight);
+                _image.Lock();
+                _image.SetBackBuffer(D3DResourceType.IDirect3DSurface9, dxCanvasArgs.FrameBuffer);
+                _image.AddDirtyRect(preDirtRect);
+                _image.Unlock();
+                /*if (dxCanvasArgs.FrameBuffer != IntPtr.Zero && !preDirtRect.IsEmpty)
+            {
+                
+                IsDirty = true;
+            }*/
+                drawingContext.PushTransform(_transformGroup);
+                drawingContext.DrawImage(_image, new Rect(new Size(_image.Width, _image.Height)));
+                drawingContext.Pop();
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+
             return true;
-            drawingContext.PushTransform(_transformGroup);
-            drawingContext.DrawImage(_image, new Rect(new Size(_image.Width, _image.Height)));
-            drawingContext.Pop();
         }
 
         public void Swap()

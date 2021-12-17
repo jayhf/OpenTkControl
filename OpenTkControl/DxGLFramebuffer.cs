@@ -11,10 +11,12 @@ namespace OpenTkWPFHost
     /// Instances of this class are created and deleted as required by the renderer.
     /// Note that this does not implement the full <see cref="IDisposable"/> pattern,
     /// as OpenGL resources cannot be freed from the finalizer thread.
-    /// The calling class must correctly dispose of this by calling <see cref="Dispose"/>
+    /// The calling class must correctly dispose of this by calling <see cref="Release"/>
     /// Prior to releasing references. 
-    internal sealed class DxGLFramebuffer : IDisposable
+    internal sealed class DxGLFramebuffer
     {
+        private readonly PixelSize _pixelSize;
+
         /// The width of this buffer in pixels
         public int FramebufferWidth { get; }
 
@@ -42,12 +44,13 @@ namespace OpenTkWPFHost
         /// Specific wgl_dx_interop handle that marks the framebuffer as ready for interop.
         public IntPtr DxInteropRegisteredHandle { get; }
 
-        public PixelSize PixelSize => new PixelSize(FramebufferWidth, FramebufferHeight);
+        public PixelSize PixelSize => _pixelSize;
         
-        public DxGLFramebuffer([NotNull] DxGlContext context, int pixelWidth, int pixelHeight)
+        public DxGLFramebuffer([NotNull] DxGlContext context, PixelSize pixelSize)
         {
-            FramebufferWidth = pixelWidth;
-            FramebufferHeight = pixelHeight;
+            _pixelSize = pixelSize;
+            FramebufferWidth = pixelSize.Width;
+            FramebufferHeight = pixelSize.Height;
             var dxSharedHandle = IntPtr.Zero; // Unused windows-vista legacy sharing handle. Must always be null.
             DXInterop.CreateRenderTarget(
                 context.DxDeviceHandle,
@@ -94,7 +97,7 @@ namespace OpenTkWPFHost
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         }
         
-        public void Dispose()
+        public void Release()
         {
             GL.DeleteFramebuffer(GLFramebufferHandle);
             GL.DeleteRenderbuffer(GLDepthRenderBufferHandle);

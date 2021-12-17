@@ -18,7 +18,7 @@ namespace OpenTkWPFHost
     /// <summary>
     /// highest performance, but possibly cause stuck on low end cpu (2 physical core)
     /// </summary>
-    public class MultiStoragePixelBuffer : IFrameBuffer
+    public class MultiStoragePixelBuffer : IRenderBuffer
     {
         private readonly uint _bufferCount;
 
@@ -31,10 +31,10 @@ namespace OpenTkWPFHost
 
             _bufferCount = bufferCount;
 
-            _bufferInfos = new BufferInfo[bufferCount];
+            _bufferInfos = new PixelBufferInfo[bufferCount];
             for (int i = 0; i < bufferCount; i++)
             {
-                _bufferInfos[i] = new BufferInfo();
+                _bufferInfos[i] = new PixelBufferInfo();
             }
         }
 
@@ -42,7 +42,7 @@ namespace OpenTkWPFHost
         {
         }
 
-        private readonly BufferInfo[] _bufferInfos;
+        private readonly PixelBufferInfo[] _bufferInfos;
 
         private int _width, _height;
 
@@ -60,11 +60,13 @@ namespace OpenTkWPFHost
                                                 BufferStorageFlags.MapPersistentBit |
                                                 BufferStorageFlags.MapCoherentBit;
 
+        private CanvasInfo _canvasInfo;
+
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="pixelSize"></param>
-        public void Allocate(PixelSize pixelSize)
+        /// <param name="canvasInfo"></param>
+        public void Allocate(CanvasInfo canvasInfo)
         {
             if (_allocated)
             {
@@ -72,11 +74,10 @@ namespace OpenTkWPFHost
             }
 
             _allocated = true;
-            var width = pixelSize.Width;
-            var height = pixelSize.Height;
-            var currentPixelBufferSize = width * height * 4;
-            this._width = width;
-            this._height = height;
+            _canvasInfo = canvasInfo;
+            var currentPixelBufferSize = canvasInfo.BufferSize;
+            this._width = canvasInfo.PixelWidth;
+            this._height = canvasInfo.PixelHeight;
             foreach (var bufferInfo in _bufferInfos)
             {
                 var writeBuffer = GL.GenBuffer();
@@ -87,8 +88,7 @@ namespace OpenTkWPFHost
                 bufferInfo.BufferSize = currentPixelBufferSize;
                 bufferInfo.GlBufferPointer = writeBuffer;
                 bufferInfo.MapBufferIntPtr = mapBufferRange;
-                bufferInfo.Fence = IntPtr.Zero;
-                bufferInfo.PixelSize = pixelSize;
+                bufferInfo.PixelSize = canvasInfo.PixelSize;
             }
 
             this.Swap();
@@ -120,29 +120,29 @@ namespace OpenTkWPFHost
         /// <summary>
         /// write current frame to buffer
         /// </summary>
-        public BufferInfo FlushAsync()
+        public PixelBufferInfo ReadPixel()
         {
-            while (_writeBufferInfo.HasBuffer)
+            while (_writePixelBufferInfo.HasBuffer)
             {
                 _spinWait.SpinOnce();
             }
 
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, _writeBufferInfo.GlBufferPointer);
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, _writePixelBufferInfo.GlBufferPointer);
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
-            _writeBufferInfo.Fence = GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, WaitSyncFlags.None);
-            _writeBufferInfo.HasBuffer = true;
+            _writePixelBufferInfo.Fence = GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, WaitSyncFlags.None);
+            _writePixelBufferInfo.HasBuffer = true;
             GL.Finish();
-            return _writeBufferInfo;
+            return _writePixelBufferInfo;
         }
 
-        private BufferInfo _writeBufferInfo;
+        private PixelBufferInfo _writePixelBufferInfo;
 
         public void Swap()
         {
             _currentWriteBufferIndex++;
             var writeBufferIndex = _currentWriteBufferIndex % _bufferCount;
-            _writeBufferInfo = _bufferInfos[writeBufferIndex];
+            _writePixelBufferInfo = _bufferInfos[writeBufferIndex];
         }
 
         public FrameArgs ReadFrames(RenderArgs args)
@@ -154,7 +154,7 @@ namespace OpenTkWPFHost
 
             var bufferInfo = ((BitmapRenderArgs) args).BufferInfo;
             var fence = bufferInfo.Fence;
-            if (fence != IntPtr.Zero)
+            if (fence != IntPtr.Zero && bufferInfo.HasBuffer)
             {
                 var clientWaitSync = GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
                 if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
@@ -165,6 +165,7 @@ namespace OpenTkWPFHost
                     {
                         PixelSize = args.PixelSize,
                         BufferInfo = bufferInfo,
+                        CanvasInfo = this._canvasInfo,
                     };
                 }
 #if DEBUG
@@ -181,11 +182,6 @@ namespace OpenTkWPFHost
 
             bufferInfo.HasBuffer = false;
             return null;
-        }
-
-        public void Dispose()
-        {
-            this.Release();
         }
     }
 }

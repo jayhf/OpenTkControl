@@ -52,8 +52,7 @@
     <Compile Include="ContextWaiter.cs" />
     <Compile Include="DesignTimeHelper.cs" />
     <Compile Include="DoubleDxCanvas.cs" />
-    <Compile Include="DoublePixelBuffer.cs" />
-    <Compile Include="BufferInfo.cs" />
+    <Compile Include="PixelBufferInfo.cs" />
     <Compile Include="DrawingDirective.cs" />
     <Compile Include="DxCanvas.cs" />
     <Compile Include="DXGLContext.cs" />
@@ -70,7 +69,7 @@
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />
-    <Compile Include="IFrameBuffer.cs" />
+    <Compile Include="IRenderBuffer.cs" />
     <Compile Include="IRenderCanvas.cs" />
     <Compile Include="IRenderer.cs" />
     <Compile Include="IRenderProcedure.cs" />
@@ -84,6 +83,8 @@
     <Compile Include="RenderErrorArgs.cs" />
     <Compile Include="RenderPhase.cs" />
     <Compile Include="RenderProcedureTask.cs" />
+    <Compile Include="RenderTactic.cs" />
+    <Compile Include="RenderTrigger.cs" />
     <Compile Include="SemaphoreEvent.cs" />
     <Compile Include="EventWaiter.cs" />
     <Compile Include="SingleBitmapCanvas.cs" />

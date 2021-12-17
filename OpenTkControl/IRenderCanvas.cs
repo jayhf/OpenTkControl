@@ -17,8 +17,6 @@ namespace OpenTkWPFHost
         /// </summary>
         bool Ready { get; }
 
-        void Allocate(CanvasInfo info);
-
         CanvasArgs Flush(FrameArgs frame);
 
         void Swap();

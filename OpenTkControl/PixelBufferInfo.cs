@@ -5,7 +5,7 @@ using OpenTK.Graphics.OpenGL4;
 namespace OpenTkWPFHost
 {
     //maybe inefficient over 16 bytes ?
-    public class BufferInfo
+    public class PixelBufferInfo
     {
         public PixelSize PixelSize;
 

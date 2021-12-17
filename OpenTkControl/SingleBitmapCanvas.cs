@@ -19,13 +19,22 @@ namespace OpenTkWPFHost
 
         private Int32Rect _int32Rect;
 
+        private CanvasInfo _canvasInfo;
+
         /// <summary>
         /// The source of the internal Image
         /// </summary>
         public WriteableBitmap Bitmap => _bitmap;
 
+        private TransformGroup _transformGroup;
+
         public void Allocate(CanvasInfo info)
         {
+            this._canvasInfo = info;
+            _transformGroup = new TransformGroup();
+            _transformGroup.Children.Add(new ScaleTransform(1, -1));
+            _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
+            _transformGroup.Freeze();
             _bitmap = new WriteableBitmap(info.PixelWidth, info.PixelHeight, info.DpiX, info.DpiY,
                 PixelFormats.Pbgra32, null);
             _dirtRect = info.Rect;
@@ -43,6 +52,15 @@ namespace OpenTkWPFHost
             }
 
             var bitmapFrameArgs = (BitmapFrameArgs) frame;
+            if (_bitmap == null)
+            {
+                return;
+            }
+
+            if (_canvasInfo.PixelSize)
+            {
+            }
+
             var bufferInfo = bitmapFrameArgs.BufferInfo;
             var bufferSize = bufferInfo.BufferSize;
             try
@@ -68,7 +86,7 @@ namespace OpenTkWPFHost
             };
         }
 
-        public bool Commit(DrawingContext context, CanvasArgs args, TransformGroup transform)
+        public bool Commit(DrawingContext context, CanvasArgs args)
         {
             var canvasArgs = (BitmapCanvasArgs) args;
             if (canvasArgs != null && _int32Rect.Equals(canvasArgs.Int32Rect))
@@ -85,7 +103,7 @@ namespace OpenTkWPFHost
                     _readerWriterLockSlim.ExitReadLock();
                 }
 
-                context.PushTransform(transform);
+                context.PushTransform(_transformGroup);
                 context.DrawImage(_bitmap, _dirtRect);
                 context.Pop();
                 return true;

@@ -33,7 +33,7 @@ namespace OpenTkWPFHost
         /// <summary>
         /// can set pixel buffer based on your machine specification. Recommend is double pbo.
         /// </summary>
-        public IFrameBuffer FrameBuffer { get; set; } = new MultiStoragePixelBuffer(5);
+        private MultiStoragePixelBuffer _multiStoragePixelBuffer = new MultiStoragePixelBuffer(5);
 
         public bool IsInitialized { get; private set; }
 
@@ -47,11 +47,11 @@ namespace OpenTkWPFHost
 
         public RenderArgs PostRender()
         {
-            var bufferInfo = FrameBuffer.FlushAsync();
+            var pixelBufferInfo = _multiStoragePixelBuffer.ReadPixel();
             return new BitmapRenderArgs()
             {
-                BufferInfo = bufferInfo,
-                PixelSize = bufferInfo.PixelSize,
+                BufferInfo = pixelBufferInfo,
+                PixelSize = pixelBufferInfo.PixelSize,
             };
         }
 
@@ -61,9 +61,9 @@ namespace OpenTkWPFHost
             return new BitmapCanvas(2);
         }
 
-        public IFrameBuffer CreateFrameBuffer()
+        public IRenderBuffer CreateFrameBuffer()
         {
-            return FrameBuffer;
+            return _multiStoragePixelBuffer;
         }
 
         public GLContextBinding Initialize(IWindowInfo window, GLSettings settings)
