@@ -3,6 +3,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using JetBrains.Annotations;
 
 namespace OpenTkWPFHost
 {
@@ -28,88 +29,85 @@ namespace OpenTkWPFHost
 
         private TransformGroup _transformGroup;
 
-        public void Allocate(CanvasInfo info)
+        public void Allocate(CanvasInfo canvasInfo)
         {
-            this._canvasInfo = info;
             _transformGroup = new TransformGroup();
             _transformGroup.Children.Add(new ScaleTransform(1, -1));
-            _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
+            _transformGroup.Children.Add(new TranslateTransform(0, canvasInfo.ActualHeight));
             _transformGroup.Freeze();
-            _bitmap = new WriteableBitmap(info.PixelWidth, info.PixelHeight, info.DpiX, info.DpiY,
+            _bitmap = new WriteableBitmap(canvasInfo.PixelWidth, canvasInfo.PixelHeight, canvasInfo.DpiX,
+                canvasInfo.DpiY,
                 PixelFormats.Pbgra32, null);
-            _dirtRect = info.Rect;
-            _int32Rect = info.Int32Rect;
+            _dirtRect = canvasInfo.Rect;
+            _int32Rect = canvasInfo.Int32Rect;
             _displayBuffer = _bitmap.BackBuffer;
         }
 
         private readonly ReaderWriterLockSlim _readerWriterLockSlim = new ReaderWriterLockSlim();
 
-        public CanvasArgs Flush(FrameArgs frame)
+        public CanvasArgs Flush([NotNull] FrameArgs frame)
         {
-            if (frame == null)
-            {
-                return null;
-            }
-
-            var bitmapFrameArgs = (BitmapFrameArgs) frame;
-            if (_bitmap == null)
-            {
-                return;
-            }
-
-            if (_canvasInfo.PixelSize)
-            {
-            }
-
-            var bufferInfo = bitmapFrameArgs.BufferInfo;
-            var bufferSize = bufferInfo.BufferSize;
+            var bitmapFrameArgs = (BitmapFrameArgs)frame;
+            var canvasInfo = bitmapFrameArgs.CanvasInfo;
             try
             {
                 _readerWriterLockSlim.EnterWriteLock();
-                unsafe
+                if (!canvasInfo.Equals(this._canvasInfo))
                 {
-                    Buffer.MemoryCopy(bufferInfo.MapBufferIntPtr.ToPointer(),
-                        _displayBuffer.ToPointer(),
-                        bufferSize, bufferSize);
+                    this._canvasInfo = canvasInfo;
+                    return new BitmapCanvasArgs(this, true) { PixelSize = frame.PixelSize };
                 }
+
+                var bufferInfo = bitmapFrameArgs.BufferInfo;
+                Flush(bufferInfo);
+                return new BitmapCanvasArgs(this)
+                {
+                    PixelSize = frame.PixelSize,
+                };
             }
             finally
             {
                 _readerWriterLockSlim.ExitWriteLock();
             }
-
-            bufferInfo.HasBuffer = false;
-            return new BitmapCanvasArgs()
-            {
-                PixelSize = frame.PixelSize,
-                Int32Rect = _int32Rect
-            };
         }
 
-        public bool Commit(DrawingContext context, CanvasArgs args)
+        private void Flush(PixelBufferInfo bufferInfo)
         {
-            var canvasArgs = (BitmapCanvasArgs) args;
-            if (canvasArgs != null && _int32Rect.Equals(canvasArgs.Int32Rect))
+            var bufferSize = bufferInfo.BufferSize;
+            unsafe
             {
-                try
-                {
-                    _readerWriterLockSlim.EnterReadLock();
-                    _bitmap.Lock();
-                    _bitmap.AddDirtyRect(_int32Rect);
-                }
-                finally
-                {
-                    _bitmap.Unlock();
-                    _readerWriterLockSlim.ExitReadLock();
-                }
-
-                context.PushTransform(_transformGroup);
-                context.DrawImage(_bitmap, _dirtRect);
-                context.Pop();
-                return true;
+                Buffer.MemoryCopy(bufferInfo.MapBufferIntPtr.ToPointer(),
+                    _displayBuffer.ToPointer(),
+                    bufferSize, bufferSize);
             }
 
-            return false;
+
+            bufferInfo.HasBuffer = false;
+        }
+
+        public bool Commit(DrawingContext context, bool allocate)
+        {
+            try
+            {
+                _readerWriterLockSlim.EnterReadLock();
+                if (allocate)
+                {
+                    Allocate(_canvasInfo);
+                }
+
+                _bitmap.Lock();
+                _bitmap.AddDirtyRect(_int32Rect);
+            }
+            finally
+            {
+                _bitmap.Unlock();
+                _readerWriterLockSlim.ExitReadLock();
+            }
+
+            context.PushTransform(_transformGroup);
+            context.DrawImage(_bitmap, _dirtRect);
+            context.Pop();
+            return true;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Security.Cryptography;
 using System.Threading;
@@ -25,25 +26,22 @@ namespace OpenTkWPFHost
 
         public BitmapCanvas(int bufferSize)
         {
+            if (bufferSize < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bufferSize));
+            }
+
             _bufferCount = bufferSize;
             _bitmapCanvasCollection = new SingleBitmapCanvas[bufferSize];
             for (int i = 0; i < bufferSize; i++)
             {
                 _bitmapCanvasCollection[i] = new SingleBitmapCanvas();
             }
+
+            _writeCanvas = _bitmapCanvasCollection[0];
         }
 
         public bool Ready { get; } = true;
-
-        public void Allocate(CanvasInfo info)
-        {
-            foreach (var canvas in _bitmapCanvasCollection)
-            {
-                canvas.Allocate(info);
-            }
-
-            Swap();
-        }
 
 
         private SingleBitmapCanvas _writeCanvas;
@@ -58,11 +56,6 @@ namespace OpenTkWPFHost
             _currentWriteCanvasIndex++;
             var writeBufferIndex = _currentWriteCanvasIndex % _bufferCount;
             _writeCanvas = _bitmapCanvasCollection[writeBufferIndex];
-        }
-
-        public bool Commit(DrawingContext context, CanvasArgs args)
-        {
-            return _writeCanvas.Commit(context, args);
         }
 
         public bool CanAsyncFlush { get; } = true;

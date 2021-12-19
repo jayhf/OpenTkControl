@@ -45,7 +45,6 @@ namespace OpenTkWPFHost
                 return;
             }
 
-            _canvasInfo = info;
             if (_image != null)
             {
                 _image.IsFrontBufferAvailableChanged -= _image_IsFrontBufferAvailableChanged;
@@ -61,34 +60,31 @@ namespace OpenTkWPFHost
 
         private void _image_IsFrontBufferAvailableChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            this._isFrontBufferAvailable = (bool) e.NewValue;
-        }
-
-        public void Prepare()
-        {
-            IsDirty = false;
+            this._isFrontBufferAvailable = (bool)e.NewValue;
         }
 
         public CanvasArgs Flush(FrameArgs frame)
         {
+            DXRenderBuffer
+            var dxFrameArgs = (DXFrameArgs)frame;
+            var renderTargetIntPtr = dxFrameArgs.RenderTargetIntPtr;
+            return new DXCanvasArgs(renderTargetIntPtr, this,dxFrameArgs.CanvasInfo);
         }
 
-        public bool Commit(DrawingContext drawingContext, CanvasArgs args)
+        public bool Commit(DrawingContext drawingContext, IntPtr frameBuffer,CanvasInfo canvasInfo)
         {
             try
             {
-                var dxCanvasArgs = (DXCanvasArgs) args;
+                if (!canvasInfo.Equals(_canvasInfo))
+                {
+                    
+                }
                 var preDirtRect = new Int32Rect(0, 0, _canvasInfo.ActualWidth,
                     _canvasInfo.ActualHeight);
                 _image.Lock();
-                _image.SetBackBuffer(D3DResourceType.IDirect3DSurface9, dxCanvasArgs.FrameBuffer);
+                _image.SetBackBuffer(D3DResourceType.IDirect3DSurface9, frameBuffer);
                 _image.AddDirtyRect(preDirtRect);
                 _image.Unlock();
-                /*if (dxCanvasArgs.FrameBuffer != IntPtr.Zero && !preDirtRect.IsEmpty)
-            {
-                
-                IsDirty = true;
-            }*/
                 drawingContext.PushTransform(_transformGroup);
                 drawingContext.DrawImage(_image, new Rect(new Size(_image.Width, _image.Height)));
                 drawingContext.Pop();
@@ -107,7 +103,7 @@ namespace OpenTkWPFHost
 
         public bool D3DImageDirty
         {
-            get { return (bool) _fieldInfo.GetValue(this._image); }
+            get { return (bool)_fieldInfo.GetValue(this._image); }
         }
     }
 }

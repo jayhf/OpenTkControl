@@ -19,9 +19,12 @@ namespace OpenTkWPFHost
     {
         public IntPtr RenderTargetIntPtr { get; }
 
-        public DXFrameArgs(PixelSize pixelSize, IntPtr renderTargetIntPtr)
+        public CanvasInfo CanvasInfo { get; }
+        
+        public DXFrameArgs(PixelSize pixelSize, IntPtr renderTargetIntPtr, CanvasInfo canvasInfo)
         {
             RenderTargetIntPtr = renderTargetIntPtr;
+            CanvasInfo = canvasInfo;
             this.PixelSize = pixelSize;
         }
     }

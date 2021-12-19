@@ -21,11 +21,5 @@ namespace OpenTkWPFHost
 
         void Swap();
 
-        /// <summary>
-        /// commit to ui
-        /// </summary>
-        /// <param name="context"></param>
-        /// <param name="args"></param>
-        bool Commit(DrawingContext context, CanvasArgs args);
     }
 }

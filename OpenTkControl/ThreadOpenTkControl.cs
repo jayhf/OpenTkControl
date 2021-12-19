@@ -145,7 +145,11 @@ namespace OpenTkWPFHost
                     // BoundedCapacity = 10,
                 });
             //copy buffer to image source
-            var frameBlock = new TransformBlock<FrameArgs, CanvasArgs>(args => { return canvas.Flush(args); },
+            var frameBlock = new TransformBlock<FrameArgs, CanvasArgs>(args =>
+                {
+                    canvas.Swap();
+                    return canvas.Flush(args);
+                },
                 new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = 1,
@@ -164,12 +168,11 @@ namespace OpenTkWPFHost
                 bool commit;
                 using (var drawingContext = _drawingGroup.Open())
                 {
-                    commit = canvas.Commit(drawingContext, args);
+                    commit = args.Commit(drawingContext);
                 }
 
                 if (commit)
                 {
-                    canvas.Swap();
                     if (_internalTrigger)
                     {
                         this.InvalidateVisual();
