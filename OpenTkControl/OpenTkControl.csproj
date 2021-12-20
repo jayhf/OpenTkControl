@@ -47,6 +47,7 @@
     <Compile Include="CanvasArgs.cs" />
     <Compile Include="ContextWaiterExtension.cs" />
     <Compile Include="GLContextBinding.cs" />
+    <Compile Include="GenericMultiBuffer.cs" />
     <Compile Include="Pipeline.cs" />
     <Compile Include="RenderArgs.cs" />
     <Compile Include="ContextWaiter.cs" />

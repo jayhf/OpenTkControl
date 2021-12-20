@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>3.0.0-preview1</version>
+    <version>$version$</version>
     <title>$title$</title>
     <authors>$author$</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/migeyusu/OpenTkControl</projectUrl>
     <icon>images\lion.png</icon>
     <description>$description$</description>
-    <releaseNotes>Use TPL dataflow to orgnize render procedure;Add RenderSetting;Bug fixed;Known problem:DXProcedure is invalid.</releaseNotes>
+    <releaseNotes>Known problem：cannot restart.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>WPF OpenTK</tags>
     <dependencies>

@@ -11,7 +11,7 @@ namespace OpenTkWPFHost
     {
         private DxGlContext _context;
 
-        private DxGLFramebuffer _frameBuffer;
+        private DxGLFramebuffer _frameBuffer => _frameBuffers.GetBackBuffer();
 
         public bool EnableFlush { get; set; } = true;
 
@@ -20,8 +20,11 @@ namespace OpenTkWPFHost
 
         public bool IsInitialized { get; private set; }
 
+        private readonly GenericMultiBuffer<DxGLFramebuffer> _frameBuffers;
+
         public void Swap()
         {
+            _frameBuffers.Swap();
         }
 
         public IRenderCanvas CreateCanvas()
@@ -36,6 +39,7 @@ namespace OpenTkWPFHost
 
         public DXProcedure()
         {
+            _frameBuffers = new GenericMultiBuffer<DxGLFramebuffer>(3);
         }
 
         /// Sets up the framebuffer, directx stuff for rendering.
@@ -72,23 +76,22 @@ namespace OpenTkWPFHost
 
         private RenderTargetInfo _renderTargetInfo;
 
+
         public void Apply(RenderTargetInfo renderTarget)
         {
             this._renderTargetInfo = renderTarget;
-            var pixelSize = renderTarget.PixelSize;
-            if (_frameBuffer == null)
+            var renderTargetPixelSize = renderTarget.PixelSize;
+            _frameBuffers.Allocate((i, d) =>
             {
-                _frameBuffer = new DxGLFramebuffer(_context, pixelSize);
-                return;
-            }
-
-            _frameBuffer.Release();
-            _frameBuffer = new DxGLFramebuffer(_context, pixelSize);
+                d?.Release();
+                return new DxGLFramebuffer(_context, renderTargetPixelSize);
+            });
+            _frameBuffers.Swap();
         }
 
         public void Dispose()
         {
-            _frameBuffer?.Release();
+            _frameBuffers.ForEach(((i, framebuffer) => framebuffer.Release()));
             _context?.Dispose();
         }
 
