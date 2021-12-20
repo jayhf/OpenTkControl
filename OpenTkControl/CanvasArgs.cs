@@ -10,7 +10,6 @@ namespace OpenTkWPFHost
         /// commit to ui
         /// </summary>
         /// <param name="context"></param>
-        /// <param name="args"></param>
         public abstract bool Commit(DrawingContext context);
 
         protected CanvasArgs(RenderTargetInfo renderTargetInfo) : base(renderTargetInfo)

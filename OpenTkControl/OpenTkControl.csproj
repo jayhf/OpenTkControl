@@ -51,7 +51,7 @@
     <Compile Include="RenderArgs.cs" />
     <Compile Include="ContextWaiter.cs" />
     <Compile Include="DesignTimeHelper.cs" />
-    <Compile Include="DoubleDxCanvas.cs" />
+    <Compile Include="MultiDxCanvas.cs" />
     <Compile Include="PixelBufferInfo.cs" />
     <Compile Include="DrawingDirective.cs" />
     <Compile Include="DxCanvas.cs" />
@@ -75,6 +75,7 @@
     <Compile Include="IRenderProcedure.cs" />
     <Compile Include="MultiStoragePixelBuffer.cs" />
     <Compile Include="OpenGLError.cs" />
+    <Compile Include="RenderSetting.cs" />
     <Compile Include="RenderTargetInfo.cs" />
     <Compile Include="OpenTkControlBase.cs" />
     <Compile Include="PixelSize.cs" />

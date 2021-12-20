@@ -26,7 +26,7 @@ namespace OpenTkWPFHost
 
         public IRenderCanvas CreateCanvas()
         {
-            return new DxCanvas();
+            return new MultiDxCanvas();
         }
 
         public IRenderBuffer CreateRenderBuffer()
@@ -84,12 +84,6 @@ namespace OpenTkWPFHost
 
             _frameBuffer.Release();
             _frameBuffer = new DxGLFramebuffer(_context, pixelSize);
-
-            /*if (!_frameBuffer.PixelSize.Equals(pixelSize))
-            {
-                _frameBuffer.Release();
-                _frameBuffer = new DxGLFramebuffer(_context, pixelSize);
-            }*/
         }
 
         public void Dispose()

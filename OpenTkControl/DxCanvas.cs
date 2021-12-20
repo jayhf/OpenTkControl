@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -17,16 +18,14 @@ namespace OpenTkWPFHost
         private FieldInfo _fieldInfo;
 
         public bool CanAsyncFlush { get; set; } = false;
-
-        public bool IsDirty { get; set; }
-
-        private bool _isFrontBufferAvailable;
+        
+        private bool _isFrontBufferAvailable = true;
 
         private TransformGroup _transformGroup;
 
         public bool Ready => _isFrontBufferAvailable && !this.D3DImageDirty;
 
-        private RenderTargetInfo renderTarget;
+        private RenderTargetInfo _renderTarget;
 
         public DxCanvas()
         {
@@ -34,7 +33,7 @@ namespace OpenTkWPFHost
 
         public void Allocate(RenderTargetInfo info)
         {
-            this.renderTarget = info;
+            this._renderTarget = info;
             _transformGroup = new TransformGroup();
             _transformGroup.Children.Add(new ScaleTransform(1, -1));
             _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
@@ -74,13 +73,13 @@ namespace OpenTkWPFHost
         {
             try
             {
-                if (!Equals(canvasInfo, renderTarget))
+                if (!Equals(canvasInfo, _renderTarget))
                 {
                     Allocate(canvasInfo);
                 }
 
-                var preDirtRect = new Int32Rect(0, 0, renderTarget.ActualWidth,
-                    renderTarget.ActualHeight);
+                var preDirtRect = new Int32Rect(0, 0, _renderTarget.ActualWidth,
+                    _renderTarget.ActualHeight);
                 _image.Lock();
                 _image.SetBackBuffer(D3DResourceType.IDirect3DSurface9, frameBuffer);
                 _image.AddDirtyRect(preDirtRect);

@@ -153,6 +153,7 @@ namespace OpenTkWPFHost
                     }
 
                     canvas.Swap();
+
                     return canvas.Flush(args);
                 },
                 new ExecutionDataflowBlockOptions()
@@ -324,15 +325,6 @@ namespace OpenTkWPFHost
                             await _sizeNotEmptyEvent.Wait(mainContextBinding);
                             continue;
                         }
-
-                        /*if (!uiRenderCanvas.Ready)
-                        {
-                            var spinWait = new SpinWait();
-                            spinWait.SpinOnce();
-                            spinWait.SpinOnce();
-                            // await graphicsContext.Delay(, _windowInfo);
-                            continue;
-                        }*/
 
                         if (!renderer.PreviewRender())
                         {
