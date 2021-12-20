@@ -75,7 +75,7 @@
     <Compile Include="IRenderProcedure.cs" />
     <Compile Include="MultiStoragePixelBuffer.cs" />
     <Compile Include="OpenGLError.cs" />
-    <Compile Include="CanvasInfo.cs" />
+    <Compile Include="RenderTargetInfo.cs" />
     <Compile Include="OpenTkControlBase.cs" />
     <Compile Include="PixelSize.cs" />
     <Compile Include="PropertyChangedArgs.cs" />

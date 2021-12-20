@@ -5,27 +5,28 @@ namespace OpenTkWPFHost
 {
     public abstract class FrameArgs : PipelineArgs
     {
-        
+        protected FrameArgs(RenderTargetInfo renderTargetInfo) : base(renderTargetInfo)
+        {
+        }
     }
 
     public class BitmapFrameArgs : FrameArgs
     {
-        public PixelBufferInfo BufferInfo { get; set; }
+        public PixelBufferInfo BufferInfo { get; }
 
-        public CanvasInfo CanvasInfo { get; set; }
+        public BitmapFrameArgs(RenderTargetInfo renderTargetInfo, PixelBufferInfo bufferInfo) : base(renderTargetInfo)
+        {
+            BufferInfo = bufferInfo;
+        }
     }
 
     public class DXFrameArgs:FrameArgs
     {
         public IntPtr RenderTargetIntPtr { get; }
 
-        public CanvasInfo CanvasInfo { get; }
-        
-        public DXFrameArgs(PixelSize pixelSize, IntPtr renderTargetIntPtr, CanvasInfo canvasInfo)
+        public DXFrameArgs(IntPtr renderTargetIntPtr, RenderTargetInfo renderTargetInfo) : base(renderTargetInfo)
         {
             RenderTargetIntPtr = renderTargetIntPtr;
-            CanvasInfo = canvasInfo;
-            this.PixelSize = pixelSize;
         }
     }
 }

@@ -12,43 +12,51 @@ namespace OpenTkWPFHost
         /// <param name="context"></param>
         /// <param name="args"></param>
         public abstract bool Commit(DrawingContext context);
+
+        protected CanvasArgs(RenderTargetInfo renderTargetInfo) : base(renderTargetInfo)
+        {
+        }
     }
 
     public class BitmapCanvasArgs : CanvasArgs
     {
-        private SingleBitmapCanvas _canvas;
+        private readonly SingleBitmapCanvas _canvas;
         private readonly bool _needFlush;
 
-        public BitmapCanvasArgs(SingleBitmapCanvas canvas, bool needFlush = false)
+        private PixelBufferInfo _bufferInfo;
+
+        public BitmapCanvasArgs(SingleBitmapCanvas canvas, RenderTargetInfo renderTargetInfo,
+            PixelBufferInfo bufferInfo = null, bool needFlush = false)
+            : base(renderTargetInfo)
         {
             this._canvas = canvas;
-            _needFlush = needFlush;
+            this._bufferInfo = bufferInfo;
+            this._needFlush = needFlush;
         }
 
         public override bool Commit(DrawingContext context)
         {
-            return _canvas.Commit(context, _needFlush);
+            return _canvas.Commit(context,_bufferInfo, _needFlush);
         }
     }
 
 
     public class DXCanvasArgs : CanvasArgs
     {
-        private readonly DxCanvas dxCanvas;
+        private readonly DxCanvas _dxCanvas;
 
-        private CanvasInfo canvasInfo;
-        
         private readonly IntPtr _frameBuffer;
-        
-        public DXCanvasArgs(IntPtr frameBuffer, DxCanvas dxCanvas, CanvasInfo canvasInfo)
+
+        public DXCanvasArgs(IntPtr frameBuffer, DxCanvas dxCanvas, RenderTargetInfo renderTargetInfo) : base(
+            renderTargetInfo)
         {
             this._frameBuffer = frameBuffer;
-            this.dxCanvas = dxCanvas;
-            this.canvasInfo = canvasInfo;
+            this._dxCanvas = dxCanvas;
         }
+
         public override bool Commit(DrawingContext context)
         {
-            return dxCanvas.Commit(context, this._frameBuffer);
+            return _dxCanvas.Commit(context, this._frameBuffer, this.TargetInfo);
         }
     }
 }

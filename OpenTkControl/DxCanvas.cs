@@ -26,14 +26,15 @@ namespace OpenTkWPFHost
 
         public bool Ready => _isFrontBufferAvailable && !this.D3DImageDirty;
 
-        private CanvasInfo _canvasInfo;
+        private RenderTargetInfo renderTarget;
 
         public DxCanvas()
         {
         }
 
-        public void Allocate(CanvasInfo info)
+        public void Allocate(RenderTargetInfo info)
         {
+            this.renderTarget = info;
             _transformGroup = new TransformGroup();
             _transformGroup.Children.Add(new ScaleTransform(1, -1));
             _transformGroup.Children.Add(new TranslateTransform(0, info.ActualHeight));
@@ -60,27 +61,26 @@ namespace OpenTkWPFHost
 
         private void _image_IsFrontBufferAvailableChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            this._isFrontBufferAvailable = (bool)e.NewValue;
+            this._isFrontBufferAvailable = (bool) e.NewValue;
         }
 
         public CanvasArgs Flush(FrameArgs frame)
         {
-            DXRenderBuffer
-            var dxFrameArgs = (DXFrameArgs)frame;
-            var renderTargetIntPtr = dxFrameArgs.RenderTargetIntPtr;
-            return new DXCanvasArgs(renderTargetIntPtr, this,dxFrameArgs.CanvasInfo);
+            var dxFrameArgs = (DXFrameArgs) frame;
+            return new DXCanvasArgs(dxFrameArgs.RenderTargetIntPtr, this, dxFrameArgs.TargetInfo);
         }
 
-        public bool Commit(DrawingContext drawingContext, IntPtr frameBuffer,CanvasInfo canvasInfo)
+        public bool Commit(DrawingContext drawingContext, IntPtr frameBuffer, RenderTargetInfo canvasInfo)
         {
             try
             {
-                if (!canvasInfo.Equals(_canvasInfo))
+                if (!Equals(canvasInfo, renderTarget))
                 {
-                    
+                    Allocate(canvasInfo);
                 }
-                var preDirtRect = new Int32Rect(0, 0, _canvasInfo.ActualWidth,
-                    _canvasInfo.ActualHeight);
+
+                var preDirtRect = new Int32Rect(0, 0, renderTarget.ActualWidth,
+                    renderTarget.ActualHeight);
                 _image.Lock();
                 _image.SetBackBuffer(D3DResourceType.IDirect3DSurface9, frameBuffer);
                 _image.AddDirtyRect(preDirtRect);
@@ -103,7 +103,7 @@ namespace OpenTkWPFHost
 
         public bool D3DImageDirty
         {
-            get { return (bool)_fieldInfo.GetValue(this._image); }
+            get { return (bool) _fieldInfo.GetValue(this._image); }
         }
     }
 }

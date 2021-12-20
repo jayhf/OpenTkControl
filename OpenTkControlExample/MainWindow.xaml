@@ -17,7 +17,7 @@
                                            MaxFrameRate="1000"
                                            IsRenderContinuously="True">
             <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-                <openTkWpfHost:BitmapProcedure />
+                <openTkWpfHost:DXProcedure />
             </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
         </openTkWpfHost:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">

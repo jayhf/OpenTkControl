@@ -5,9 +5,9 @@ using System.Windows.Media.Imaging;
 
 namespace OpenTkWPFHost
 {
-    public class CanvasInfo
+    public class RenderTargetInfo
     {
-        public CanvasInfo(int width, int height, double dpiScaleX, double dpiScaleY)
+        public RenderTargetInfo(int width, int height, double dpiScaleX, double dpiScaleY)
         {
             ActualWidth = width;
             ActualHeight = height;
@@ -61,7 +61,7 @@ namespace OpenTkWPFHost
             return new GlRenderEventArgs(PixelWidth, PixelHeight, false);
         }
         
-        public bool Equals(CanvasInfo other)
+        public bool Equals(RenderTargetInfo other)
         {
             return DpiScaleX.Equals(other.DpiScaleX) && DpiScaleY.Equals(other.DpiScaleY) &&
                    ActualWidth == other.ActualWidth &&
@@ -70,7 +70,7 @@ namespace OpenTkWPFHost
 
         public override bool Equals(object obj)
         {
-            return obj is CanvasInfo other && Equals(other);
+            return obj is RenderTargetInfo other && Equals(other);
         }
 
         public override int GetHashCode()

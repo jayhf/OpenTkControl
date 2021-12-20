@@ -30,15 +30,18 @@ namespace OpenTkWPFHost
         /// </summary>
         private int _depthBuffer;
 
+        private RenderTargetInfo _renderTargetInfo;
+
         /// <summary>
         /// can set pixel buffer based on your machine specification. Recommend is double pbo.
         /// </summary>
-        private MultiStoragePixelBuffer _multiStoragePixelBuffer = new MultiStoragePixelBuffer(5);
+        private MultiStoragePixelBuffer _pixelBuffer;
 
         public bool IsInitialized { get; private set; }
 
         public BitmapProcedure()
         {
+            
         }
 
         public void PreRender()
@@ -47,12 +50,16 @@ namespace OpenTkWPFHost
 
         public RenderArgs PostRender()
         {
-            var pixelBufferInfo = _multiStoragePixelBuffer.ReadPixel();
-            return new BitmapRenderArgs()
+            var pixelBufferInfo = _pixelBuffer.ReadPixel();
+            return new BitmapRenderArgs(this._renderTargetInfo)
             {
                 BufferInfo = pixelBufferInfo,
-                PixelSize = pixelBufferInfo.PixelSize,
             };
+        }
+
+        public void Swap()
+        {
+            _pixelBuffer.Swap();
         }
 
         public IRenderCanvas CreateCanvas()
@@ -61,9 +68,9 @@ namespace OpenTkWPFHost
             return new BitmapCanvas(2);
         }
 
-        public IRenderBuffer CreateFrameBuffer()
+        public IRenderBuffer CreateRenderBuffer()
         {
-            return _multiStoragePixelBuffer;
+            return _pixelBuffer;
         }
 
         public GLContextBinding Initialize(IWindowInfo window, GLSettings settings)
@@ -72,22 +79,23 @@ namespace OpenTkWPFHost
             {
                 throw new NotSupportedException("Initialized already!");
             }
-
             _context = settings.CreateContext(window);
             _context.LoadAll();
             _context.MakeCurrent(window);
+            _pixelBuffer = new MultiStoragePixelBuffer(5);
             IsInitialized = true;
             return new GLContextBinding(_context, window);
         }
 
-        public void SizeFrame(PixelSize pixelSize)
+        public void Apply(RenderTargetInfo renderTargetInfo)
         {
-            var height = pixelSize.Height;
-            var width = pixelSize.Width;
+            _pixelBuffer.Release();
             ReleaseFrameBuffers();
+            this._renderTargetInfo = renderTargetInfo;
+            var height = renderTargetInfo.PixelHeight;
+            var width = renderTargetInfo.PixelWidth;
             _frameBuffer = GL.GenFramebuffer();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, _frameBuffer);
-
             _depthBuffer = GL.GenRenderbuffer();
             GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _depthBuffer);
             GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent24, width,
@@ -105,6 +113,8 @@ namespace OpenTkWPFHost
             {
                 throw new GraphicsErrorException("Error creating frame buffer: " + error);
             }
+
+            _pixelBuffer.Allocate(renderTargetInfo);
         }
 
         /// <summary>
@@ -133,6 +143,8 @@ namespace OpenTkWPFHost
 
         public void Dispose()
         {
+            _pixelBuffer.Release();
+            _pixelBuffer.Dispose();
             ReleaseFrameBuffers();
             _context.Dispose();
             _context = null;

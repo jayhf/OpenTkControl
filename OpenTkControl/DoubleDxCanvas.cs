@@ -50,11 +50,11 @@ namespace OpenTkWPFHost
         }
 
         public bool CanAsyncFlush { get; }
-        public CanvasInfo Info { get; }
+        public RenderTargetInfo Info { get; }
         public bool IsDirty { get; }
         public bool Ready { get; }
 
-        public void Allocate(CanvasInfo info)
+        public void Allocate(RenderTargetInfo info)
         {
             foreach (var dxCanvas in _dxCanvasArray)
             {

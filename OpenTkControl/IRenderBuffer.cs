@@ -12,12 +12,12 @@ namespace OpenTkWPFHost
         /// 
         /// </summary>
         /// <param name="canvasInfo"></param>
-        void Allocate(CanvasInfo canvasInfo);
+        // void Allocate(CanvasInfo canvasInfo);
 
-        void Swap();
+        // void Swap();
         
         FrameArgs ReadFrames(RenderArgs args);
 
-        void Release();
+        // void Release();
     }
 }

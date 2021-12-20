@@ -21,11 +21,11 @@ namespace OpenTkWPFHost
         /// This setting may be useful to get extra performance on mobile platforms.
         public bool UseDeviceDpi { get; set; } = false;
 
-        public CanvasInfo CreateCanvasInfo(FrameworkElement element)
+        public RenderTargetInfo CreateCanvasInfo(FrameworkElement element)
         {
             if (!UseDeviceDpi)
             {
-                return new CanvasInfo((int) element.ActualWidth, (int) element.ActualHeight, 1, 1);
+                return new RenderTargetInfo((int) element.ActualWidth, (int) element.ActualHeight, 1, 1);
             }
 
             var dpiScaleX = 1.0;
@@ -41,7 +41,7 @@ namespace OpenTkWPFHost
                 dpiScaleY = transformToDevice.M22;
             }
 
-            return new CanvasInfo((int) element.ActualWidth, (int) element.ActualHeight, dpiScaleX, dpiScaleY);
+            return new RenderTargetInfo((int) element.ActualWidth, (int) element.ActualHeight, dpiScaleX, dpiScaleY);
         }
     }
 

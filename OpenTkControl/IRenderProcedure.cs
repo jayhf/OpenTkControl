@@ -13,22 +13,27 @@ namespace OpenTkWPFHost
     {
         GLContextBinding Initialize(IWindowInfo window, GLSettings settings);
 
-        /// <summary>
-        /// set frame size
-        /// </summary>
-        /// <param name="pixelSize"></param>
-        void SizeFrame(PixelSize pixelSize);
+        void Apply(RenderTargetInfo canvasInfo);
 
         void PreRender();
 
         RenderArgs PostRender();
 
         /// <summary>
+        /// swap buffer
+        /// </summary>
+        void Swap();
+        /// <summary>
         /// canvas factory
         /// </summary>
         /// <returns></returns>
         IRenderCanvas CreateCanvas();
 
-        IRenderBuffer CreateFrameBuffer();
+        /// <summary>
+        /// create or get render buffer
+        /// </summary>
+        /// <returns></returns>
+        IRenderBuffer CreateRenderBuffer();
+
     }
 }

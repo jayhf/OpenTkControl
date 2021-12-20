@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Windows;
 using System.Windows.Media;
@@ -20,7 +21,7 @@ namespace OpenTkWPFHost
 
         private Int32Rect _int32Rect;
 
-        private CanvasInfo _canvasInfo;
+        private RenderTargetInfo _canvasInfo;
 
         /// <summary>
         /// The source of the internal Image
@@ -29,7 +30,7 @@ namespace OpenTkWPFHost
 
         private TransformGroup _transformGroup;
 
-        public void Allocate(CanvasInfo canvasInfo)
+        public void Allocate(RenderTargetInfo canvasInfo)
         {
             _transformGroup = new TransformGroup();
             _transformGroup.Children.Add(new ScaleTransform(1, -1));
@@ -47,23 +48,24 @@ namespace OpenTkWPFHost
 
         public CanvasArgs Flush([NotNull] FrameArgs frame)
         {
-            var bitmapFrameArgs = (BitmapFrameArgs)frame;
-            var canvasInfo = bitmapFrameArgs.CanvasInfo;
+            var bitmapFrameArgs = (BitmapFrameArgs) frame;
+            var canvasInfo = bitmapFrameArgs.TargetInfo;
             try
             {
                 _readerWriterLockSlim.EnterWriteLock();
-                if (!canvasInfo.Equals(this._canvasInfo))
+                var pixelBufferInfo = bitmapFrameArgs.BufferInfo;
+                if (!Equals(canvasInfo, this._canvasInfo))
                 {
                     this._canvasInfo = canvasInfo;
-                    return new BitmapCanvasArgs(this, true) { PixelSize = frame.PixelSize };
+                    return new BitmapCanvasArgs(this, frame.TargetInfo, pixelBufferInfo, true);
                 }
 
-                var bufferInfo = bitmapFrameArgs.BufferInfo;
-                Flush(bufferInfo);
-                return new BitmapCanvasArgs(this)
+                if (pixelBufferInfo.CopyTo(this._displayBuffer))
                 {
-                    PixelSize = frame.PixelSize,
-                };
+                    return new BitmapCanvasArgs(this, frame.TargetInfo);
+                }
+
+                return null;
             }
             finally
             {
@@ -71,36 +73,33 @@ namespace OpenTkWPFHost
             }
         }
 
-        private void Flush(PixelBufferInfo bufferInfo)
+
+        public bool Commit(DrawingContext context, PixelBufferInfo bufferInfo, bool allocate)
         {
-            var bufferSize = bufferInfo.BufferSize;
-            unsafe
-            {
-                Buffer.MemoryCopy(bufferInfo.MapBufferIntPtr.ToPointer(),
-                    _displayBuffer.ToPointer(),
-                    bufferSize, bufferSize);
-            }
-
-
-            bufferInfo.HasBuffer = false;
-        }
-
-        public bool Commit(DrawingContext context, bool allocate)
-        {
+            bool bitmapLocked = false;
             try
             {
                 _readerWriterLockSlim.EnterReadLock();
                 if (allocate)
                 {
                     Allocate(_canvasInfo);
+                    if (!bufferInfo.CopyTo(this._displayBuffer))
+                    {
+                        return false;
+                    }
                 }
 
                 _bitmap.Lock();
+                bitmapLocked = true;
                 _bitmap.AddDirtyRect(_int32Rect);
             }
             finally
             {
-                _bitmap.Unlock();
+                if (bitmapLocked)
+                {
+                    _bitmap.Unlock();
+                }
+
                 _readerWriterLockSlim.ExitReadLock();
             }
 

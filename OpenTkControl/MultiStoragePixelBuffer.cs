@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks.Dataflow;
@@ -18,7 +19,7 @@ namespace OpenTkWPFHost
     /// <summary>
     /// highest performance, but possibly cause stuck on low end cpu (2 physical core)
     /// </summary>
-    public class MultiStoragePixelBuffer : IRenderBuffer
+    public class MultiStoragePixelBuffer : IRenderBuffer, IDisposable
     {
         private readonly uint _bufferCount;
 
@@ -30,7 +31,6 @@ namespace OpenTkWPFHost
             }
 
             _bufferCount = bufferCount;
-
             _bufferInfos = new PixelBufferInfo[bufferCount];
             for (int i = 0; i < bufferCount; i++)
             {
@@ -49,24 +49,18 @@ namespace OpenTkWPFHost
         /// <summary>
         /// 先写入缓冲，然后才能读取，所以写入缓冲=读取缓冲+1
         /// </summary>
-        private int _currentWriteBufferIndex = 0;
+        private long _currentWriteBufferIndex = 0;
 
         private bool _allocated = false;
 
-        const BufferAccessMask AccessMask = BufferAccessMask.MapWriteBit | BufferAccessMask.MapCoherentBit |
-                                            BufferAccessMask.MapPersistentBit;
 
-        const BufferStorageFlags StorageFlags = BufferStorageFlags.MapWriteBit |
-                                                BufferStorageFlags.MapPersistentBit |
-                                                BufferStorageFlags.MapCoherentBit;
-
-        private CanvasInfo _canvasInfo;
+        private RenderTargetInfo _renderTargetInfo;
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="canvasInfo"></param>
-        public void Allocate(CanvasInfo canvasInfo)
+        /// <param name="renderTargetInfo"></param>
+        public void Allocate(RenderTargetInfo renderTargetInfo)
         {
             if (_allocated)
             {
@@ -74,21 +68,14 @@ namespace OpenTkWPFHost
             }
 
             _allocated = true;
-            _canvasInfo = canvasInfo;
-            var currentPixelBufferSize = canvasInfo.BufferSize;
-            this._width = canvasInfo.PixelWidth;
-            this._height = canvasInfo.PixelHeight;
+            _renderTargetInfo = renderTargetInfo;
+            var currentPixelBufferSize = renderTargetInfo.BufferSize;
+            var pixelSize = renderTargetInfo.PixelSize;
+            this._width = renderTargetInfo.PixelWidth;
+            this._height = renderTargetInfo.PixelHeight;
             foreach (var bufferInfo in _bufferInfos)
             {
-                var writeBuffer = GL.GenBuffer();
-                GL.BindBuffer(BufferTarget.PixelPackBuffer, writeBuffer);
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, currentPixelBufferSize, IntPtr.Zero, StorageFlags);
-                var mapBufferRange = GL.MapBufferRange(BufferTarget.PixelPackBuffer, IntPtr.Zero,
-                    currentPixelBufferSize, AccessMask);
-                bufferInfo.BufferSize = currentPixelBufferSize;
-                bufferInfo.GlBufferPointer = writeBuffer;
-                bufferInfo.MapBufferIntPtr = mapBufferRange;
-                bufferInfo.PixelSize = canvasInfo.PixelSize;
+                bufferInfo.Allocate(currentPixelBufferSize, pixelSize);
             }
 
             this.Swap();
@@ -102,18 +89,39 @@ namespace OpenTkWPFHost
             }
 
             _allocated = false;
+            GetAllLocks();
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer);
             foreach (var bufferInfo in _bufferInfos)
             {
-                bufferInfo.Fence = IntPtr.Zero;
-                bufferInfo.HasBuffer = false;
-                var writeBuffer = bufferInfo.GlBufferPointer;
-                if (writeBuffer != 0)
+                try
                 {
-                    GL.DeleteBuffer(writeBuffer); //todo: release是否要删除fence?
+                    bufferInfo.Release();
                 }
+                finally
+                {
+                    bufferInfo.ReleaseWriteLock();
+                }
+                
+            }
+           
+        }
+
+        private void GetAllLocks()
+        {
+            foreach (var pixelBufferInfo in _bufferInfos)
+            {
+                pixelBufferInfo.AcquireWriteLock();
             }
         }
+
+        private void ReleaseLocks()
+        {
+            foreach (var pixelBufferInfo in _bufferInfos)
+            {
+                pixelBufferInfo.ReleaseWriteLock();
+            }
+        }
+
 
         private SpinWait _spinWait = new SpinWait();
 
@@ -153,35 +161,21 @@ namespace OpenTkWPFHost
             }
 
             var bufferInfo = ((BitmapRenderArgs) args).BufferInfo;
-            var fence = bufferInfo.Fence;
-            if (fence != IntPtr.Zero && bufferInfo.HasBuffer)
+            if (bufferInfo.ReadBuffer())
             {
-                var clientWaitSync = GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, 0);
-                if (clientWaitSync == WaitSyncStatus.AlreadySignaled ||
-                    clientWaitSync == WaitSyncStatus.ConditionSatisfied)
-                {
-                    GL.DeleteSync(fence);
-                    return new BitmapFrameArgs()
-                    {
-                        PixelSize = args.PixelSize,
-                        BufferInfo = bufferInfo,
-                        CanvasInfo = this._canvasInfo,
-                    };
-                }
-#if DEBUG
-                GL.GetSync(fence, SyncParameterName.SyncStatus, 1, out int length, out int status);
-                if (status == (int) GLSignalStatus.UnSignaled)
-                {
-                    var errorCode = GL.GetError();
-                    Debug.WriteLine(errorCode.ToString());
-                }
-
-                Debug.WriteLine(clientWaitSync.ToString());
-#endif
+                return new BitmapFrameArgs(args.TargetInfo, bufferInfo);
             }
 
             bufferInfo.HasBuffer = false;
             return null;
+        }
+
+        public void Dispose()
+        {
+            foreach (var pixelBufferInfo in _bufferInfos)
+            {
+                pixelBufferInfo.Dispose();
+            }
         }
     }
 }

@@ -47,7 +47,7 @@ namespace OpenTkWPFHost
 
         private readonly FpsCounter _controlFps = new FpsCounter() {Title = "ControlFps"};
 
-        protected volatile CanvasInfo RecentCanvasInfo = new CanvasInfo(0, 0, 96, 96);
+        protected volatile RenderTargetInfo RecentTargetInfo = new RenderTargetInfo(0, 0, 96, 96);
 
         private readonly EventWaiter _userVisibleResetEvent = new EventWaiter();
 
@@ -78,8 +78,8 @@ namespace OpenTkWPFHost
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            RecentCanvasInfo = this.RenderSetting.CreateCanvasInfo(this);
-            if (!RecentCanvasInfo.IsEmpty)
+            RecentTargetInfo = this.RenderSetting.CreateCanvasInfo(this);
+            if (!RecentTargetInfo.IsEmpty)
             {
                 _sizeNotEmptyEvent.TrySet();
             }
@@ -147,6 +147,11 @@ namespace OpenTkWPFHost
             //copy buffer to image source
             var frameBlock = new TransformBlock<FrameArgs, CanvasArgs>(args =>
                 {
+                    if (args == null)
+                    {
+                        return null;
+                    }
+
                     canvas.Swap();
                     return canvas.Flush(args);
                 },
@@ -164,7 +169,7 @@ namespace OpenTkWPFHost
                 {
                     return;
                 }
-                
+
                 bool commit;
                 using (var drawingContext = _drawingGroup.Open())
                 {
@@ -224,7 +229,7 @@ namespace OpenTkWPFHost
             _workingRenderSetting = this.RenderSetting;
             _useSemaphore = _workingRenderSetting.RenderTactic == RenderTactic.LatencyPriority;
             _internalTrigger = _workingRenderSetting.RenderTrigger == RenderTrigger.Internal;
-            RecentCanvasInfo = _workingRenderSetting.CreateCanvasInfo(this);
+            RecentTargetInfo = _workingRenderSetting.CreateCanvasInfo(this);
             switch (_workingRenderSetting.RenderTrigger)
             {
                 case RenderTrigger.CompositionTarget:
@@ -265,7 +270,7 @@ namespace OpenTkWPFHost
                     mainContextBinding = procedure.Initialize(windowInfo, glSettings);
                     GL.Enable(EnableCap.DebugOutput);
                     GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-                    renderBuffer = procedure.CreateFrameBuffer();
+                    renderBuffer = procedure.CreateRenderBuffer();
                     pboContextBinding = glSettings.NewBinding(mainContextBinding);
                     pboContextBinding.BindNull();
                 }
@@ -281,7 +286,7 @@ namespace OpenTkWPFHost
                 {
                     var pipeline = BuildPipeline(glContextTaskScheduler, uiRenderCanvas, renderBuffer, taskScheduler);
                     mainContextBinding.BindCurrentThread();
-                    CanvasInfo canvasInfo = null;
+                    RenderTargetInfo targetInfo = null;
                     GlRenderEventArgs renderEventArgs = null;
                     if (!renderer.IsInitialized)
                     {
@@ -304,18 +309,17 @@ namespace OpenTkWPFHost
                             _renderContinuousWaiter.WaitInfinity();
                         }
 
-                        if (!Equals(canvasInfo, RecentCanvasInfo) && !RecentCanvasInfo.IsEmpty)
+                        if (!Equals(targetInfo, RecentTargetInfo) && !RecentTargetInfo.IsEmpty)
                         {
-                            canvasInfo = RecentCanvasInfo;
-                            renderEventArgs = RecentCanvasInfo.GetRenderEventArgs();
-                            var pixelSize = RecentCanvasInfo.PixelSize;
-                            procedure.SizeFrame(pixelSize);
-                            renderBuffer.Release();
-                            renderBuffer.Allocate(RecentCanvasInfo);
+                            targetInfo = RecentTargetInfo;
+                            renderEventArgs = RecentTargetInfo.GetRenderEventArgs();
+                            var pixelSize = RecentTargetInfo.PixelSize;
+                            procedure.Apply(RecentTargetInfo);
                             renderer.Resize(pixelSize);
                         }
 
-                        if (RecentCanvasInfo.IsEmpty)
+                        // ReSharper disable once PossibleNullReferenceException
+                        if (RecentTargetInfo.IsEmpty)
                         {
                             await _sizeNotEmptyEvent.Wait(mainContextBinding);
                             continue;
@@ -345,6 +349,7 @@ namespace OpenTkWPFHost
                             var postRender = procedure.PostRender();
                             OnAfterRender(renderEventArgs);
                             pipeline.Post(postRender);
+                            procedure.Swap();
                             // pipeline.SendAsync(postRender, token).Wait(token);
                             if (syncPipeline)
                             {
@@ -376,14 +381,11 @@ namespace OpenTkWPFHost
 
                             stopwatch.Restart();
                         }
-
-                        renderBuffer.Swap();
                     }
 
                     stopwatch.Stop();
                     pipeline.Finish().Wait(CancellationToken.None);
                     renderer.Uninitialize();
-                    renderBuffer.Release();
                 }
             }
         }
@@ -459,7 +461,7 @@ namespace OpenTkWPFHost
 
         public BitmapSource Snapshot()
         {
-            var targetBitmap = RecentCanvasInfo.CreateRenderTargetBitmap();
+            var targetBitmap = RecentTargetInfo.CreateRenderTargetBitmap();
             var drawingVisual = new DrawingVisual();
             using (var drawingContext = drawingVisual.RenderOpen())
             {

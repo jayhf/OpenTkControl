@@ -6,30 +6,8 @@ using OpenTK.Platform.Windows;
 
 namespace OpenTkWPFHost
 {
-    internal class DXRenderBuffer : IRenderBuffer
-    {
-        public void Allocate(CanvasInfo canvasInfo)
-        {
-        }
-
-        public void Swap()
-        {
-        }
-
-        public FrameArgs ReadFrames(RenderArgs args)
-        {
-            return new DXFrameArgs(args.PixelSize, ((DXRenderArgs) args).RenderTargetIntPtr);
-        }
-
-        public void Release()
-        {
-            
-        }
-    }
-
-
     ///Renderer that uses DX_Interop for a fast-path.
-    public class DXProcedure : IRenderProcedure
+    public class DXProcedure : IRenderProcedure, IRenderBuffer
     {
         private DxGlContext _context;
 
@@ -42,14 +20,18 @@ namespace OpenTkWPFHost
 
         public bool IsInitialized { get; private set; }
 
+        public void Swap()
+        {
+        }
+
         public IRenderCanvas CreateCanvas()
         {
             return new DxCanvas();
         }
 
-        public IRenderBuffer CreateFrameBuffer()
+        public IRenderBuffer CreateRenderBuffer()
         {
-            return new DXRenderBuffer();
+            return this;
         }
 
         public DXProcedure()
@@ -73,7 +55,7 @@ namespace OpenTkWPFHost
                 GL.Flush();
             }
 
-            return new DXRenderArgs(_frameBuffer.PixelSize, _frameBuffer.DxRenderTargetHandle);
+            return new DXRenderArgs(_renderTargetInfo, _frameBuffer.DxRenderTargetHandle);
         }
 
         public GLContextBinding Initialize(IWindowInfo window, GLSettings settings)
@@ -88,8 +70,12 @@ namespace OpenTkWPFHost
             return new GLContextBinding(_context.GraphicsContext, window);
         }
 
-        public void SizeFrame(PixelSize pixelSize)
+        private RenderTargetInfo _renderTargetInfo;
+
+        public void Apply(RenderTargetInfo renderTarget)
         {
+            this._renderTargetInfo = renderTarget;
+            var pixelSize = renderTarget.PixelSize;
             if (_frameBuffer == null)
             {
                 _frameBuffer = new DxGLFramebuffer(_context, pixelSize);
@@ -110,6 +96,11 @@ namespace OpenTkWPFHost
         {
             _frameBuffer?.Release();
             _context?.Dispose();
+        }
+
+        public FrameArgs ReadFrames(RenderArgs args)
+        {
+            return new DXFrameArgs(((DXRenderArgs) args).RenderTargetIntPtr, args.TargetInfo);
         }
     }
 }
