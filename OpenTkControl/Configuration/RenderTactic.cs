@@ -2,8 +2,6 @@ namespace OpenTkWPFHost.Configuration
 {
     public enum RenderTactic
     {
-        // Balance = 2,
-
         /// <summary>
         /// max Throughput£¬
         /// </summary>
@@ -13,5 +11,7 @@ namespace OpenTkWPFHost.Configuration
         /// lowest latency
         /// </summary>
         LatencyPriority = 1,
+
+        Balance = 2,
     }
 }

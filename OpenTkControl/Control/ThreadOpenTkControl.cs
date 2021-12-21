@@ -62,11 +62,6 @@ namespace OpenTkWPFHost.Control
             }
 
             _lastRenderTime = renderingTime.Value;
-            if (_useSemaphore && _semaphoreSlim.CurrentCount > 2)
-            {
-                return;
-            }
-
             this.InvalidateVisual();
         }
 
@@ -105,18 +100,22 @@ namespace OpenTkWPFHost.Control
             }
             finally
             {
-                if (_useSemaphore)
+                if (_useOnRenderSemaphore && _semaphoreSlim.CurrentCount < MaxSemaphoreCount)
                 {
                     _semaphoreSlim.Release();
                 }
             }
         }
 
-        private bool _useSemaphore = false;
+        private bool _useOnRenderSemaphore = false;
+
+        private bool _usePipeSemaphore = false;
 
         private bool _internalTrigger = false;
 
-        private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 3);
+        public const int MaxSemaphoreCount = 3;
+
+        private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, MaxSemaphoreCount);
 
         private Pipeline<RenderArgs> BuildPipeline(TaskScheduler glContextTaskScheduler, IRenderCanvas canvas,
             IRenderBuffer renderBuffer, TaskScheduler uiScheduler)
@@ -148,7 +147,6 @@ namespace OpenTkWPFHost.Control
                     }
 
                     canvas.Swap();
-
                     return canvas.Flush(args);
                 },
                 new ExecutionDataflowBlockOptions()
@@ -157,7 +155,7 @@ namespace OpenTkWPFHost.Control
                     SingleProducerConstrained = true,
                     // BoundedCapacity = 10,
                 });
-            renderBlock.LinkTo(frameBlock);
+            renderBlock.LinkTo(frameBlock, new DataflowLinkOptions() {PropagateCompletion = true});
             //call render 
             var canvasBlock = new ActionBlock<CanvasArgs>((args =>
             {
@@ -178,8 +176,12 @@ namespace OpenTkWPFHost.Control
                     {
                         this.InvalidateVisual();
                     }
-
                     // _controlFps.Increment();//when set here, rate will differ from onrender method.
+                }
+
+                if (_usePipeSemaphore && _semaphoreSlim.CurrentCount < MaxSemaphoreCount)
+                {
+                    _semaphoreSlim.Release();
                 }
             }), new ExecutionDataflowBlockOptions()
             {
@@ -188,7 +190,7 @@ namespace OpenTkWPFHost.Control
                 TaskScheduler = uiScheduler,
                 // BoundedCapacity = 10
             });
-            frameBlock.LinkTo(canvasBlock);
+            frameBlock.LinkTo(canvasBlock, new DataflowLinkOptions() {PropagateCompletion = true});
             renderBlock.Completion.ContinueWith((task =>
             {
                 if (task.IsFaulted)
@@ -223,7 +225,8 @@ namespace OpenTkWPFHost.Control
             var renderer = this.Renderer;
             var glSettings = this.GlSettings;
             _workingRenderSetting = this.RenderSetting;
-            _useSemaphore = _workingRenderSetting.RenderTactic == RenderTactic.LatencyPriority;
+            _useOnRenderSemaphore = _workingRenderSetting.RenderTactic == RenderTactic.LatencyPriority;
+            _usePipeSemaphore = _workingRenderSetting.RenderTactic == RenderTactic.Balance;
             _internalTrigger = _workingRenderSetting.RenderTrigger == RenderTrigger.Internal;
             RecentTargetInfo = _workingRenderSetting.CreateCanvasInfo(this);
             switch (_workingRenderSetting.RenderTrigger)
@@ -245,7 +248,7 @@ namespace OpenTkWPFHost.Control
                 using (_endThreadCts)
                 {
                     await RenderThread(_endThreadCts.Token, glSettings, scheduler, procedure, renderer, windowInfo,
-                        renderCanvas, _workingRenderSetting.RenderTactic == RenderTactic.LatencyPriority);
+                        renderCanvas, _usePipeSemaphore || _useOnRenderSemaphore);
                 }
             });
         }
@@ -291,9 +294,9 @@ namespace OpenTkWPFHost.Control
 
                     var stopwatch = new Stopwatch();
                     stopwatch.Start();
-
                     while (!token.IsCancellationRequested)
                     {
+                        var sizeChanged = false;
                         var renderContinuously = IsRenderContinuouslyValue;
                         if (!UserVisible)
                         {
@@ -312,6 +315,7 @@ namespace OpenTkWPFHost.Control
                             var pixelSize = RecentTargetInfo.PixelSize;
                             procedure.Apply(RecentTargetInfo);
                             renderer.Resize(pixelSize);
+                            sizeChanged = true;
                         }
 
                         // ReSharper disable once PossibleNullReferenceException
@@ -321,7 +325,7 @@ namespace OpenTkWPFHost.Control
                             continue;
                         }
 
-                        if (!renderer.PreviewRender())
+                        if (!renderer.PreviewRender() && !sizeChanged)
                         {
                             await mainContextBinding.Delay(30);
                             continue;
@@ -335,7 +339,7 @@ namespace OpenTkWPFHost.Control
                             // graphicsContext.SwapBuffers(); //swap?
                             var postRender = procedure.PostRender();
                             OnAfterRender(renderEventArgs);
-                            pipeline.Post(postRender);
+                            pipeline.SendAsync(postRender, token).Wait(token);
                             procedure.Swap();
                             // pipeline.SendAsync(postRender, token).Wait(token);
                             if (syncPipeline)

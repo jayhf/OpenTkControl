@@ -32,6 +32,11 @@ namespace OpenTkWPFHost.Core
             return headTargetBlock.SendAsync(t, token);
         }
 
+        public Task<bool> SendAsync(T t)
+        {
+            return headTargetBlock.SendAsync(t);
+        }
+
         public void Fault(Exception exception)
         {
             headTargetBlock.Fault(exception);
