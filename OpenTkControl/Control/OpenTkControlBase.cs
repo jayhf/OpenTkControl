@@ -69,17 +69,13 @@ namespace OpenTkWPFHost.Control
             set { SetValue(RenderSettingProperty, value); }
         }
 
-        public static readonly DependencyProperty RenderProcedureProperty = DependencyProperty.Register(
-            "RenderProcedure", typeof(IRenderProcedure), typeof(OpenTkControlBase),
-            new PropertyMetadata(new BitmapProcedure()));
+        public static readonly DependencyProperty RenderProcedureTypeProperty = DependencyProperty.Register(
+            "RenderProcedureType", typeof(RenderProcedureType), typeof(OpenTkControlBase), new PropertyMetadata(RenderProcedureType.Bitmap));
 
-        /// <summary>
-        /// must be set before render start
-        /// </summary>
-        public IRenderProcedure RenderProcedure
+        public RenderProcedureType RenderProcedureType
         {
-            get { return (IRenderProcedure) GetValue(RenderProcedureProperty); }
-            set { SetValue(RenderProcedureProperty, value); }
+            get { return (RenderProcedureType) GetValue(RenderProcedureTypeProperty); }
+            set { SetValue(RenderProcedureTypeProperty, value); }
         }
 
         /// <summary>
@@ -338,11 +334,6 @@ namespace OpenTkWPFHost.Control
         /// <param name="hostWindow"></param>
         public void Start(Window hostWindow)
         {
-            if (RenderProcedure == null)
-            {
-                throw new NotSupportedException($"Can't start render procedure as {nameof(RenderProcedure)} is null!");
-            }
-
             if (Renderer == null)
             {
                 throw new NotSupportedException($"Can't start render procedure as {nameof(Renderer)} is null!");

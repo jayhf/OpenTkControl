@@ -17,9 +17,6 @@
         <control:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
                                            IsRenderContinuously="True">
-            <control:ThreadOpenTkControl.RenderProcedure>
-                <bitmap:BitmapProcedure />
-            </control:ThreadOpenTkControl.RenderProcedure>
         </control:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">
             <StackPanel.Resources>

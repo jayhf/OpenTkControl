@@ -15,7 +15,7 @@ namespace OpenTkWPFHost.Configuration
         /// This setting may be useful to get extra performance on mobile platforms.
         public bool UseDeviceDpi { get; set; } = false;
 
-        public RenderTargetInfo CreateCanvasInfo(FrameworkElement element)
+        public RenderTargetInfo CreateRenderTargetInfo(FrameworkElement element)
         {
             if (!UseDeviceDpi)
             {

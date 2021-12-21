@@ -9,8 +9,10 @@ using System.Windows.Media.Imaging;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Platform;
 using OpenTkWPFHost.Abstraction;
+using OpenTkWPFHost.Bitmap;
 using OpenTkWPFHost.Configuration;
 using OpenTkWPFHost.Core;
+using OpenTkWPFHost.DirectX;
 using Point = System.Windows.Point;
 
 namespace OpenTkWPFHost.Control
@@ -68,7 +70,7 @@ namespace OpenTkWPFHost.Control
 
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            RecentTargetInfo = this.RenderSetting.CreateCanvasInfo(this);
+            RecentTargetInfo = this.RenderSetting.CreateRenderTargetInfo(this);
             if (!RecentTargetInfo.IsEmpty)
             {
                 _sizeNotEmptyEvent.TrySet();
@@ -221,14 +223,28 @@ namespace OpenTkWPFHost.Control
         protected override void StartRenderProcedure(IWindowInfo windowInfo)
         {
             _endThreadCts = new CancellationTokenSource();
-            var procedure = this.RenderProcedure;
+            var procedureType = this.RenderProcedureType;
             var renderer = this.Renderer;
             var glSettings = this.GlSettings;
             _workingRenderSetting = this.RenderSetting;
             _useOnRenderSemaphore = _workingRenderSetting.RenderTactic == RenderTactic.LatencyPriority;
             _usePipeSemaphore = _workingRenderSetting.RenderTactic == RenderTactic.Balance;
             _internalTrigger = _workingRenderSetting.RenderTrigger == RenderTrigger.Internal;
-            RecentTargetInfo = _workingRenderSetting.CreateCanvasInfo(this);
+            RecentTargetInfo = _workingRenderSetting.CreateRenderTargetInfo(this);
+            IRenderProcedure procedure;
+            switch (procedureType)
+            {
+                case RenderProcedureType.Bitmap:
+                    procedure = new BitmapProcedure();
+                    break;
+                case RenderProcedureType.Dx:
+                    procedure = new DXProcedure();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(procedureType), procedureType, null);
+            }
+
+            var uiRenderCanvas = procedure.CreateCanvas();
             switch (_workingRenderSetting.RenderTrigger)
             {
                 case RenderTrigger.CompositionTarget:
@@ -241,37 +257,41 @@ namespace OpenTkWPFHost.Control
             }
 
             this.SizeChanged += ThreadOpenTkControl_SizeChanged;
-            var renderCanvas = procedure.CreateCanvas();
             var scheduler = TaskScheduler.FromCurrentSynchronizationContext();
             _renderTask = Task.Run(async () =>
             {
                 using (_endThreadCts)
                 {
-                    await RenderThread(_endThreadCts.Token, glSettings, scheduler, procedure, renderer, windowInfo,
-                        renderCanvas, _usePipeSemaphore || _useOnRenderSemaphore);
+                    await RenderThread(_endThreadCts.Token, glSettings, scheduler, procedure, uiRenderCanvas, renderer,
+                        windowInfo, _usePipeSemaphore || _useOnRenderSemaphore);
                 }
             });
         }
 
         private async Task RenderThread(CancellationToken token, GLSettings glSettings, TaskScheduler taskScheduler,
-            IRenderProcedure procedure, IRenderer renderer, IWindowInfo windowInfo, IRenderCanvas uiRenderCanvas,
+            IRenderProcedure procedure, IRenderCanvas canvas, IRenderer renderer, IWindowInfo windowInfo,
             bool syncPipeline)
         {
-            using (procedure)
+            GLContextTaskScheduler glContextTaskScheduler = null;
+            Pipeline<RenderArgs> pipeline = null;
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            try
             {
                 #region initialize
 
-                IRenderBuffer renderBuffer = null;
                 GLContextBinding mainContextBinding = null;
-                GLContextBinding pboContextBinding = null;
                 try
                 {
                     mainContextBinding = procedure.Initialize(windowInfo, glSettings);
                     GL.Enable(EnableCap.DebugOutput);
                     GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
-                    renderBuffer = procedure.CreateRenderBuffer();
-                    pboContextBinding = glSettings.NewBinding(mainContextBinding);
+                    var renderBuffer = procedure.CreateRenderBuffer();
+                    var pboContextBinding = glSettings.NewBinding(mainContextBinding);
                     pboContextBinding.BindNull();
+                    glContextTaskScheduler = new GLContextTaskScheduler(pboContextBinding, _debugProc);
+                    pipeline = BuildPipeline(glContextTaskScheduler, canvas, renderBuffer, taskScheduler);
+                    mainContextBinding.BindCurrentThread();
                 }
                 catch (Exception e)
                 {
@@ -281,103 +301,105 @@ namespace OpenTkWPFHost.Control
 
                 #endregion
 
-                using (var glContextTaskScheduler = new GLContextTaskScheduler(pboContextBinding, _debugProc))
+                RenderTargetInfo targetInfo = null;
+                GlRenderEventArgs renderEventArgs = null;
+                try
                 {
-                    var pipeline = BuildPipeline(glContextTaskScheduler, uiRenderCanvas, renderBuffer, taskScheduler);
-                    mainContextBinding.BindCurrentThread();
-                    RenderTargetInfo targetInfo = null;
-                    GlRenderEventArgs renderEventArgs = null;
                     if (!renderer.IsInitialized)
                     {
                         renderer.Initialize(mainContextBinding.Context);
                     }
+                }
+                catch (Exception e)
+                {
+                    OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Initialize, e));
+                    return;
+                }
 
-                    var stopwatch = new Stopwatch();
-                    stopwatch.Start();
-                    while (!token.IsCancellationRequested)
+                while (!token.IsCancellationRequested)
+                {
+                    var sizeChanged = false;
+                    var renderContinuously = IsRenderContinuouslyValue;
+                    if (!UserVisible)
                     {
-                        var sizeChanged = false;
-                        var renderContinuously = IsRenderContinuouslyValue;
-                        if (!UserVisible)
-                        {
-                            _userVisibleResetEvent.WaitInfinity();
-                        }
-
-                        if (!renderContinuously)
-                        {
-                            _renderContinuousWaiter.WaitInfinity();
-                        }
-
-                        if (!Equals(targetInfo, RecentTargetInfo) && !RecentTargetInfo.IsEmpty)
-                        {
-                            targetInfo = RecentTargetInfo;
-                            renderEventArgs = RecentTargetInfo.GetRenderEventArgs();
-                            var pixelSize = RecentTargetInfo.PixelSize;
-                            procedure.Apply(RecentTargetInfo);
-                            renderer.Resize(pixelSize);
-                            sizeChanged = true;
-                        }
-
-                        // ReSharper disable once PossibleNullReferenceException
-                        if (RecentTargetInfo.IsEmpty)
-                        {
-                            await _sizeNotEmptyEvent.Wait(mainContextBinding);
-                            continue;
-                        }
-
-                        if (!renderer.PreviewRender() && !sizeChanged)
-                        {
-                            await mainContextBinding.Delay(30);
-                            continue;
-                        }
-
-                        try
-                        {
-                            OnBeforeRender(renderEventArgs);
-                            procedure.PreRender();
-                            renderer.Render(renderEventArgs);
-                            // graphicsContext.SwapBuffers(); //swap?
-                            var postRender = procedure.PostRender();
-                            OnAfterRender(renderEventArgs);
-                            pipeline.SendAsync(postRender, token).Wait(token);
-                            procedure.Swap();
-                            // pipeline.SendAsync(postRender, token).Wait(token);
-                            if (syncPipeline)
-                            {
-                                _semaphoreSlim.Wait(token);
-                            }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                        }
-                        catch (Exception exception)
-                        {
-                            OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Render, exception));
-                        }
-                        finally
-                        {
-                        }
-
-                        if (EnableFrameRateLimit)
-                        {
-                            var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
-                            if (renderMinus > 5)
-                            {
-                                await mainContextBinding.Delay((int) renderMinus);
-                            }
-                            else if (renderMinus > 0)
-                            {
-                                Thread.Sleep((int) renderMinus);
-                            }
-
-                            stopwatch.Restart();
-                        }
+                        _userVisibleResetEvent.WaitInfinity();
                     }
 
-                    stopwatch.Stop();
-                    pipeline.Finish().Wait(CancellationToken.None);
-                    renderer.Uninitialize();
+                    if (!renderContinuously)
+                    {
+                        _renderContinuousWaiter.WaitInfinity();
+                    }
+
+                    if (!Equals(targetInfo, RecentTargetInfo) && !RecentTargetInfo.IsEmpty)
+                    {
+                        targetInfo = RecentTargetInfo;
+                        renderEventArgs = RecentTargetInfo.GetRenderEventArgs();
+                        var pixelSize = RecentTargetInfo.PixelSize;
+                        procedure.Apply(RecentTargetInfo);
+                        renderer.Resize(pixelSize);
+                        sizeChanged = true;
+                    }
+
+                    // ReSharper disable once PossibleNullReferenceException
+                    if (RecentTargetInfo.IsEmpty)
+                    {
+                        await _sizeNotEmptyEvent.Wait(mainContextBinding);
+                        continue;
+                    }
+
+                    if (!renderer.PreviewRender() && !sizeChanged)
+                    {
+                        await mainContextBinding.Delay(30);
+                        continue;
+                    }
+
+                    try
+                    {
+                        OnBeforeRender(renderEventArgs);
+                        procedure.PreRender();
+                        renderer.Render(renderEventArgs);
+                        // graphicsContext.SwapBuffers(); //swap?
+                        var postRender = procedure.PostRender();
+                        OnAfterRender(renderEventArgs);
+                        pipeline.SendAsync(postRender, token).Wait(token);
+                        procedure.Swap();
+                        // pipeline.SendAsync(postRender, token).Wait(token);
+                        if (syncPipeline)
+                        {
+                            _semaphoreSlim.Wait(token);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                    catch (Exception exception)
+                    {
+                        OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Render, exception));
+                    }
+
+                    if (EnableFrameRateLimit)
+                    {
+                        var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
+                        if (renderMinus > 5)
+                        {
+                            await mainContextBinding.Delay((int) renderMinus);
+                        }
+                        else if (renderMinus > 0)
+                        {
+                            Thread.Sleep((int) renderMinus);
+                        }
+
+                        stopwatch.Restart();
+                    }
                 }
+            }
+            finally
+            {
+                stopwatch.Stop();
+                pipeline?.Finish().Wait(CancellationToken.None);
+                renderer.Uninitialize();
+                glContextTaskScheduler?.Dispose();
+                procedure.Dispose();
             }
         }
 

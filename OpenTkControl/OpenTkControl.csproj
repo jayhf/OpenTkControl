@@ -48,6 +48,7 @@
     <Compile Include="Bitmap\BitmapCanvasArgs.cs" />
     <Compile Include="Bitmap\BitmapCanvas.cs" />
     <Compile Include="Abstraction\CanvasArgs.cs" />
+    <Compile Include="Configuration\RenderProcedureType.cs" />
     <Compile Include="Core\ContextWaiterExtension.cs" />
     <Compile Include="DirectX\DxCanvasArgs.cs" />
     <Compile Include="DirectX\DXRenderArgs.cs" />

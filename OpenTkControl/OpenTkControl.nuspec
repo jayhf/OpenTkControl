@@ -10,12 +10,15 @@
     <projectUrl>https://github.com/migeyusu/OpenTkControl</projectUrl>
     <icon>images\lion.png</icon>
     <description>$description$</description>
-    <releaseNotes>Fixed latency mode, add balance mode.Known problem：cannot restart.</releaseNotes>
+    <releaseNotes>Fixed reference bug.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>WPF OpenTK</tags>
     <dependencies>
       <group targetFramework=".NETFramework4.7.2">
         <dependency id="OpenTK" version="3.3.1" />
+      </group>
+      <group targetFramework=".NETFramework4.7.2">
+        <dependency id="System.Threading.Tasks.Dataflow" version="6.0.0"/>
       </group>
     </dependencies>
   </metadata>
