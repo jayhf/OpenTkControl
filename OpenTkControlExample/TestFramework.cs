@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using OpenTkWPFHost;
+using OpenTkWPFHost.Core;
 using Point = System.Windows.Point;
 
 namespace OpenTkControlExample

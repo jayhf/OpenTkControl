@@ -5,6 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:openTkWpfHost="clr-namespace:OpenTkWPFHost;assembly=OpenTkWPFHost"
         xmlns:openTkControlExample="clr-namespace:OpenTkControlExample"
+        xmlns:control="clr-namespace:OpenTkWPFHost.Control;assembly=OpenTkWPFHost"
+        xmlns:bitmap="clr-namespace:OpenTkWPFHost.Bitmap;assembly=OpenTkWPFHost"
         mc:Ignorable="d"
         Height="1080"
         Width="1920"
@@ -12,14 +14,13 @@
     <!--Height="480"
         Width="720"-->
     <Grid>
-        <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
+        <control:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
-                                           MaxFrameRate="1000"
                                            IsRenderContinuously="True">
-            <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-                <openTkWpfHost:DXProcedure />
-            </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-        </openTkWpfHost:ThreadOpenTkControl>
+            <control:ThreadOpenTkControl.RenderProcedure>
+                <bitmap:BitmapProcedure />
+            </control:ThreadOpenTkControl.RenderProcedure>
+        </control:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">
             <StackPanel.Resources>
                 <Style TargetType="{x:Type Button}">

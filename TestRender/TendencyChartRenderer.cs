@@ -8,6 +8,8 @@ using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
 using OpenTkWPFHost;
+using OpenTkWPFHost.Abstraction;
+using OpenTkWPFHost.Core;
 
 namespace TestRenderer
 {

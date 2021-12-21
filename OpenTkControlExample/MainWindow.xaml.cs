@@ -13,6 +13,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using OpenTK.Graphics;
 using OpenTkWPFHost;
+using OpenTkWPFHost.Core;
 using TestRenderer;
 using Point = System.Drawing.Point;
 using Vector = System.Numerics.Vector;
