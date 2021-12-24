@@ -12,24 +12,28 @@ namespace OpenTkWPFHost.Core
         public int Id { get; }
         public DebugSeverity Severity { get; }
         public int Length { get; }
-        public IntPtr Message { get; }
-        public IntPtr UserParam { get; }
+
+        public string ErrorMessage { get; set; }
+
+        private IntPtr MessageIntPtr { get; }
+        private IntPtr UserParamIntPtr { get; }
 
         public OpenGlErrorArgs(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
-            IntPtr message, IntPtr userparam)
+            IntPtr message, IntPtr userParam)
         {
             this.Source = source;
             this.Type = type;
             this.Id = id;
             this.Severity = severity;
             this.Length = length;
-            this.Message = message;
-            this.UserParam = userparam;
+            this.MessageIntPtr = message;
+            this.UserParamIntPtr = userParam;
+            this.ErrorMessage = PtrToStringUtf8(MessageIntPtr);
         }
 
         public override string ToString()
         {
-            string msg = PtrToStringUtf8(Message).Replace('\n', ' ');
+            string msg = this.ErrorMessage.Replace('\n', ' ');
             var stringBuilder = new StringBuilder();
             switch (Type)
             {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -44,6 +45,8 @@ namespace OpenTkWPFHost.Control
         /// after successfully render
         /// </summary>
         public event EventHandler<GlRenderEventArgs> AfterRender;
+
+        public event EventHandler GlInitialized;
 
         /// <summary>
         /// Called whenever an exception occurs during initialization, rendering or deinitialization
@@ -219,6 +222,8 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         protected OpenTkControlBase()
         {
+            DebugProc = Callback;
+            _debugProcCallbackHandle = GCHandle.Alloc(DebugProc);
             //used for fast read and thread safe
             DependencyPropertyDescriptor.FromProperty(IsShowFpsProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this, (sender, args) => ShowFps = IsShowFps);
@@ -442,11 +447,6 @@ namespace OpenTkWPFHost.Control
         {
             _isControlLoaded = true;
             CheckUserVisible();
-            if (IsDesignMode())
-            {
-                return;
-            }
-
             if (!IsRendererOpened && IsAutoAttach)
             {
                 var window = Window.GetWindow(this);
@@ -479,6 +479,10 @@ namespace OpenTkWPFHost.Control
             }
         }
 
+        private static GCHandle _debugProcCallbackHandle;
+
+        protected readonly DebugProc DebugProc;
+
         protected void Callback(DebugSource source, DebugType type, int id, DebugSeverity severity, int length,
             IntPtr message, IntPtr userParam)
         {
@@ -509,6 +513,7 @@ namespace OpenTkWPFHost.Control
             }
 
             Close();
+            _debugProcCallbackHandle.Free();
             Dispose(true);
             _isDisposed = true;
         }
@@ -528,6 +533,11 @@ namespace OpenTkWPFHost.Control
         protected virtual void OnRenderErrorReceived(RenderErrorArgs e)
         {
             RenderErrorReceived?.Invoke(this, e);
+        }
+
+        protected virtual void OnGlInitialized()
+        {
+            GlInitialized?.Invoke(this, EventArgs.Empty);
         }
     }
 }

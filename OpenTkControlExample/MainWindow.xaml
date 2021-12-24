@@ -16,6 +16,7 @@
     <Grid>
         <control:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
+                                           FpsBrush="Yellow"
                                            IsRenderContinuously="True">
         </control:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">

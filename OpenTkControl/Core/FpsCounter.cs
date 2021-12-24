@@ -12,19 +12,18 @@ namespace OpenTkWPFHost.Core
 
         public int Fps { get; private set; }
 
-        private Timer _timer;
+        private readonly Timer _timer;
 
         private volatile int _frameCount = 0;
 
-        private Color _brushColor;
-
-        private SolidColorBrush brush;
+        private Brush _brush;
 
         private Typeface _fpsTypeface = new Typeface(new FontFamily("Arial"), FontStyles.Normal,
-            FontWeights.Black,
+            FontWeights.Medium,
             FontStretches.Normal);
 
         private CultureInfo _cultureInfo = CultureInfo.CurrentCulture;
+        private volatile int _emSize = 18;
 
         public CultureInfo CultureInfo
         {
@@ -44,19 +43,19 @@ namespace OpenTkWPFHost.Core
             }
         }
 
-        public Color Color
+        public int EmSize
         {
-            get => _brushColor;
+            get => _emSize;
+            set => _emSize = value;
+        }
+
+        public Brush Brush
+        {
+            get => _brush;
             set
             {
-                if (value == this._brushColor)
-                {
-                    return;
-                }
-
-                _brushColor = value;
-                brush = new SolidColorBrush(value);
-                brush.Freeze();
+                this._brush = value.Clone();
+                _brush.Freeze();
             }
         }
 
@@ -65,9 +64,9 @@ namespace OpenTkWPFHost.Core
             Interlocked.Increment(ref _frameCount);
         }
 
-        public FpsCounter(Color color, Action<FpsCounter> onTick)
+        public FpsCounter(Brush brush, Action<FpsCounter> onTick)
         {
-            this.Color = color;
+            this.Brush = brush;
             if (onTick == null)
             {
                 _timer = new Timer((state =>
@@ -87,16 +86,18 @@ namespace OpenTkWPFHost.Core
             }
         }
 
-        public FpsCounter() : this(Colors.MediumPurple, null)
+        public FpsCounter() : this(Brushes.Black, null)
         {
         }
 
-        public void DrawFps(DrawingContext drawingContext, Point point)
+        public double DrawFps(DrawingContext drawingContext, Point point)
         {
             var formattedText = new FormattedText($"{Title} :{Fps}", _cultureInfo,
                 FlowDirection.LeftToRight,
-                _fpsTypeface, 21, brush, 1);
+                _fpsTypeface, _emSize, _brush, 1);
+            
             drawingContext.DrawText(formattedText, point);
+            return formattedText.Height;
         }
 
         public void Dispose()

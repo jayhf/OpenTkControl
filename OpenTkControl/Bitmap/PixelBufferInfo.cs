@@ -7,7 +7,6 @@ using Buffer = System.Buffer;
 
 namespace OpenTkWPFHost.Bitmap
 {
-    //maybe inefficient over 16 bytes ?
     public class PixelBufferInfo : IDisposable
     {
         public PixelSize PixelSize;

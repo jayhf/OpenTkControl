@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,6 +29,15 @@ namespace OpenTkWPFHost.Control
     /// </summary>
     public class ThreadOpenTkControl : OpenTkControlBase
     {
+        public static readonly DependencyProperty FpsBrushProperty = DependencyProperty.Register(
+            "FpsBrush", typeof(Brush), typeof(ThreadOpenTkControl), new PropertyMetadata(Brushes.Black));
+
+        public Brush FpsBrush
+        {
+            get { return (Brush) GetValue(FpsBrushProperty); }
+            set { SetValue(FpsBrushProperty, value); }
+        }
+
         /// <summary>
         /// The Thread object for the rendering thread， use origin thread but not task lest context switch
         /// </summary>
@@ -37,8 +47,6 @@ namespace OpenTkWPFHost.Control
         /// The CTS used to stop the thread when this control is unloaded
         /// </summary>
         private CancellationTokenSource _endThreadCts;
-
-        private readonly DebugProc _debugProc;
 
         private readonly FpsCounter _glFps = new FpsCounter() {Title = "GLFps"};
 
@@ -50,8 +58,30 @@ namespace OpenTkWPFHost.Control
 
         public ThreadOpenTkControl() : base()
         {
-            _debugProc = Callback;
         }
+
+        protected override void OnLoaded(object sender, RoutedEventArgs args)
+        {
+            base.OnLoaded(sender, args);
+            DependencyPropertyDescriptor.FromProperty(FpsBrushProperty, typeof(ThreadOpenTkControl))
+                .AddValueChanged(this, FpsBrushHandler);
+            FpsBrushHandler(null, null);
+        }
+
+        protected override void OnUnloaded(object sender, RoutedEventArgs args)
+        {
+            base.OnUnloaded(sender, args);
+            DependencyPropertyDescriptor.FromProperty(FpsBrushProperty, typeof(ThreadOpenTkControl))
+                .RemoveValueChanged(this, FpsBrushHandler);
+        }
+
+        private void FpsBrushHandler(object sender, EventArgs e)
+        {
+            var fpsBrush = this.FpsBrush;
+            this._glFps.Brush = fpsBrush;
+            this._controlFps.Brush = fpsBrush;
+        }
+
 
         private TimeSpan _lastRenderTime = TimeSpan.FromSeconds(-1);
 
@@ -87,6 +117,8 @@ namespace OpenTkWPFHost.Control
 
         private readonly EventWaiter _renderContinuousWaiter = new EventWaiter();
 
+        private readonly Point _startPoint = new Point(10, 10);
+
         protected override void OnRender(DrawingContext drawingContext)
         {
             try
@@ -96,8 +128,8 @@ namespace OpenTkWPFHost.Control
                 if (ShowFps)
                 {
                     _controlFps.Increment();
-                    _glFps.DrawFps(drawingContext, new Point(10, 10));
-                    _controlFps.DrawFps(drawingContext, new Point(10, 50));
+                    var d = _glFps.DrawFps(drawingContext, _startPoint);
+                    _controlFps.DrawFps(drawingContext, new Point(10, d + 10));
                 }
             }
             finally
@@ -284,12 +316,13 @@ namespace OpenTkWPFHost.Control
                 try
                 {
                     mainContextBinding = procedure.Initialize(windowInfo, glSettings);
+                    OnGlInitialized();
                     GL.Enable(EnableCap.DebugOutput);
-                    GL.DebugMessageCallback(_debugProc, IntPtr.Zero);
+                    GL.DebugMessageCallback(DebugProc, IntPtr.Zero);
                     var renderBuffer = procedure.CreateRenderBuffer();
                     var pboContextBinding = glSettings.NewBinding(mainContextBinding);
                     pboContextBinding.BindNull();
-                    glContextTaskScheduler = new GLContextTaskScheduler(pboContextBinding, _debugProc);
+                    glContextTaskScheduler = new GLContextTaskScheduler(pboContextBinding, DebugProc);
                     pipeline = BuildPipeline(glContextTaskScheduler, canvas, renderBuffer, taskScheduler);
                     mainContextBinding.BindCurrentThread();
                 }
@@ -460,16 +493,6 @@ namespace OpenTkWPFHost.Control
         private void OnUITask(Action action)
         {
             Dispatcher.Invoke(action);
-        }
-
-        protected override void OnLoaded(object sender, RoutedEventArgs args)
-        {
-            base.OnLoaded(sender, args);
-        }
-
-        protected override void OnUnloaded(object sender, RoutedEventArgs args)
-        {
-            base.OnUnloaded(sender, args);
         }
 
         public BitmapSource Snapshot()
