@@ -43,48 +43,66 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BitmapCanvas.cs" />
-    <Compile Include="ContextWaiter.cs" />
-    <Compile Include="DesignTimeHelper.cs" />
-    <Compile Include="DoubleBuffer.cs" />
-    <Compile Include="DoublePixelBuffer.cs" />
-    <Compile Include="BufferInfo.cs" />
-    <Compile Include="DrawingDirective.cs" />
-    <Compile Include="DxCanvas.cs" />
-    <Compile Include="DXGLContext.cs" />
-    <Compile Include="DxGLFramebuffer.cs" />
-    <Compile Include="EmptyWindowInfo.cs" />
-    <Compile Include="FpsCounter.cs" />
-    <Compile Include="BitmapProcedure.cs" />
-    <Compile Include="GlRenderEventArgs.cs" />
-    <Compile Include="DXProcedure.cs" />
-    <Compile Include="GLSettings.cs" />
-    <Compile Include="GraphicContextAwaiter.cs" />
+    <Compile Include="Bitmap\BitmapFrameArgs.cs" />
+    <Compile Include="Bitmap\BitmapRenderArgs.cs" />
+    <Compile Include="Bitmap\BitmapCanvasArgs.cs" />
+    <Compile Include="Bitmap\BitmapCanvas.cs" />
+    <Compile Include="Abstraction\CanvasArgs.cs" />
+    <Compile Include="Configuration\RenderProcedureType.cs" />
+    <Compile Include="Core\ContextWaiterExtension.cs" />
+    <Compile Include="DirectX\DxCanvasArgs.cs" />
+    <Compile Include="DirectX\DXRenderArgs.cs" />
+    <Compile Include="DirectX\DXFrameArgs.cs" />
+    <Compile Include="Core\GLContextBinding.cs" />
+    <Compile Include="Core\GenericMultiBuffer.cs" />
+    <Compile Include="Core\Pipeline.cs" />
+    <Compile Include="Abstraction\PipelineArgs.cs" />
+    <Compile Include="Abstraction\RenderArgs.cs" />
+    <Compile Include="Core\ContextWaiter.cs" />
+    <Compile Include="Core\DesignTimeHelper.cs" />
+    <Compile Include="DirectX\MultiDxCanvas.cs" />
+    <Compile Include="Bitmap\PixelBufferInfo.cs" />
+    <Compile Include="Core\DrawingDirective.cs" />
+    <Compile Include="DirectX\DxCanvas.cs" />
+    <Compile Include="DirectX\DXGLContext.cs" />
+    <Compile Include="DirectX\DxGLFramebuffer.cs" />
+    <Compile Include="Core\EmptyWindowInfo.cs" />
+    <Compile Include="Core\FpsCounter.cs" />
+    <Compile Include="Bitmap\BitmapProcedure.cs" />
+    <Compile Include="Abstraction\FrameArgs.cs" />
+    <Compile Include="Core\GLContextTaskScheduler.cs" />
+    <Compile Include="Core\GlRenderEventArgs.cs" />
+    <Compile Include="DirectX\DXProcedure.cs" />
+    <Compile Include="Configuration\GLSettings.cs" />
+    <Compile Include="Core\GraphicContextAwaiter.cs" />
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />
-    <Compile Include="IPixelBuffer.cs" />
-    <Compile Include="IRenderCanvas.cs" />
-    <Compile Include="IRenderer.cs" />
-    <Compile Include="IRenderProcedure.cs" />
-    <Compile Include="MultiStoragePixelBuffer.cs" />
-    <Compile Include="OpenGLError.cs" />
-    <Compile Include="CanvasInfo.cs" />
-    <Compile Include="OpenTkControlBase.cs" />
-    <Compile Include="PixelSize.cs" />
-    <Compile Include="PropertyChangedArgs.cs" />
-    <Compile Include="RendererProcedureLifeCycle.cs" />
-    <Compile Include="RenderErrorArgs.cs" />
-    <Compile Include="RenderPhase.cs" />
-    <Compile Include="RenderProcedureTask.cs" />
-    <Compile Include="SemaphoreEvent.cs" />
-    <Compile Include="EventWaiter.cs" />
-    <Compile Include="SolitaryPixelBuffer.cs" />
-    <Compile Include="StatefulWaiter.cs" />
-    <Compile Include="SyncMode.cs" />
-    <Compile Include="ThreadOpenTkControl.cs" />
+    <Compile Include="Abstraction\IRenderBuffer.cs" />
+    <Compile Include="Abstraction\IRenderCanvas.cs" />
+    <Compile Include="Abstraction\IRenderer.cs" />
+    <Compile Include="Abstraction\IRenderProcedure.cs" />
+    <Compile Include="Bitmap\MultiStoragePixelBuffer.cs" />
+    <Compile Include="Core\OpenGLError.cs" />
+    <Compile Include="Configuration\RenderSetting.cs" />
+    <Compile Include="Core\RenderTargetInfo.cs" />
+    <Compile Include="Control\OpenTkControlBase.cs" />
+    <Compile Include="Core\PixelSize.cs" />
+    <Compile Include="Core\PropertyChangedArgs.cs" />
+    <Compile Include="Configuration\RendererProcedureLifeCycle.cs" />
+    <Compile Include="Core\RenderErrorArgs.cs" />
+    <Compile Include="Configuration\RenderPhase.cs" />
+    <Compile Include="Configuration\RenderTactic.cs" />
+    <Compile Include="Configuration\RenderTrigger.cs" />
+    <Compile Include="Core\SemaphoreEvent.cs" />
+    <Compile Include="Core\EventWaiter.cs" />
+    <Compile Include="Bitmap\SingleBitmapCanvas.cs" />
+    <Compile Include="Core\StatefulWaiter.cs" />
+    <Compile Include="Configuration\SyncMode.cs" />
+    <Compile Include="Control\ThreadOpenTkControl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UiOpenTkControl.cs" />
+    <Compile Include="Control\UiOpenTkControl.cs" />
+    <Compile Include="Core\UnstartedControlHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="JetBrains.Annotations">
@@ -93,6 +111,10 @@
     <PackageReference Include="OpenTK">
       <Version>3.3.1</Version>
     </PackageReference>
+    <PackageReference Include="System.Threading.Tasks.Dataflow">
+      <Version>6.0.0</Version>
+    </PackageReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

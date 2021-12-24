@@ -4,6 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:openTkWpfHost="clr-namespace:OpenTkWPFHost;assembly=OpenTkWPFHost"
+        xmlns:openTkControlExample="clr-namespace:OpenTkControlExample"
+        xmlns:control="clr-namespace:OpenTkWPFHost.Control;assembly=OpenTkWPFHost"
+        xmlns:bitmap="clr-namespace:OpenTkWPFHost.Bitmap;assembly=OpenTkWPFHost"
         mc:Ignorable="d"
         Height="1080"
         Width="1920"
@@ -11,13 +14,11 @@
     <!--Height="480"
         Width="720"-->
     <Grid>
-        <openTkWpfHost:ThreadOpenTkControl x:Name="OpenTkControl"
+        <control:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
+                                           FpsBrush="Yellow"
                                            IsRenderContinuously="True">
-            <openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-                <openTkWpfHost:BitmapProcedure />
-            </openTkWpfHost:ThreadOpenTkControl.RenderProcedure>
-        </openTkWpfHost:ThreadOpenTkControl>
+        </control:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">
             <StackPanel.Resources>
                 <Style TargetType="{x:Type Button}">
@@ -39,7 +40,7 @@
                        Foreground="White" />
             <Slider Width="666"
                     Margin="20"
-                    Minimum="0"
+                    Minimum="10"
                     ValueChanged="Slider_OnValueChanged"
                     x:Name="Slider" />
             <TextBlock Text="frame rate:"
@@ -49,6 +50,7 @@
                     Minimum="0"
                     Value="0"
                     ValueChanged="FrameRate_OnValueChanged" />
+            
         </StackPanel>
 
         <!--<openTkWpfHost:TestFrameworkElement Width="300"

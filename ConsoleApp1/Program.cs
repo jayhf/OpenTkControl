@@ -4,6 +4,8 @@ using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Input;
 using OpenTkWPFHost;
+using OpenTkWPFHost.Abstraction;
+using OpenTkWPFHost.Core;
 using TestRenderer;
 
 namespace ConsoleApp1

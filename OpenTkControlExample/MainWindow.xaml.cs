@@ -1,7 +1,22 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Threading;
 using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media.Imaging;
+using OpenTK.Graphics;
+using OpenTkWPFHost;
+using OpenTkWPFHost.Core;
 using TestRenderer;
+using Point = System.Drawing.Point;
+using Vector = System.Numerics.Vector;
 
 
 namespace OpenTkControlExample
@@ -9,7 +24,6 @@ namespace OpenTkControlExample
     public partial class MainWindow
     {
         private TestRendererCase testRendererCase = new TestRendererCase();
-
 
         public MainWindow()
         {
@@ -21,7 +35,19 @@ namespace OpenTkControlExample
             Loaded += MainWindow_Loaded;
             this.OpenTkControl.Renderer = testRendererCase.Renderer;
             this.OpenTkControl.ExceptionOccurred += OpenTkControl_ExceptionOccurred;
+            this.OpenTkControl.OpenGlErrorReceived += OpenTkControl_OpenGlErrorReceived;
         }
+
+
+        private void OpenTkControl_OpenGlErrorReceived(object sender, OpenGlErrorArgs e)
+        {
+            var s = e.ToString();
+            Debug.WriteLine(s);
+        }
+
+        /*var error = GL.GetError();
+           if (error != ErrorCode.NoError)
+               throw new GraphicsException(error.ToString());*/
 
         public void GenerateRenderer()
         {
