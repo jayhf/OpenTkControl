@@ -58,7 +58,7 @@ namespace OpenTkWPFHost.Control
 
         public GLSettings GlSettings
         {
-            get { return (GLSettings) GetValue(GlSettingsProperty); }
+            get { return (GLSettings)GetValue(GlSettingsProperty); }
             set { SetValue(GlSettingsProperty, value); }
         }
 
@@ -68,16 +68,17 @@ namespace OpenTkWPFHost.Control
 
         public RenderSetting RenderSetting
         {
-            get { return (RenderSetting) GetValue(RenderSettingProperty); }
+            get { return (RenderSetting)GetValue(RenderSettingProperty); }
             set { SetValue(RenderSettingProperty, value); }
         }
 
         public static readonly DependencyProperty RenderProcedureTypeProperty = DependencyProperty.Register(
-            "RenderProcedureType", typeof(RenderProcedureType), typeof(OpenTkControlBase), new PropertyMetadata(RenderProcedureType.Bitmap));
+            "RenderProcedureType", typeof(RenderProcedureType), typeof(OpenTkControlBase),
+            new PropertyMetadata(RenderProcedureType.Bitmap));
 
         public RenderProcedureType RenderProcedureType
         {
-            get { return (RenderProcedureType) GetValue(RenderProcedureTypeProperty); }
+            get { return (RenderProcedureType)GetValue(RenderProcedureTypeProperty); }
             set { SetValue(RenderProcedureTypeProperty, value); }
         }
 
@@ -92,7 +93,7 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         public IRenderer Renderer
         {
-            get { return (IRenderer) GetValue(RendererProperty); }
+            get { return (IRenderer)GetValue(RendererProperty); }
             set { SetValue(RendererProperty, value); }
         }
 
@@ -102,7 +103,7 @@ namespace OpenTkWPFHost.Control
 
         public bool IsShowFps
         {
-            get { return (bool) GetValue(IsShowFpsProperty); }
+            get { return (bool)GetValue(IsShowFpsProperty); }
             set { SetValue(IsShowFpsProperty, value); }
         }
 
@@ -114,7 +115,7 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         public int MaxFrameRate
         {
-            get { return (int) GetValue(MaxFrameRateProperty); }
+            get { return (int)GetValue(MaxFrameRateProperty); }
             set { SetValue(MaxFrameRateProperty, value); }
         }
 
@@ -127,7 +128,7 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         public bool IsRendererOpened
         {
-            get { return (bool) GetValue(IsRendererOpenedProperty); }
+            get { return (bool)GetValue(IsRendererOpenedProperty); }
             protected set { SetValue(IsRendererOpenedProperty, value); }
         }
 
@@ -136,7 +137,7 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         public RendererProcedureLifeCycle RendererProcedureLifeCycle
         {
-            get { return (RendererProcedureLifeCycle) GetValue(RendererProcedureLifeCycleProperty); }
+            get { return (RendererProcedureLifeCycle)GetValue(RendererProcedureLifeCycleProperty); }
             set { SetValue(RendererProcedureLifeCycleProperty, value); }
         }
 
@@ -155,7 +156,7 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         public bool IsAutoAttach
         {
-            get { return (bool) GetValue(IsAutoAttachProperty); }
+            get { return (bool)GetValue(IsAutoAttachProperty); }
             set { SetValue(IsAutoAttachProperty, value); }
         }
 
@@ -167,12 +168,11 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         public bool IsRenderContinuously
         {
-            get { return (bool) GetValue(IsRenderContinuouslyProperty); }
+            get { return (bool)GetValue(IsRenderContinuouslyProperty); }
             set { SetValue(IsRenderContinuouslyProperty, value); }
         }
 
-        public static readonly DependencyProperty IsUserVisibleProperty = DependencyProperty.Register(
-            "IsUserVisible", typeof(bool), typeof(OpenTkControlBase), new PropertyMetadata(default(bool)));
+        private volatile bool _isUserVisible;
 
         /// <summary>
         /// a combination of window closed/minimized, control unloaded/visibility status
@@ -180,12 +180,14 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         public bool IsUserVisible
         {
-            get { return (bool) GetValue(IsUserVisibleProperty); }
-            protected set { SetValue(IsUserVisibleProperty, value); }
+            get => _isUserVisible;
+            protected set
+            {
+                var propertyChangedArgs = new PropertyChangedArgs<bool>(_isUserVisible, value);
+                _isUserVisible = value;
+                OnUserVisibleChanged(propertyChangedArgs);
+            }
         }
-
-
-        protected volatile bool UserVisible;
 
         private WindowState _windowState;
 
@@ -215,7 +217,7 @@ namespace OpenTkWPFHost.Control
 
         protected volatile bool EnableFrameRateLimit;
 
-        protected bool ShowFps = (bool) IsShowFpsProperty.DefaultMetadata.DefaultValue;
+        protected bool ShowFps = (bool)IsShowFpsProperty.DefaultMetadata.DefaultValue;
 
         /// <summary>
         /// Creates the <see cref="OpenTkControlBase"/>/>
@@ -239,11 +241,8 @@ namespace OpenTkWPFHost.Control
             DependencyPropertyDescriptor.FromProperty(MaxFrameRateProperty, typeof(OpenTkControlBase))
                 .AddValueChanged(this,
                     (sender, args) => { ApplyMaxFrameRate(this.MaxFrameRate); });
-            DependencyPropertyDescriptor.FromProperty(IsUserVisibleProperty, typeof(OpenTkControlBase))
-                .AddValueChanged(this,
-                    (sender, args) => { this.UserVisible = this.IsUserVisible; });
-            ApplyMaxFrameRate((int) MaxFrameRateProperty.DefaultMetadata.DefaultValue);
-            this.IsRenderContinuouslyValue = (bool) IsRenderContinuouslyProperty.DefaultMetadata.DefaultValue;
+            ApplyMaxFrameRate((int)MaxFrameRateProperty.DefaultMetadata.DefaultValue);
+            this.IsRenderContinuouslyValue = (bool)IsRenderContinuouslyProperty.DefaultMetadata.DefaultValue;
             Loaded += (sender, args) =>
             {
                 if (_alreadyLoaded)
@@ -266,6 +265,7 @@ namespace OpenTkWPFHost.Control
                 {
                     Close();
                 }
+
                 this.Dispose();
             };
             this.IsVisibleChanged += OpenTkControlBase_IsVisibleChanged;
@@ -280,7 +280,7 @@ namespace OpenTkWPFHost.Control
             }
 
             EnableFrameRateLimit = true;
-            FrameGenerateSpan = (int) (1000d / maxFrameRate);
+            FrameGenerateSpan = (int)(1000d / maxFrameRate);
         }
 
         /// <summary>
@@ -293,7 +293,7 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         public void CallValidRenderOnce()
         {
-            if (!IsRenderContinuouslyValue && IsRendererOpened && UserVisible)
+            if (!IsRenderContinuouslyValue && IsRendererOpened && IsUserVisible)
             {
                 ResumeRender();
             }
@@ -307,19 +307,19 @@ namespace OpenTkWPFHost.Control
 
         private void OpenTkControlBase_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            _isControlVisible = (bool) e.NewValue;
+            _isControlVisible = (bool)e.NewValue;
             CheckUserVisible();
         }
 
         private void HostWindow_StateChanged(object sender, EventArgs e)
         {
-            _windowState = ((Window) sender).WindowState;
+            _windowState = ((Window)sender).WindowState;
             CheckUserVisible();
         }
 
         private void HostWindow_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            _isWindowVisible = (bool) e.NewValue;
+            _isWindowVisible = (bool)e.NewValue;
             CheckUserVisible();
         }
 
@@ -513,7 +513,10 @@ namespace OpenTkWPFHost.Control
             }
 
             Close();
-            _debugProcCallbackHandle.Free();
+            if (_debugProcCallbackHandle.IsAllocated)
+            {
+                _debugProcCallbackHandle.Free();
+            }
             Dispose(true);
             _isDisposed = true;
         }

@@ -353,7 +353,7 @@ namespace OpenTkWPFHost.Control
                 {
                     var sizeChanged = false;
                     var renderContinuously = IsRenderContinuouslyValue;
-                    if (!UserVisible)
+                    if (!IsUserVisible)
                     {
                         _userVisibleResetEvent.WaitInfinity();
                     }
@@ -446,11 +446,7 @@ namespace OpenTkWPFHost.Control
             {
                 _sizeNotEmptyEvent.ForceSet();
                 _renderSyncWaiter.ForceSet();
-                if (!UserVisible)
-                {
-                    _userVisibleResetEvent.ForceSet();
-                }
-
+                _userVisibleResetEvent.ForceSet();
                 _renderContinuousWaiter.ForceSet();
                 await _renderTask;
                 switch (_workingRenderSetting.RenderTrigger)

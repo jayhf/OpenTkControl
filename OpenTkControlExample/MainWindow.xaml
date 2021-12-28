@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:openTkWpfHost="clr-namespace:OpenTkWPFHost;assembly=OpenTkWPFHost"
         xmlns:openTkControlExample="clr-namespace:OpenTkControlExample"
         xmlns:control="clr-namespace:OpenTkWPFHost.Control;assembly=OpenTkWPFHost"
         xmlns:bitmap="clr-namespace:OpenTkWPFHost.Bitmap;assembly=OpenTkWPFHost"
@@ -89,8 +88,8 @@
             </TabItem>
             <TabItem Header="asdf">
                 <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl"
-                                                   Height="800"
-                                                   Width="800"/>
+                                                   Height="1080"
+                                                   Width="1920"/>
             </TabItem>
         </TabControl>-->
 
