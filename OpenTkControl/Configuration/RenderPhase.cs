@@ -2,7 +2,10 @@
 {
     public enum RenderPhase
     {
-        Inbuilt,
+        /// <summary>
+        /// indicate the exception occurs on internal phase
+        /// </summary>
+        Internal,
         Initialize,
         Render,
     }

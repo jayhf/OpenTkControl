@@ -1,4 +1,5 @@
 ﻿using System;
+using OpenTK.Graphics.OpenGL4;
 using OpenTkWPFHost.Configuration;
 
 namespace OpenTkWPFHost.Core
@@ -9,10 +10,13 @@ namespace OpenTkWPFHost.Core
         {
             Phase = phase;
             Exception = exception;
+            ErrorCode = GL.GetError();
         }
 
-        public RenderPhase Phase { get; set; }
+        public ErrorCode ErrorCode { get; }
 
-        public Exception Exception { get; set; }
+        public RenderPhase Phase { get; }
+
+        public Exception Exception { get; }
     }
 }

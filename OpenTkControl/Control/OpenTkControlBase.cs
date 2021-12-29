@@ -48,10 +48,6 @@ namespace OpenTkWPFHost.Control
 
         public event EventHandler GlInitialized;
 
-        /// <summary>
-        /// Called whenever an exception occurs during initialization, rendering or deinitialization
-        /// </summary>
-        public event EventHandler<UnhandledExceptionEventArgs> ExceptionOccurred;
 
         public static readonly DependencyProperty GlSettingsProperty = DependencyProperty.Register(
             "GlSettings", typeof(GLSettings), typeof(OpenTkControlBase), new PropertyMetadata(new GLSettings()));
@@ -488,11 +484,6 @@ namespace OpenTkWPFHost.Control
         {
             OnOpenGlErrorReceived(
                 new OpenGlErrorArgs(source, type, id, severity, length, message, userParam));
-        }
-
-        protected virtual void OnExceptionOccurred(UnhandledExceptionEventArgs e)
-        {
-            ExceptionOccurred?.Invoke(this, e);
         }
 
         protected virtual void OnOpenGlErrorReceived(OpenGlErrorArgs e)

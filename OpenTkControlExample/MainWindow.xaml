@@ -15,6 +15,7 @@
     <Grid>
         <control:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
+                                           MaxFrameRate="30"
                                            FpsBrush="Yellow"
                                            IsRenderContinuously="True">
         </control:ThreadOpenTkControl>

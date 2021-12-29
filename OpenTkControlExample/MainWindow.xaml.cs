@@ -34,7 +34,6 @@ namespace OpenTkControlExample
             Slider.Value = lineLength;
             Loaded += MainWindow_Loaded;
             this.OpenTkControl.Renderer = testRendererCase.Renderer;
-            this.OpenTkControl.ExceptionOccurred += OpenTkControl_ExceptionOccurred;
             this.OpenTkControl.OpenGlErrorReceived += OpenTkControl_OpenGlErrorReceived;
         }
 

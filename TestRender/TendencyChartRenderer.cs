@@ -158,6 +158,14 @@ namespace TestRenderer
             {
                 lineRenderer.Initialize(this._shader);
             }
+            var lineFloats = new float[2];
+            GL.GetFloat(GetPName.LineWidthRange, lineFloats);
+            GL.LineWidth(1);
+            GL.Enable(EnableCap.LineSmooth);
+            GL.Hint(HintTarget.LineSmoothHint, HintMode.Fastest);
+            GL.Enable(EnableCap.Blend);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
         }
 
         public bool PreviewRender()

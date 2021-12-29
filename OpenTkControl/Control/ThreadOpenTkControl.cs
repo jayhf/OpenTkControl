@@ -34,9 +34,19 @@ namespace OpenTkWPFHost.Control
 
         public Brush FpsBrush
         {
-            get { return (Brush) GetValue(FpsBrushProperty); }
+            get { return (Brush)GetValue(FpsBrushProperty); }
             set { SetValue(FpsBrushProperty, value); }
         }
+
+        /// <summary>
+        /// indicate whether render is waiting size changing
+        /// </summary>
+        public bool IsWaitingAvailableSize => _sizeNotEmptyWaiter.IsWaiting;
+
+        /// <summary>
+        /// indicate whether render is not continuous
+        /// </summary>
+        public bool IsWaitingRender => _renderContinuousWaiter.IsWaiting;
 
         /// <summary>
         /// The Thread object for the rendering thread， use origin thread but not task lest context switch
@@ -48,9 +58,9 @@ namespace OpenTkWPFHost.Control
         /// </summary>
         private CancellationTokenSource _endThreadCts;
 
-        private readonly FpsCounter _glFps = new FpsCounter() {Title = "GLFps"};
+        private readonly FpsCounter _glFps = new FpsCounter() { Title = "GLFps" };
 
-        private readonly FpsCounter _controlFps = new FpsCounter() {Title = "ControlFps"};
+        private readonly FpsCounter _controlFps = new FpsCounter() { Title = "ControlFps" };
 
         protected volatile RenderTargetInfo RecentTargetInfo = new RenderTargetInfo(0, 0, 96, 96);
 
@@ -87,7 +97,7 @@ namespace OpenTkWPFHost.Control
 
         private void CompositionTarget_Rendering(object sender, EventArgs e)
         {
-            var renderingTime = ((RenderingEventArgs) e)?.RenderingTime;
+            var renderingTime = ((RenderingEventArgs)e)?.RenderingTime;
             if (renderingTime == _lastRenderTime)
             {
                 return;
@@ -97,13 +107,12 @@ namespace OpenTkWPFHost.Control
             this.InvalidateVisual();
         }
 
-
         private void ThreadOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             RecentTargetInfo = this.RenderSetting.CreateRenderTargetInfo(this);
             if (!RecentTargetInfo.IsEmpty)
             {
-                _sizeNotEmptyEvent.TrySet();
+                _sizeNotEmptyWaiter.TrySet();
             }
 
             CallValidRenderOnce();
@@ -111,9 +120,9 @@ namespace OpenTkWPFHost.Control
 
         private readonly DrawingGroup _drawingGroup = new DrawingGroup();
 
-        private readonly TaskCompletionEvent _renderSyncWaiter = new TaskCompletionEvent();
+        // private readonly TaskCompletionEvent _renderSyncWaiter = new TaskCompletionEvent();
 
-        private readonly TaskCompletionEvent _sizeNotEmptyEvent = new TaskCompletionEvent();
+        private readonly EventWaiter _sizeNotEmptyWaiter = new EventWaiter();
 
         private readonly EventWaiter _renderContinuousWaiter = new EventWaiter();
 
@@ -124,7 +133,7 @@ namespace OpenTkWPFHost.Control
             try
             {
                 drawingContext.DrawDrawing(_drawingGroup);
-                _renderSyncWaiter.TrySet();
+                // _renderSyncWaiter.TrySet();
                 if (ShowFps)
                 {
                     _controlFps.Increment();
@@ -189,7 +198,7 @@ namespace OpenTkWPFHost.Control
                     SingleProducerConstrained = true,
                     // BoundedCapacity = 10,
                 });
-            renderBlock.LinkTo(frameBlock, new DataflowLinkOptions() {PropagateCompletion = true});
+            renderBlock.LinkTo(frameBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             //call render 
             var canvasBlock = new ActionBlock<CanvasArgs>((args =>
             {
@@ -224,12 +233,12 @@ namespace OpenTkWPFHost.Control
                 TaskScheduler = uiScheduler,
                 // BoundedCapacity = 10
             });
-            frameBlock.LinkTo(canvasBlock, new DataflowLinkOptions() {PropagateCompletion = true});
+            frameBlock.LinkTo(canvasBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             renderBlock.Completion.ContinueWith((task =>
             {
                 if (task.IsFaulted)
                 {
-                    ((IDataflowBlock) frameBlock).Fault(task.Exception);
+                    ((IDataflowBlock)frameBlock).Fault(task.Exception);
                 }
                 else
                 {
@@ -240,7 +249,7 @@ namespace OpenTkWPFHost.Control
             {
                 if (task.IsFaulted)
                 {
-                    ((IDataflowBlock) canvasBlock).Fault(task.Exception);
+                    ((IDataflowBlock)canvasBlock).Fault(task.Exception);
                 }
                 else
                 {
@@ -328,7 +337,7 @@ namespace OpenTkWPFHost.Control
                 }
                 catch (Exception e)
                 {
-                    OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Inbuilt, e));
+                    OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Internal, e));
                     return;
                 }
 
@@ -351,40 +360,48 @@ namespace OpenTkWPFHost.Control
 
                 while (!token.IsCancellationRequested)
                 {
-                    var sizeChanged = false;
-                    var renderContinuously = IsRenderContinuouslyValue;
-                    if (!IsUserVisible)
+                    try
                     {
-                        _userVisibleResetEvent.WaitInfinity();
+                        if (!IsUserVisible)
+                        {
+                            _userVisibleResetEvent.WaitInfinity();
+                        }
+
+                        if (!IsRenderContinuouslyValue)
+                        {
+                            _renderContinuousWaiter.WaitInfinity();
+                        }
+
+                        if (RecentTargetInfo.IsEmpty)
+                        {
+                            _sizeNotEmptyWaiter.WaitInfinity();
+                            continue;
+                        }
+
+                        var sizeChanged = false;
+                        if (!Equals(targetInfo, RecentTargetInfo) && !RecentTargetInfo.IsEmpty)
+                        {
+                            targetInfo = RecentTargetInfo;
+                            renderEventArgs = RecentTargetInfo.GetRenderEventArgs();
+                            var pixelSize = RecentTargetInfo.PixelSize;
+                            procedure.Apply(RecentTargetInfo);
+                            renderer.Resize(pixelSize);
+                            sizeChanged = true;
+                        }
+
+                        if (!renderer.PreviewRender() && !sizeChanged)
+                        {
+                            Thread.Sleep(30);
+                            // await mainContextBinding.Delay(30);
+                            continue;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        OnRenderErrorReceived(new RenderErrorArgs(RenderPhase.Internal, e));
+                        throw;
                     }
 
-                    if (!renderContinuously)
-                    {
-                        _renderContinuousWaiter.WaitInfinity();
-                    }
-
-                    if (!Equals(targetInfo, RecentTargetInfo) && !RecentTargetInfo.IsEmpty)
-                    {
-                        targetInfo = RecentTargetInfo;
-                        renderEventArgs = RecentTargetInfo.GetRenderEventArgs();
-                        var pixelSize = RecentTargetInfo.PixelSize;
-                        procedure.Apply(RecentTargetInfo);
-                        renderer.Resize(pixelSize);
-                        sizeChanged = true;
-                    }
-
-                    // ReSharper disable once PossibleNullReferenceException
-                    if (RecentTargetInfo.IsEmpty)
-                    {
-                        await _sizeNotEmptyEvent.Wait(mainContextBinding);
-                        continue;
-                    }
-
-                    if (!renderer.PreviewRender() && !sizeChanged)
-                    {
-                        await mainContextBinding.Delay(30);
-                        continue;
-                    }
 
                     try
                     {
@@ -415,11 +432,11 @@ namespace OpenTkWPFHost.Control
                         var renderMinus = FrameGenerateSpan - stopwatch.ElapsedMilliseconds;
                         if (renderMinus > 5)
                         {
-                            await mainContextBinding.Delay((int) renderMinus);
+                            await mainContextBinding.Delay((int)renderMinus);
                         }
                         else if (renderMinus > 0)
                         {
-                            Thread.Sleep((int) renderMinus);
+                            Thread.Sleep((int)renderMinus);
                         }
 
                         stopwatch.Restart();
@@ -444,8 +461,8 @@ namespace OpenTkWPFHost.Control
             }
             finally
             {
-                _sizeNotEmptyEvent.ForceSet();
-                _renderSyncWaiter.ForceSet();
+                _sizeNotEmptyWaiter.ForceSet();
+                // _renderSyncWaiter.ForceSet();
                 _userVisibleResetEvent.ForceSet();
                 _renderContinuousWaiter.ForceSet();
                 await _renderTask;

@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/migeyusu/OpenTkControl</projectUrl>
     <icon>images\lion.png</icon>
     <description>$description$</description>
-    <releaseNotes>Important bug fixed.</releaseNotes>
+    <releaseNotes>Bug fixed.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>WPF OpenTK</tags>
     <dependencies>
