@@ -256,12 +256,6 @@ namespace OpenTkWPFHost.Control
             };
             Application.Current.Exit += (sender, args) =>
             {
-                if (RendererProcedureLifeCycle == RendererProcedureLifeCycle.BoundToApplication
-                    || this.IsRendererOpened)
-                {
-                    Close();
-                }
-
                 this.Dispose();
             };
             this.IsVisibleChanged += OpenTkControlBase_IsVisibleChanged;

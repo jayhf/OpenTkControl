@@ -446,9 +446,13 @@ namespace OpenTkWPFHost.Control
             finally
             {
                 stopwatch.Stop();
-                pipeline?.Finish().Wait(CancellationToken.None);
                 renderer.Uninitialize();
                 glContextTaskScheduler?.Dispose();
+                if (pipeline != null)
+                {
+                    await pipeline.Finish().ConfigureAwait(true);
+                }
+
                 procedure.Dispose();
             }
         }

@@ -32,7 +32,10 @@ namespace OpenTkWPFHost.Core
 
         protected override void QueueTask(Task task)
         {
-            _tasks.Add(task);
+            if (_thread.IsAlive)
+            {
+                _tasks.Add(task);
+            }
         }
 
         protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
