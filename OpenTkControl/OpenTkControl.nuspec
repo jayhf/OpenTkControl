@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/migeyusu/OpenTkControl</projectUrl>
     <icon>images\lion.png</icon>
     <description>$description$</description>
-    <releaseNotes>fixed undisposed problem when dispose method is triggered by application exit</releaseNotes>
+    <releaseNotes>Add msaa support to bitmap procudure,enable by set GraphicsMode in GLSettings.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>WPF OpenTK</tags>
     <dependencies>

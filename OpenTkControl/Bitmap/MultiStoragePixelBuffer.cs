@@ -6,12 +6,6 @@ using OpenTkWPFHost.Core;
 
 namespace OpenTkWPFHost.Bitmap
 {
-    public enum GLSignalStatus : int
-    {
-        Signaled = 0x9119,
-        UnSignaled = 0x9118,
-    }
-
     /// <summary>
     /// highest performance, but possibly cause stuck on low end cpu (2 physical core)
     /// </summary>

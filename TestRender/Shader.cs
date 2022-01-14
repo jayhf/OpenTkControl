@@ -96,7 +96,7 @@ namespace TestRenderer
 
             // Check for compilation errors
             GL.GetShader(shader, ShaderParameter.CompileStatus, out var code);
-            if (code != (int) All.True)
+            if (code != (int)All.True)
             {
                 // We can use `GL.GetShaderInfoLog(shader)` to get information about the error.
                 var infoLog = GL.GetShaderInfoLog(shader);
@@ -111,7 +111,7 @@ namespace TestRenderer
 
             // Check for linking errors
             GL.GetProgram(program, GetProgramParameterName.LinkStatus, out var code);
-            if (code != (int) All.True)
+            if (code != (int)All.True)
             {
                 // We can use `GL.GetProgramInfoLog(program)` to get information about the error.
                 throw new Exception($"Error occurred whilst linking Program({program})");
@@ -160,6 +160,12 @@ namespace TestRenderer
         {
             GL.UseProgram(Handle);
             GL.Uniform1(_uniformLocations[name], data);
+        }
+
+        public void SetVec2(string name, Vector2 data)
+        {
+            GL.UseProgram(Handle);
+            GL.Uniform2(_uniformLocations[name], data);
         }
 
         /// <summary>

@@ -44,23 +44,26 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AdvancedLineRenderer.cs" />
     <Compile Include="AlignedFloatArray.cs" />
-    <Compile Include="LineRenderer.cs" />
+    <Compile Include="ILineRenderer.cs" />
+    <Compile Include="LineRenderArgs.cs" />
     <Compile Include="MatrixExtension.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RenderRingBuffer.cs" />
     <Compile Include="ScaleMode.cs" />
     <Compile Include="Shader.cs" />
+    <Compile Include="SimpleLineRenderer.cs" />
     <Compile Include="TendencyChartRenderer.cs" />
     <Compile Include="TestCase.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Shaders\shader.frag">
+    <Content Include="Shaders\LineShader\shader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Shaders\shader.vert">
+    <Content Include="Shaders\LineShader\shader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -74,6 +77,17 @@
       <Project>{06f9fd53-c287-4275-8b98-4b891ea3abdd}</Project>
       <Name>OpenTkControl</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Content Include="Shaders\RectLineShader\shader.frag">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Shaders\RectLineShader\shader.vert">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

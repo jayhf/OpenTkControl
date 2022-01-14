@@ -48,6 +48,10 @@
     <Compile Include="Bitmap\BitmapCanvasArgs.cs" />
     <Compile Include="Bitmap\BitmapCanvas.cs" />
     <Compile Include="Abstraction\CanvasArgs.cs" />
+    <Compile Include="Bitmap\GLSignalStatus.cs" />
+    <Compile Include="Bitmap\IFrameBuffer.cs" />
+    <Compile Include="Bitmap\OffScreenMSAAFrameBuffer.cs" />
+    <Compile Include="Bitmap\PureFrameBuffer.cs" />
     <Compile Include="Configuration\RenderProcedureType.cs" />
     <Compile Include="Core\ContextWaiterExtension.cs" />
     <Compile Include="DirectX\DxCanvasArgs.cs" />

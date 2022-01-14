@@ -342,7 +342,7 @@ namespace OpenTkWPFHost.Control
                 }
 
                 #endregion
-
+                
                 RenderTargetInfo targetInfo = null;
                 GlRenderEventArgs renderEventArgs = null;
                 try

@@ -13,6 +13,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using OpenTK.Graphics;
 using OpenTkWPFHost;
+using OpenTkWPFHost.Configuration;
 using OpenTkWPFHost.Core;
 using TestRenderer;
 using Point = System.Drawing.Point;
@@ -28,8 +29,10 @@ namespace OpenTkControlExample
         public MainWindow()
         {
             this.InitializeComponent();
+            /*this.OpenTkControl.GlSettings = new GLSettings()
+                { GraphicsMode = new GraphicsMode(new ColorFormat(32), 24, 8, 8) };*/
             GenerateRenderer();
-            var lineLength = TestRendererCase.LineLength;
+            var lineLength = TestRendererCase.PointsCount;
             Slider.Maximum = lineLength;
             Slider.Value = lineLength;
             Loaded += MainWindow_Loaded;
@@ -80,7 +83,7 @@ namespace OpenTkControlExample
               6. shader 利用shader计算得到上限，然后相应调整
              */
             var renderer = testRendererCase.Renderer;
-            renderer.CurrentScrollRange = new ScrollRange(0, (long) e.NewValue);
+            renderer.CurrentScrollRange = new ScrollRange(0, (long)e.NewValue);
             renderer.ScrollRangeChanged = true;
             /*var currentYAxisValue = _renderer.CurrentYAxisValue;
             var bitmapSource = await OpenTkControl.PushRenderTask(
@@ -131,7 +134,7 @@ namespace OpenTkControlExample
 
         private void FrameRate_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            OpenTkControl.MaxFrameRate = (int) e.NewValue;
+            OpenTkControl.MaxFrameRate = (int)e.NewValue;
         }
     }
 }

@@ -65,7 +65,6 @@ namespace OpenTkWPFHost.DirectX
 
             DxRenderTargetHandle = dxRenderTargetHandle;
             Wgl.DXSetResourceShareHandleNV(dxRenderTargetHandle, dxSharedHandle);
-
             GLFramebufferHandle = GL.GenFramebuffer();
             GLSharedTextureHandle = GL.GenTexture();
 
@@ -75,7 +74,6 @@ namespace OpenTkWPFHost.DirectX
                 (uint) GLSharedTextureHandle,
                 (uint) TextureTarget.Texture2D,
                 WGL_NV_DX_interop.AccessReadWrite);
-
             DxInteropRegisteredHandle = genHandle;
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, GLFramebufferHandle);

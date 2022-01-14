@@ -27,7 +27,7 @@ namespace TestRenderer
 
     public class TendencyChartRenderer : IDisposable, IRenderer
     {
-        public ConcurrentBag<LineRenderer> LineRenderers { get; set; } = new ConcurrentBag<LineRenderer>();
+        public ConcurrentBag<ILineRenderer> LineRenderers { get; set; } = new ConcurrentBag<ILineRenderer>();
 
         public Color4 BackgroundColor { get; set; }
 
@@ -94,17 +94,17 @@ namespace TestRenderer
         {
             var transform = Matrix4.Identity;
             transform *= Matrix4.CreateScale(2f / (xRange.End - xRange.Start),
-                2f / ((float) yAxisApex), 0f);
+                2f / ((float)yAxisApex), 0f);
             transform *= Matrix4.CreateTranslation(-1, -1, 0);
             _transformMatrix4 = transform;
         }
 
-        public void Add(LineRenderer lineRenderer)
+        public void Add(ILineRenderer lineRenderer)
         {
             this.LineRenderers.Add(lineRenderer);
         }
 
-        public void AddRange(IEnumerable<LineRenderer> lineRenderers)
+        public void AddRange(IEnumerable<ILineRenderer> lineRenderers)
         {
             foreach (var lineRenderer in lineRenderers)
             {
@@ -112,7 +112,7 @@ namespace TestRenderer
             }
         }
 
-        public void Restore(IEnumerable<LineRenderer> lineSeries)
+        public void Restore(IEnumerable<SimpleLineRenderer> lineSeries)
         {
             if (LineRenderers.TryTake(out var item))
             {
@@ -130,13 +130,12 @@ namespace TestRenderer
         private int _yAxisSsbo;
         private readonly int[] _yAxisRaster = new int[300];
         private ScrollRange _currentScrollRange;
-        private long _currentYAxisValue=100;
+        private long _currentYAxisValue = 100;
 
         public bool IsInitialized { get; private set; }
 
         public TendencyChartRenderer()
         {
-
         }
 
         public void Initialize(IGraphicsContext context)
@@ -147,25 +146,28 @@ namespace TestRenderer
             }
 
             IsInitialized = true;
-            _shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
+            // _shader = new Shader("Shaders/LineShader/shader.vert", "Shaders/LineShader/shader.frag");
+            _shader = new Shader("Shaders/RectLineShader/shader.vert", "Shaders/RectLineShader/shader.frag");
             _shader.Use();
             _yAxisSsbo = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, _yAxisSsbo);
             GL.BufferData<int>(BufferTarget.ShaderStorageBuffer, _yAxisRaster.Length * sizeof(int), _yAxisRaster,
                 BufferUsageHint.DynamicDraw);
             GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 0, _yAxisSsbo);
+
             foreach (var lineRenderer in LineRenderers)
             {
                 lineRenderer.Initialize(this._shader);
             }
-            var lineFloats = new float[2];
+            // GL.Enable(EnableCap.Multisample);
+            /*var lineFloats = new float[2];
             GL.GetFloat(GetPName.LineWidthRange, lineFloats);
-            GL.LineWidth(1);
-            GL.Enable(EnableCap.LineSmooth);
+            GL.LineWidth(1);*/
+            // GL.Enable(EnableCap.Multisample);
+            /*GL.Enable(EnableCap.LineSmooth);
             GL.Hint(HintTarget.LineSmoothHint, HintMode.Fastest);
             GL.Enable(EnableCap.Blend);
-            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);*/
         }
 
         public bool PreviewRender()
@@ -183,6 +185,8 @@ namespace TestRenderer
             }
 
             _shader.SetMatrix4("transform", _transformMatrix4);
+            _shader.SetFloat("u_thickness", 2);
+            _shader.SetVec2("u_resolution", new Vector2(args.Width, args.Height));
             if (AutoYAxisApex && ScrollRangeChanged)
             {
                 var empty = new int[300];
@@ -190,9 +194,10 @@ namespace TestRenderer
                 GL.BufferSubData(BufferTarget.ShaderStorageBuffer, IntPtr.Zero, empty.Length * sizeof(int), empty);
             }
 
+            var renderArgs = new LineRenderArgs() { PixelSize = args.PixelSize, LineThickness = 2 };
             foreach (var lineRenderer in LineRenderers)
             {
-                lineRenderer.OnRenderFrame();
+                lineRenderer.OnRenderFrame(renderArgs);
             }
 
             if (AutoYAxisApex && ScrollRangeChanged)
@@ -211,17 +216,10 @@ namespace TestRenderer
                     }
                 }
 
-                /*1. 当最高点依然在ssbo的299位置时，应用变换然后在下次渲染再次检查，直到最高点不在299
-                 2. 每次都检查，当差额小于3%时停止变换。
-                 */
-                /*if (CurrentYAxisValue==0)
-                {
-                    CurrentYAxisValue=
-                }*/
                 var adjustYAxisValue = (i * 1.1f) * CurrentYAxisValue / 200f;
                 if (Math.Abs(CurrentYAxisValue - adjustYAxisValue) > CurrentYAxisValue * 0.03f)
                 {
-                    CurrentYAxisValue = (long) adjustYAxisValue;
+                    CurrentYAxisValue = (long)adjustYAxisValue;
                 }
                 else
                 {

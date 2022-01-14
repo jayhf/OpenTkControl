@@ -10,10 +10,7 @@ namespace OpenTkWPFHost.Core
         {
             Phase = phase;
             Exception = exception;
-            ErrorCode = GL.GetError();
         }
-
-        public ErrorCode ErrorCode { get; }
 
         public RenderPhase Phase { get; }
 

@@ -1,5 +1,6 @@
 using System;
 using JetBrains.Annotations;
+using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Platform;
@@ -19,8 +20,10 @@ namespace OpenTkWPFHost.Configuration
 
         public SyncMode SyncMode { get; set; } = SyncMode.On;
 
-        public GraphicsMode GraphicsMode { get; set; } = GraphicsMode.Default;
+        public GraphicsMode GraphicsMode { get; set; }
+            = new GraphicsMode(new ColorFormat(32), 24, 0, 0);
 
+// =GraphicsMode.Default;
         public int MajorVersion { get; set; } = 4;
 
         public int MinorVersion { get; set; } = 3;
@@ -69,13 +72,13 @@ namespace OpenTkWPFHost.Configuration
                 return new GraphicsContext(this.GraphicsMode, windowInfo, this.MajorVersion,
                         this.MinorVersion,
                         this.GraphicsContextFlags)
-                    {SwapInterval = (int) this.SyncMode};
+                    { SwapInterval = (int)this.SyncMode };
             }
 
             return new GraphicsContext(this.GraphicsMode, windowInfo, sharedContext, this.MajorVersion,
                 this.MinorVersion, this.GraphicsContextFlags)
             {
-                SwapInterval = (int) this.SyncMode,
+                SwapInterval = (int)this.SyncMode,
             };
         }
 

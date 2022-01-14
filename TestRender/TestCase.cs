@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using OpenTK.Graphics;
 
 namespace TestRenderer
@@ -9,9 +11,7 @@ namespace TestRenderer
 
         public const int PointsCount = 1000;
 
-        public const int LineLength = PointsCount * 2;
-
-        private const long MaxYAxis = (long)((1000 + LineLength) * 0.1);
+        private const long MaxYAxis = (long)((1000 + PointsCount) * 0.1);
 
         private readonly Color4 _lineColor = Color4.White;
 
@@ -22,19 +22,18 @@ namespace TestRenderer
             var random = new Random();
             for (int i = 0; i < LineCount; i++)
             {
-                var lineChartRenderer = new LineRenderer(PointsCount) { LineColor = _lineColor };
-                var ringBuffer = lineChartRenderer.RingBuffer;
-                for (int j = 0; j < LineLength; j += 2)
+                var pointFs = new PointF[PointsCount];
+                for (int j = 0; j < PointsCount; j++)
                 {
-                    ringBuffer[j] = j;
-                    var next = random.Next(j, 1000 + j) * 0.1f;
-                    ringBuffer[j + 1] = next;
+                    pointFs[j] = new PointF(j, random.Next(j, 1000 + j) * 0.1f);
                 }
 
-                Renderer.Add(lineChartRenderer);
+                var simpleLineRenderer = new AdvancedLineRenderer(PointsCount) { LineColor = _lineColor };
+                simpleLineRenderer.AddPoints(pointFs);
+                Renderer.Add(simpleLineRenderer);
             }
 
-            Renderer.CurrentScrollRange = new ScrollRange(0, LineLength);
+            Renderer.CurrentScrollRange = new ScrollRange(0, PointsCount);
             Renderer.CurrentYAxisValue = MaxYAxis;
             Renderer.ScrollRangeChanged = false;
             Renderer.BackgroundColor = Color4.Black;

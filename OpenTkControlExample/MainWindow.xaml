@@ -15,8 +15,8 @@
     <Grid>
         <control:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
-                                           MaxFrameRate="30"
                                            FpsBrush="Yellow"
+                                           RenderProcedureType="Bitmap"
                                            IsRenderContinuously="True">
         </control:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">
