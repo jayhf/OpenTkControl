@@ -109,7 +109,7 @@ namespace OpenTkWPFHost.DirectX
                 gfxCtx.MakeCurrent(_windowInfo);
                 _sharedContext = gfxCtx;
                 _sharedContextSettings = settings;
-                _sharedContextResources = new IDisposable[] {_windowInfo, gfxCtx};
+                _sharedContextResources = new IDisposable[] { _windowInfo, gfxCtx };
 
                 // GL init
                 // var mode = new GraphicsMode(ColorFormat.Empty, 0, 0, 0, 0, 0, false);

@@ -21,7 +21,7 @@ namespace OpenTkWPFHost.Configuration
         public SyncMode SyncMode { get; set; } = SyncMode.On;
 
         public GraphicsMode GraphicsMode { get; set; }
-            = new GraphicsMode(new ColorFormat(32), 24, 0, 0);
+            = new GraphicsMode(new ColorFormat(32), 24, 0, 4);
 
 // =GraphicsMode.Default;
         public int MajorVersion { get; set; } = 4;

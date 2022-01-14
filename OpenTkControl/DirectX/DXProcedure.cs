@@ -83,7 +83,7 @@ namespace OpenTkWPFHost.DirectX
         {
             this._renderTargetInfo = renderTarget;
             var renderTargetPixelSize = renderTarget.PixelSize;
-            _frameBuffers.Allocate((i, d) =>
+            _frameBuffers.Instantiate((i, d) =>
             {
                 d?.Release();
                 return new DxGLFramebuffer(_context, renderTargetPixelSize);
@@ -93,7 +93,7 @@ namespace OpenTkWPFHost.DirectX
 
         public void Dispose()
         {
-            _frameBuffers.ForEach(((i, framebuffer) => framebuffer.Release()));
+            _frameBuffers.ForEach(((i, frameBuffer) => frameBuffer.Release()));
             _context?.Dispose();
         }
 

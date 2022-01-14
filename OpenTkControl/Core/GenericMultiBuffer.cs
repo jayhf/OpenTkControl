@@ -1,41 +1,55 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace OpenTkWPFHost.Core
 {
     public class GenericMultiBuffer<T> : IEnumerable<T>
     {
-        private readonly int _size;
+        private readonly int _bufferCount;
+
+        public IReadOnlyCollection<T> MultiBuffer => new ReadOnlyCollection<T>(_multiBuffer);
 
         private readonly IList<T> _multiBuffer;
 
-        public GenericMultiBuffer(int size = 3)
+        public GenericMultiBuffer(int bufferCount = 3, Func<int, T, T> factorFunc = null)
         {
-            _size = size;
-            _multiBuffer = new T[size];
+            if (bufferCount < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bufferCount));
+            }
+
+            _bufferCount = bufferCount;
+            _multiBuffer = new T[bufferCount];
+            if (factorFunc != null)
+            {
+                Instantiate(factorFunc);
+            }
         }
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="factorFunc">int: index, T1: exist value</param>
-        public void Allocate(Func<int, T, T> factorFunc)
+        public void Instantiate(Func<int, T, T> factorFunc)
         {
             if (factorFunc == null)
             {
                 throw new ArgumentNullException(nameof(factorFunc));
             }
 
-            for (int i = 0; i < _size; i++)
+            for (int i = 0; i < _bufferCount; i++)
             {
                 _multiBuffer[i] = factorFunc.Invoke(i, _multiBuffer[i]);
             }
+
+            _writeBuffer = _multiBuffer[0];
         }
 
         public void ForEach(Action<int, T> action)
         {
-            for (int i = 0; i < _size; i++)
+            for (int i = 0; i < _bufferCount; i++)
             {
                 action.Invoke(i, _multiBuffer[i]);
             }
@@ -50,10 +64,10 @@ namespace OpenTkWPFHost.Core
 
         public void Swap()
         {
+            _readBuffer = _writeBuffer;
             _currentWriteBufferIndex++;
-            var writeBufferIndex = (int) _currentWriteBufferIndex % _size;
+            var writeBufferIndex = (int)_currentWriteBufferIndex % _bufferCount;
             _writeBuffer = _multiBuffer[writeBufferIndex];
-            _readBuffer = _multiBuffer[writeBufferIndex - 1];
         }
 
         public T GetFrontBuffer()
