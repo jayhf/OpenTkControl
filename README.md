@@ -13,11 +13,11 @@ So I commenced combination of  [official project](https://github.com/opentk/GLWp
 
 2. Both d3dimage and writeablebitmap approaches, high flexiblity.
 
-3. Async GL.ReadPixel and double pixel buffer object in writeablebitmap.
+3. Enable MSAA.
 
-4. Use storage and sync object to boost frame.
+4. Use dataflow to maximize fps .
 
-5. Can set frame rate.
+5. Can stop and resume render; can preview render; can auto suspend render when control is user invisible, can set frame rate.
 
 6. Provider a 2d coordinate chart example.
 
