@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("OpenTkControl")]
-[assembly: AssemblyDescription("A faster way to use OpenTk in WPF without Forms dependencies")]
+[assembly: AssemblyTitle("OpenTkWPFHost")]
+[assembly: AssemblyDescription("OpenTK WPF host control")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Jay Fleischer")]
-[assembly: AssemblyProduct("OpenTkControl")]
-[assembly: AssemblyCopyright("Copyright ©  2017")]
+[assembly: AssemblyCompany("Karl Zhu, based on Jay Fleischer and offical solution.")]
+[assembly: AssemblyProduct("OpenTkWPFHost")]
+[assembly: AssemblyCopyright("Copyright ©  2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("06f9fd53-c287-4275-8b98-4b891ea3abdd")]
+[assembly: Guid("6B02097D-2BBE-4A4D-A20C-E05FEA892713")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -31,5 +31,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.1")]
-[assembly: AssemblyFileVersion("1.0.1")]
+[assembly: AssemblyVersion("3.1.0.1")]
+[assembly: AssemblyFileVersion("3.1.0.1")]

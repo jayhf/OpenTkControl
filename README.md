@@ -1,31 +1,32 @@
-# OpenTkControl
 
-This project aims to make it possible to achieve better performance with OpenTk in WPF and it achieves this by copying the data less than existing solutions, such as the examples here: https://github.com/freakinpenguin/OpenTK-WPF. It also allows for all of the rendering to be performed off of the UI thread to improve responsiveness and provides a variety of settings that can be used to further improve performance.
 
-## Getting Started
+# Declaration
+I've experienced a flickering on intel gpu when low fps on [GLWPFControl](https://github.com/opentk/GLWpfControl), 
+I tried to solved it by use GL.Finish() but it'll be blocked frequently as opentk render run in ui thread. 
+So I commenced combination of  [official project](https://github.com/opentk/GLWpfControl) and [background implementation](https://github.com/jayhf/OpenTkControl).
 
-1. Install the nuget package available here: https://www.nuget.org/packages/JayFleischer.OpenTkControl
-2. Add either a ThreadOpenTkControl or UiOpenTkControl to a WPF window
-3. Subscribe to the GlRender event and draw something!
+## Feature
 
-## Class Overview
+0. Solved problem flickering in intel uhd gpu on low framerate when use offical [official library](https://github.com/opentk/GLWpfControl) (As offical library use d3dimage, It's very strange that intel uhd gpu will flicing on low framerate but my gtx970 will not. I'll discuss the phenomenon below.)
 
-This library provides two different implementations:
+1. Render procedure run in separate thread, no blocking in ui thread.
 
-UiOpenTkControl - Performs all rendering on the UI thread. In general, this version will perform worse, even if it's the only thing drawn on the screen and therefore I recomment using ThreadOpenTkControl, unless you really need rendering to occur on the UI thread for some reason
+2. Both d3dimage and writeablebitmap approaches, high flexiblity.
 
-ThreadOpenTkControl - Performs all OpenGL rendering on a dedicated update thread to improve performance.
+3. Enable MSAA.
 
-## Features
+4. Use dataflow to maximize fps .
 
-* Rendering - The GlRender event will be called whenever it is time to render
-* Continous Mode - The control will either repaint constantly or only when RequestRepaint is called depending on what Continous is set to.
-* Screenshots - Screenshots are rendered separately from the display rendering, which makes it possible for them to have a different size from the display resolution
-* Thread Safety - RequestRepaint and Screenshot are thread safe
-* Error Reporting - All exceptions are reported to the ExceptionOccurred event
-* Other useful properties include FrameRateLimit, OpenGlVersion, MaxPixels, PixelScale and ThreadName
-* Changing any of these properties will take effect immediately, except ThreadName and OpenGlVersion
+5. Can stop and resume render; can preview render; can auto suspend render when control is user invisible, can set frame rate.
 
-## Bugs
+6. Provider a 2d coordinate chart example.
 
-Please report any issues on GitHub. I also welcome pull requests with bug fixes and improvements.
+
+As wpf use dx to render any control. I've tried to use pipeline but frame rate hadn't boost, you can see it in branch net47-dev-datafoow.
+
+The following shows gamewindow can reach about 1200 fps but my control only be limited to 200 use same render code.
+
+So I suggest using opengl winform control for maximum fps.
+
+![imgpng1](wpfhost.png)
+![imgpng2](rawopengl.png)

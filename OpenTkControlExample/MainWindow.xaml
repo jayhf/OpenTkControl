@@ -3,11 +3,97 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:openTkControl="clr-namespace:OpenTkControl;assembly=OpenTkControl"
+        xmlns:openTkControlExample="clr-namespace:OpenTkControlExample"
+        xmlns:control="clr-namespace:OpenTkWPFHost.Control;assembly=OpenTkWPFHost"
+        xmlns:bitmap="clr-namespace:OpenTkWPFHost.Bitmap;assembly=OpenTkWPFHost"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
+        Height="1080"
+        Width="1920"
+        Title="MainWindow">
+    <!--Height="480"
+        Width="720"-->
     <Grid>
-        <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl" GlRender="OpenTkControl_OnGlRender" ExceptionOccurred="OpenTkControl_OnExceptionOccurred"/>
+        <control:ThreadOpenTkControl x:Name="OpenTkControl"
+                                           IsShowFps="True"
+                                           FpsBrush="Yellow"
+                                           RenderProcedureType="Dx"
+                                           IsRenderContinuously="True">
+        </control:ThreadOpenTkControl>
+        <StackPanel HorizontalAlignment="Right">
+            <StackPanel.Resources>
+                <Style TargetType="{x:Type Button}">
+                    <Setter Property="Height"
+                            Value="40" />
+                    <Setter Property="Width"
+                            Value="150"/>
+                    <Setter Property="HorizontalAlignment"
+                            Value="Right"/>
+                </Style>
+            </StackPanel.Resources>
+            <Button Content="start procedure"
+                    Click="ButtonBase_OnClick" />
+            <Button Content="close procedure"
+                    Click="Close_OnClick" />
+            <Button Content="change render continuous"
+                    Click="Test_OnClick" />
+            <TextBlock Text="x Range:"
+                       Foreground="White" />
+            <Slider Width="666"
+                    Margin="20"
+                    Minimum="10"
+                    ValueChanged="Slider_OnValueChanged"
+                    x:Name="Slider" />
+            <TextBlock Text="frame rate:"
+                       Foreground="White" />
+            <Slider Margin="20"
+                    Maximum="200"
+                    Minimum="0"
+                    Value="0"
+                    ValueChanged="FrameRate_OnValueChanged" />
+            
+        </StackPanel>
+
+        <!--<openTkWpfHost:TestFrameworkElement Width="300"
+                                     Height="300"
+                                     VerticalAlignment="Bottom"
+                                     HorizontalAlignment="Left"/>-->
+        <!--<ListBox Width="300"
+                 x:Name="Box"
+                 Background="AntiqueWhite"
+                 HorizontalAlignment="Right">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel IsVirtualizing="True"
+                                            VirtualizationMode="Recycling"/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type ImageSource}">
+                    <Border BorderThickness="2"
+                            BorderBrush="Black"
+                            Margin="5">
+                        <Image Source="{Binding}"
+                               Width="290"
+                               Stretch="Uniform" />
+
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>-->
+        <!--<openTkControl:UiOpenTkControl x:Name="OpenTkControl" 
+                                       Width="800"
+                                       Height="800"/>-->
+        <!--<TabControl>
+            <TabItem Header="asdfasdv">
+
+            </TabItem>
+            <TabItem Header="asdf">
+                <openTkControl:ThreadOpenTkControl x:Name="OpenTkControl"
+                                                   Height="1080"
+                                                   Width="1920"/>
+            </TabItem>
+        </TabControl>-->
+
+
     </Grid>
 </Window>
-

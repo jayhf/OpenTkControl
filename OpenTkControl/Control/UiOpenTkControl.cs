@@ -1,10 +1,10 @@
 ﻿using System;
-using System.ComponentModel;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using OpenTK.Platform;
+using OpenTkWPFHost.Core;
 
-namespace OpenTkControl
+namespace OpenTkWPFHost.Control
 {
     /// <summary>
     /// A WPF control that performs OpenGL rendering on the UI thread
@@ -16,29 +16,53 @@ namespace OpenTkControl
         /// <summary>
         /// Creates a UiOpenTkControl
         /// </summary>
-        public UiOpenTkControl()
+        public UiOpenTkControl() : base()
         {
             IsVisibleChanged += OnIsVisibleChanged;
+            this.SizeChanged += UiOpenTkControl_SizeChanged;
         }
 
-        public override Task RunOnUiThread(Action action)
+        private void UiOpenTkControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            action();
-            return null;
+
+        }
+
+        private IWindowInfo _windowInfo;
+
+        protected override void ResumeRender()
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void StartRenderProcedure(IWindowInfo windowInfo)
+        {
+            this._windowInfo = windowInfo;
+        }
+
+
+        protected override void OnUserVisibleChanged(PropertyChangedArgs<bool> args)
+        {
         }
 
         protected override void OnLoaded(object sender, RoutedEventArgs args)
         {
             base.OnLoaded(sender, args);
-
-            InitOpenGl();
         }
 
         protected override void OnUnloaded(object sender, RoutedEventArgs routedEventArgs)
         {
-            DeInitOpenGl();
-
             base.OnUnloaded(sender, routedEventArgs);
+        }
+
+        protected override void Dispose(bool dispose)
+        {
+            
+        }
+
+
+        protected override void OnRender(DrawingContext drawingContext)
+        {
+            base.OnRender(drawingContext);
         }
 
         /// <summary>
@@ -55,11 +79,12 @@ namespace OpenTkControl
 #endif
 
             DateTime now = DateTime.Now;
-            if ((_continuous && now > _nextRenderTime) || ManualRepaintEvent.WaitOne(0))
+            InvalidateVisual();
+            /*if ((_continuous && now > _nextRenderTime) || ManualRepaintEvent.WaitOne(0))
             {
                 ManualRepaintEvent.Reset();
-                _nextRenderTime = now + Render();
-            }
+                _nextRenderTime = now + Renderer();
+            }*/
         }
 
         /// <summary>
@@ -69,13 +94,12 @@ namespace OpenTkControl
         /// <param name="args">The event arguments about this event</param>
         private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs args)
         {
-            bool visible = (bool)args.NewValue;
+            bool visible = (bool) args.NewValue;
 
             if (visible)
                 CompositionTarget.Rendering += CompositionTargetOnRendering;
             else
                 CompositionTarget.Rendering -= CompositionTargetOnRendering;
-
         }
     }
 }
