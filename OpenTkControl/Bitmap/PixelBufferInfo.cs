@@ -102,11 +102,6 @@ namespace OpenTkWPFHost.Bitmap
                     var bufferSize = this.BufferSize;
                     unsafe
                     {
-                        /*fixed (void* x = bufferBytes)
-                        {
-                            Buffer.MemoryCopy(this.MapBufferIntPtr.ToPointer(), x, bufferSize, bufferSize);
-                        }*/
-
                         Buffer.MemoryCopy(this.MapBufferIntPtr.ToPointer(),
                             destination.ToPointer(),
                             bufferSize, bufferSize);

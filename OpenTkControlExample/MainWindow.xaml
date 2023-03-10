@@ -7,8 +7,8 @@
         xmlns:control="clr-namespace:OpenTkWPFHost.Control;assembly=OpenTkWPFHost"
         xmlns:bitmap="clr-namespace:OpenTkWPFHost.Bitmap;assembly=OpenTkWPFHost"
         mc:Ignorable="d"
-        Height="1080"
-        Width="1920"
+        Height="800"
+        Width="1000"
         Title="MainWindow">
     <!--Height="480"
         Width="720"-->
@@ -16,7 +16,7 @@
         <control:ThreadOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
                                            FpsBrush="Yellow"
-                                           RenderProcedureType="Dx"
+                                           RenderProcedureType="Bitmap"
                                            IsRenderContinuously="True">
         </control:ThreadOpenTkControl>
         <StackPanel HorizontalAlignment="Right">

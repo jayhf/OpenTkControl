@@ -8,7 +8,7 @@ namespace OpenTkWPFHost.Configuration
     {
         public RenderTrigger RenderTrigger { get; set; } = RenderTrigger.Internal;
 
-        public RenderTactic RenderTactic { get; set; } = RenderTactic.LatencyPriority;
+        public RenderTactic RenderTactic { get; set; } = RenderTactic.ThroughputPriority;
 
         /// If this is set to false, the control will render without any DPI scaling.
         /// This will result in higher performance and a worse image quality on systems with >100% DPI settings, such as 'Retina' laptop screens with 4K UHD at small sizes.

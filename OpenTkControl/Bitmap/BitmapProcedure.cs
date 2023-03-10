@@ -74,7 +74,7 @@ namespace OpenTkWPFHost.Bitmap
             _context = settings.CreateContext(window);
             _context.LoadAll();
             _context.MakeCurrent(window);
-            _multiStoragePixelBuffer = new MultiStoragePixelBuffer(5);
+            _multiStoragePixelBuffer = new MultiStoragePixelBuffer(3);
             this._settings = settings;
             var samples = settings.GraphicsMode.Samples;
             if (samples > 1)

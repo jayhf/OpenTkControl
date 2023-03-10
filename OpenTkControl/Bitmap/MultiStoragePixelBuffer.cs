@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using OpenTK.Graphics.OpenGL4;
 using OpenTkWPFHost.Abstraction;
@@ -110,7 +111,6 @@ namespace OpenTkWPFHost.Bitmap
             }
         }
 
-
         private SpinWait _spinWait = new SpinWait();
 
         /// <summary>
@@ -118,6 +118,7 @@ namespace OpenTkWPFHost.Bitmap
         /// </summary>
         public PixelBufferInfo ReadPixel()
         {
+          
             while (_writePixelBufferInfo.HasBuffer)
             {
                 _spinWait.SpinOnce();
@@ -127,7 +128,9 @@ namespace OpenTkWPFHost.Bitmap
             GL.ReadPixels(0, 0, _width, _height, PixelFormat.Bgra, PixelType.UnsignedByte,
                 IntPtr.Zero);
             _writePixelBufferInfo.Fence = GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, WaitSyncFlags.None);
+            
             GL.Finish();
+       
             _writePixelBufferInfo.HasBuffer = true;
             return _writePixelBufferInfo;
         }
@@ -148,7 +151,7 @@ namespace OpenTkWPFHost.Bitmap
                 return null;
             }
 
-            var bufferInfo = ((BitmapRenderArgs) args).BufferInfo;
+            var bufferInfo = ((BitmapRenderArgs)args).BufferInfo;
             if (bufferInfo.ReadBuffer())
             {
                 return new BitmapFrameArgs(args.TargetInfo, bufferInfo);

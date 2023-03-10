@@ -194,7 +194,7 @@ namespace OpenTkWPFHost.Control
                 },
                 new ExecutionDataflowBlockOptions()
                 {
-                    MaxDegreeOfParallelism = 1,
+                    MaxDegreeOfParallelism = 2,
                     SingleProducerConstrained = true,
                     // BoundedCapacity = 10,
                 });
@@ -342,7 +342,7 @@ namespace OpenTkWPFHost.Control
                 }
 
                 #endregion
-                
+
                 RenderTargetInfo targetInfo = null;
                 GlRenderEventArgs renderEventArgs = null;
                 try
@@ -405,6 +405,7 @@ namespace OpenTkWPFHost.Control
 
                     try
                     {
+                        stopwatch.Restart();
                         OnBeforeRender(renderEventArgs);
                         procedure.PreRender();
                         renderer.Render(renderEventArgs);
@@ -413,6 +414,8 @@ namespace OpenTkWPFHost.Control
                         OnAfterRender(renderEventArgs);
                         pipeline.SendAsync(postRender, token).Wait(token);
                         procedure.Swap();
+                        Trace.WriteLine($"time:{stopwatch.ElapsedMilliseconds}");
+                        stopwatch.Stop();
                         // pipeline.SendAsync(postRender, token).Wait(token);
                         if (syncPipeline)
                         {
@@ -456,6 +459,10 @@ namespace OpenTkWPFHost.Control
                 procedure.Dispose();
             }
         }
+
+
+        private Stopwatch stopwatch = new Stopwatch();
+
 
         private async Task CloseRenderThread()
         {
