@@ -13,12 +13,11 @@
     <!--Height="480"
         Width="720"-->
     <Grid>
-        <control:ThreadOpenTkControl x:Name="OpenTkControl"
+        <control:BitmapOpenTkControl x:Name="OpenTkControl"
                                            IsShowFps="True"
                                            FpsBrush="Yellow"
-                                           RenderProcedureType="Bitmap"
                                            IsRenderContinuously="True">
-        </control:ThreadOpenTkControl>
+        </control:BitmapOpenTkControl>
         <StackPanel HorizontalAlignment="Right">
             <StackPanel.Resources>
                 <Style TargetType="{x:Type Button}">
@@ -30,9 +29,9 @@
                             Value="Right"/>
                 </Style>
             </StackPanel.Resources>
-            <Button Content="start procedure"
+            <Button Content="打开管道"
                     Click="ButtonBase_OnClick" />
-            <Button Content="close procedure"
+            <Button Content="关闭管道"
                     Click="Close_OnClick" />
             <Button Content="change render continuous"
                     Click="Test_OnClick" />

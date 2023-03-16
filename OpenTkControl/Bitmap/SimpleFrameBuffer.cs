@@ -4,7 +4,7 @@ using OpenTkWPFHost.Core;
 
 namespace OpenTkWPFHost.Bitmap
 {
-    public class PureFrameBuffer : IFrameBuffer
+    public class SimpleFrameBuffer : IFrameBuffer
     {
         /// <summary>
         /// The OpenGL FrameBuffer

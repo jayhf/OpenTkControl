@@ -46,13 +46,12 @@
     <Compile Include="Bitmap\BitmapFrameArgs.cs" />
     <Compile Include="Bitmap\BitmapRenderArgs.cs" />
     <Compile Include="Bitmap\BitmapCanvasArgs.cs" />
-    <Compile Include="Bitmap\BitmapCanvas.cs" />
+    <Compile Include="Bitmap\MultiBitmapCanvas.cs" />
     <Compile Include="Abstraction\CanvasArgs.cs" />
     <Compile Include="Bitmap\GLSignalStatus.cs" />
     <Compile Include="Bitmap\IFrameBuffer.cs" />
     <Compile Include="Bitmap\OffScreenMSAAFrameBuffer.cs" />
-    <Compile Include="Bitmap\PureFrameBuffer.cs" />
-    <Compile Include="Configuration\RenderProcedureType.cs" />
+    <Compile Include="Bitmap\SimpleFrameBuffer.cs" />
     <Compile Include="Core\ContextWaiterExtension.cs" />
     <Compile Include="DirectX\DxCanvasArgs.cs" />
     <Compile Include="DirectX\DXRenderArgs.cs" />
@@ -72,7 +71,6 @@
     <Compile Include="DirectX\DxGLFramebuffer.cs" />
     <Compile Include="Core\EmptyWindowInfo.cs" />
     <Compile Include="Core\FpsCounter.cs" />
-    <Compile Include="Bitmap\BitmapProcedure.cs" />
     <Compile Include="Abstraction\FrameArgs.cs" />
     <Compile Include="Core\GLContextTaskScheduler.cs" />
     <Compile Include="Core\GlRenderEventArgs.cs" />
@@ -82,10 +80,7 @@
     <Compile Include="Interop\DXInterop.cs" />
     <Compile Include="Interop\Enums.cs" />
     <Compile Include="Interop\PresentationParameters.cs" />
-    <Compile Include="Abstraction\IRenderBuffer.cs" />
-    <Compile Include="Abstraction\IRenderCanvas.cs" />
     <Compile Include="Abstraction\IRenderer.cs" />
-    <Compile Include="Abstraction\IRenderProcedure.cs" />
     <Compile Include="Bitmap\MultiStoragePixelBuffer.cs" />
     <Compile Include="Core\OpenGLError.cs" />
     <Compile Include="Configuration\RenderSetting.cs" />
@@ -97,15 +92,13 @@
     <Compile Include="Core\RenderErrorArgs.cs" />
     <Compile Include="Configuration\RenderPhase.cs" />
     <Compile Include="Configuration\RenderTactic.cs" />
-    <Compile Include="Configuration\RenderTrigger.cs" />
     <Compile Include="Core\SemaphoreEvent.cs" />
     <Compile Include="Core\EventWaiter.cs" />
     <Compile Include="Bitmap\SingleBitmapCanvas.cs" />
     <Compile Include="Core\StatefulWaiter.cs" />
     <Compile Include="Configuration\SyncMode.cs" />
-    <Compile Include="Control\ThreadOpenTkControl.cs" />
+    <Compile Include="Control\BitmapOpenTkControl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Control\UiOpenTkControl.cs" />
     <Compile Include="Core\UnstartedControlHelper.cs" />
   </ItemGroup>
   <ItemGroup>

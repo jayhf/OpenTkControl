@@ -48,7 +48,7 @@ namespace OpenTkWPFHost.Bitmap
 
         private readonly ReaderWriterLockSlim _readerWriterLockSlim = new ReaderWriterLockSlim();
 
-        public CanvasArgs Flush([NotNull] FrameArgs frame)
+        public BitmapCanvasArgs Flush([NotNull] FrameArgs frame)
         {
             var bitmapFrameArgs = (BitmapFrameArgs) frame;
             var canvasInfo = bitmapFrameArgs.TargetInfo;

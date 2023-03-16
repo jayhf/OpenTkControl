@@ -68,16 +68,6 @@ namespace OpenTkWPFHost.Control
             set { SetValue(RenderSettingProperty, value); }
         }
 
-        public static readonly DependencyProperty RenderProcedureTypeProperty = DependencyProperty.Register(
-            "RenderProcedureType", typeof(RenderProcedureType), typeof(OpenTkControlBase),
-            new PropertyMetadata(RenderProcedureType.Bitmap));
-
-        public RenderProcedureType RenderProcedureType
-        {
-            get { return (RenderProcedureType)GetValue(RenderProcedureTypeProperty); }
-            set { SetValue(RenderProcedureTypeProperty, value); }
-        }
-
         /// <summary>
         /// renderer 
         /// </summary>

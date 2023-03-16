@@ -27,7 +27,7 @@ namespace OpenTkWPFHost.Bitmap
         /// </summary>
         private int _depthBuffer;
 
-        private readonly PureFrameBuffer _pureFrameBuffer;
+        private readonly SimpleFrameBuffer _pureFrameBuffer;
 
         private readonly int _multiSamples;
 
@@ -48,7 +48,7 @@ namespace OpenTkWPFHost.Bitmap
             }
 
             _multiSamples = multiSamples;
-            _pureFrameBuffer = new PureFrameBuffer();
+            _pureFrameBuffer = new SimpleFrameBuffer();
         }
 
 

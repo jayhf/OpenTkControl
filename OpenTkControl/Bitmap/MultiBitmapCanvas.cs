@@ -1,9 +1,14 @@
 ﻿using System;
+using System.Runtime.InteropServices;
+using System.Threading;
 using OpenTkWPFHost.Abstraction;
 
 namespace OpenTkWPFHost.Bitmap
 {
-    public class BitmapCanvas : IRenderCanvas
+    /// <summary>
+    /// 可绘制多画布
+    /// </summary>
+    public class MultiBitmapCanvas
     {
         private readonly int _bufferCount;
 
@@ -12,13 +17,13 @@ namespace OpenTkWPFHost.Bitmap
         /// <summary>
         /// 先写入缓冲，然后才能读取，所以写入缓冲=读取缓冲+1
         /// </summary>
-        private int _currentWriteCanvasIndex = 0;
+        private volatile int _currentWriteCanvasIndex = 0;
 
-        public BitmapCanvas() : this(2)
+        public MultiBitmapCanvas() : this(2)
         {
         }
 
-        public BitmapCanvas(int bufferSize)
+        public MultiBitmapCanvas(int bufferSize)
         {
             if (bufferSize < 1)
             {
@@ -31,25 +36,16 @@ namespace OpenTkWPFHost.Bitmap
             {
                 _bitmapCanvasCollection[i] = new SingleBitmapCanvas();
             }
-
-            _writeCanvas = _bitmapCanvasCollection[0];
         }
 
         public bool Ready { get; } = true;
 
-
-        private SingleBitmapCanvas _writeCanvas;
-
-        public CanvasArgs Flush(FrameArgs frame)
+        public BitmapCanvasArgs FlushAndSwap(FrameArgs frame)
         {
-            return _writeCanvas.Flush(frame);
-        }
-
-        public void Swap()
-        {
-            _currentWriteCanvasIndex++;
-            var writeBufferIndex = _currentWriteCanvasIndex % _bufferCount;
-            _writeCanvas = _bitmapCanvasCollection[writeBufferIndex];
+            var writeBufferIndex = Interlocked.Increment(ref _currentWriteCanvasIndex);
+            writeBufferIndex %= _bufferCount;
+            var tempCanvas = _bitmapCanvasCollection[writeBufferIndex];
+            return tempCanvas.Flush(frame);
         }
 
         public bool CanAsyncFlush { get; } = true;

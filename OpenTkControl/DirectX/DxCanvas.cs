@@ -8,7 +8,7 @@ using OpenTkWPFHost.Core;
 
 namespace OpenTkWPFHost.DirectX
 {
-    public class DxCanvas : IRenderCanvas
+    public class DxCanvas 
     {
         private D3DImage _image;
 

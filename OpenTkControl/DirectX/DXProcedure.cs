@@ -9,7 +9,7 @@ using OpenTkWPFHost.Core;
 namespace OpenTkWPFHost.DirectX
 {
     ///Renderer that uses DX_Interop for a fast-path.
-    public class DXProcedure : IRenderProcedure, IRenderBuffer
+    public class DXProcedure
     {
         private DxGlContext _context;
 
@@ -29,15 +29,7 @@ namespace OpenTkWPFHost.DirectX
             _frameBuffers.Swap();
         }
 
-        public IRenderCanvas CreateCanvas()
-        {
-            return new MultiDxCanvas();
-        }
 
-        public IRenderBuffer CreateRenderBuffer()
-        {
-            return this;
-        }
 
         public DXProcedure()
         {
